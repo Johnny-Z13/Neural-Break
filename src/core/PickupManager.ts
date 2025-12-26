@@ -1,0 +1,168 @@
+import * as THREE from 'three'
+import { Player } from '../entities/Player'
+import { SceneManager } from '../graphics/SceneManager'
+import { EffectsSystem } from '../graphics/EffectsSystem'
+import { LevelManager } from './LevelManager'
+import { ENEMY_CONFIG } from '../config'
+
+/**
+ * Base class for managing pickup entities (PowerUps, MedPacks, SpeedUps)
+ * Eliminates code duplication across pickup managers
+ */
+export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive(): boolean, update(deltaTime: number): void, setEffectsSystem(effectsSystem: EffectsSystem): void }> {
+  protected pickups: T[] = []
+  protected sceneManager: SceneManager
+  protected player: Player
+  protected spawnTimer: number = 0
+  protected effectsSystem: EffectsSystem | null = null
+  protected levelManager: LevelManager | null = null
+  protected spawnsThisLevel: number = 0
+  protected lastSpawnTime: number = 0
+
+  // Configuration - subclasses override these
+  protected abstract readonly SPAWNS_PER_LEVEL: number
+  protected abstract readonly SPAWN_INTERVAL_MIN: number
+  protected abstract readonly SPAWN_INTERVAL_MAX: number
+
+  initialize(sceneManager: SceneManager, player: Player): void {
+    this.sceneManager = sceneManager
+    this.player = player
+  }
+
+  setLevelManager(levelManager: LevelManager): void {
+    this.levelManager = levelManager
+    // Reset spawn counter when level changes
+    this.spawnsThisLevel = 0
+    this.lastSpawnTime = 0
+  }
+
+  setEffectsSystem(effectsSystem: EffectsSystem): void {
+    this.effectsSystem = effectsSystem
+  }
+
+  update(deltaTime: number): void {
+    // Update spawn timer
+    this.spawnTimer += deltaTime
+    
+    // Calculate spawn interval based on level duration
+    const levelConfig = this.levelManager?.getCurrentLevelConfig()
+    if (levelConfig) {
+      const levelDuration = levelConfig.duration
+      const targetSpawns = this.SPAWNS_PER_LEVEL
+      const baseInterval = levelDuration / targetSpawns
+      
+      // Add some randomness
+      const randomInterval = baseInterval + 
+        (Math.random() * (this.SPAWN_INTERVAL_MAX - this.SPAWN_INTERVAL_MIN))
+      
+      // Check if we should spawn
+      const timeSinceLastSpawn = this.spawnTimer - this.lastSpawnTime
+      const shouldSpawn = this.shouldSpawn(timeSinceLastSpawn, randomInterval, targetSpawns)
+      
+      if (shouldSpawn) {
+        this.spawnPickup()
+        this.lastSpawnTime = this.spawnTimer
+        this.spawnsThisLevel++
+      }
+    }
+
+    // Update all pickups
+    for (const pickup of this.pickups) {
+      if (pickup.isAlive()) {
+        pickup.update(deltaTime)
+      }
+    }
+
+    // Remove dead pickups
+    this.cleanupDeadPickups()
+  }
+
+  /**
+   * Override this method to add custom spawn conditions (e.g., health check for med packs)
+   */
+  protected shouldSpawn(timeSinceLastSpawn: number, randomInterval: number, targetSpawns: number): boolean {
+    return timeSinceLastSpawn >= randomInterval && 
+           this.spawnsThisLevel < targetSpawns
+  }
+
+  /**
+   * Subclasses implement this to create their specific pickup type
+   */
+  protected abstract createPickup(x: number, y: number): T
+
+  protected spawnPickup(): void {
+    const spawnPos = this.getSpawnPosition()
+    const pickup = this.createPickup(spawnPos.x, spawnPos.y)
+    
+    // Connect effects system
+    if (this.effectsSystem) {
+      pickup.setEffectsSystem(this.effectsSystem)
+    }
+    
+    this.pickups.push(pickup)
+    this.sceneManager.addToScene(pickup.getMesh())
+  }
+
+  protected getSpawnPosition(): THREE.Vector3 {
+    // Spawn pickups at random positions, minimum distance from player
+    const worldBound = ENEMY_CONFIG.PICKUP.WORLD_BOUND
+    const minDistanceFromPlayer = ENEMY_CONFIG.PICKUP.MIN_DISTANCE_FROM_PLAYER
+    const playerPos = this.player.getPosition()
+    
+    let attempts = 0
+    let x: number, y: number
+    
+    do {
+      x = (Math.random() - 0.5) * worldBound * 2
+      y = (Math.random() - 0.5) * worldBound * 2
+      attempts++
+    } while (
+      playerPos.distanceTo(new THREE.Vector3(x, y, 0)) < minDistanceFromPlayer &&
+      attempts < ENEMY_CONFIG.PICKUP.SPAWN_ATTEMPTS
+    )
+    
+    return new THREE.Vector3(x, y, 0)
+  }
+
+  protected cleanupDeadPickups(): void {
+    for (let i = this.pickups.length - 1; i >= 0; i--) {
+      const pickup = this.pickups[i]
+      if (!pickup.isAlive()) {
+        this.sceneManager.removeFromScene(pickup.getMesh())
+        this.pickups.splice(i, 1)
+      }
+    }
+  }
+
+  getPickups(): T[] {
+    return this.pickups
+  }
+
+  removePickup(pickup: T): void {
+    const index = this.pickups.indexOf(pickup)
+    if (index !== -1) {
+      this.sceneManager.removeFromScene(pickup.getMesh())
+      this.pickups.splice(index, 1)
+    }
+  }
+
+  cleanup(): void {
+    // Remove all pickups from scene and clear array
+    for (const pickup of this.pickups) {
+      this.sceneManager.removeFromScene(pickup.getMesh())
+    }
+    this.pickups = []
+    
+    // Reset spawn counters
+    this.spawnTimer = 0
+    this.spawnsThisLevel = 0
+    this.lastSpawnTime = 0
+  }
+
+  // Reset for new level
+  resetForNewLevel(): void {
+    this.spawnsThisLevel = 0
+    this.lastSpawnTime = this.spawnTimer
+  }
+}
+

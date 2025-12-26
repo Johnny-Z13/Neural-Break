@@ -18,11 +18,13 @@ export class InputManager {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
-    this.keys.add(event.code.toLowerCase())
+    const code = event.code.toLowerCase()
+    this.keys.add(code)
   }
 
   private onKeyUp(event: KeyboardEvent): void {
-    this.keys.delete(event.code.toLowerCase())
+    const code = event.code.toLowerCase()
+    this.keys.delete(code)
   }
 
   private onMouseMove(event: MouseEvent): void {

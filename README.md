@@ -1,0 +1,214 @@
+# Neural Break
+
+A cyberpunk survival game built with Three.js and TypeScript. Experience 30 minutes of escalating intensity as you battle through waves of digital entities in a neural network environment.
+
+## 🎮 Game Overview
+
+Neural Break is a top-down survival shooter where players must survive for 30 minutes against increasingly difficult waves of enemies. The game features:
+
+- **Cyberpunk Aesthetic**: Immersive digital environment with neural network themes
+- **Progressive Difficulty**: Escalating challenge from tutorial to brutal finale
+- **Combat System**: Projectile-based weapons with upgrade mechanics
+- **Multiple Enemy Types**: DataMites, ScanDrones, ChaosWorms, VoidSpheres, and CrystalShardSwarms
+- **XP Progression**: Level up and improve your neural coherence
+- **Speedrun Optimization**: Designed for competitive play and replayability
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+
+### Installation
+```bash
+git clone <repository-url>
+cd neural-break
+npm install
+```
+
+### Development
+```bash
+npm run dev
+```
+Opens the game at `http://localhost:3000` with hot reload enabled.
+
+### Build
+```bash
+npm run build
+```
+Creates optimized production build with Three.js chunking.
+
+### Preview
+```bash
+npm run preview
+```
+Preview the production build locally.
+
+## 🎯 Controls
+
+- **WASD**: Movement
+- **Space**: Fire weapon
+- **Shift**: Dash (when available)
+
+## 🏗️ Architecture
+
+### Core Systems
+
+| System | Description |
+|--------|-------------|
+| **Game** | Central coordinator managing all systems and game state |
+| **SceneManager** | Three.js scene, camera, and rendering pipeline |
+| **Player** | Player entity with movement, health, and progression |
+| **EnemyManager** | Spawning, updating, and managing all enemy entities |
+| **LevelManager** | Progressive difficulty scaling and wave management |
+| **WeaponSystem** | Projectile-based combat system with upgrades |
+| **InputManager** | Keyboard input handling |
+| **UIManager** | HUD elements and game interface |
+| **AudioManager** | Sound effects and audio feedback |
+| **AudioVisualReactiveSystem** | Dynamic visual effects synchronized with audio |
+| **EffectsSystem** | Visual effects and particle systems |
+| **GameTimer** | 30-minute countdown timer |
+| **ScoreManager** | High score tracking and leaderboard management |
+
+### Project Structure
+
+```
+src/
+├── main.ts                 # Entry point and game initialization
+├── config/                 # Configuration modules
+│   ├── index.ts           # Centralized config exports
+│   ├── game.config.ts     # Game-specific configuration
+│   ├── enemy.config.ts    # Enemy configuration
+│   └── visual.config.ts   # Visual effects configuration
+├── core/                   # Core game systems
+│   ├── Game.ts            # Main game coordinator
+│   ├── GameState.ts       # State management and scoring
+│   ├── GameTimer.ts       # Timer system
+│   ├── LevelManager.ts    # Difficulty progression
+│   ├── InputManager.ts    # Input handling
+│   ├── EnemyManager.ts    # Enemy spawning/management
+│   ├── PickupManager.ts   # Base class for pickup management
+│   ├── PowerUpManager.ts  # Power-up spawning and collection
+│   ├── MedPackManager.ts  # Health pack management
+│   └── SpeedUpManager.ts  # Speed boost management
+├── entities/               # Game entities
+│   ├── Player.ts          # Player entity
+│   ├── Enemy.ts           # Base enemy class
+│   ├── DataMite.ts        # Basic fast enemy
+│   ├── ScanDrone.ts       # Surveillance enemy
+│   ├── ChaosWorm.ts       # Unpredictable enemy
+│   ├── VoidSphere.ts      # Area denial enemy
+│   ├── CrystalShardSwarm.ts # Multi-unit enemy
+│   ├── Boss.ts            # Boss enemy
+│   ├── PowerUp.ts         # Power-up pickup
+│   ├── MedPack.ts         # Health pickup
+│   ├── SpeedUp.ts         # Speed boost pickup
+│   └── index.ts           # Entity exports
+├── weapons/                # Combat system
+│   ├── WeaponSystem.ts    # Weapon management
+│   ├── Projectile.ts      # Player projectiles
+│   └── EnemyProjectile.ts # Enemy projectiles
+├── graphics/               # Rendering and visual effects
+│   ├── SceneManager.ts    # Three.js scene management
+│   ├── EffectsSystem.ts   # Main effects coordinator
+│   ├── AudioVisualReactiveSystem.ts # Audio-reactive visuals
+│   └── effects/           # Modular effect systems
+│       ├── ParticlePool.ts      # Base particle system
+│       ├── ExplosionEffects.ts  # Explosion and impact effects
+│       ├── ScreenEffects.ts     # Screen-wide visual effects
+│       └── VectorParticles.ts   # Vector-style particles
+├── ui/                     # User interface
+│   ├── UIManager.ts       # HUD management
+│   ├── GameScreens.ts     # Screen coordinator
+│   └── screens/           # Individual screen components
+│       ├── StartScreen.ts        # Main menu screen
+│       ├── LeaderboardScreen.ts  # High score leaderboard
+│       ├── GameOverScreen.ts     # Game over screen
+│       └── ScreenTransitions.ts  # Transition animations
+├── audio/                  # Audio system
+│   └── AudioManager.ts    # Sound management
+└── data/                   # Data services
+    ├── HighScoreService.ts # High score persistence
+    └── HIGH_SCORE_SETUP.md # High score setup guide
+```
+
+## 🎨 Technical Features
+
+- **Three.js Integration**: Modern WebGL rendering with orthographic camera
+- **TypeScript**: Full type safety and modern JavaScript features
+- **Entity Component System (ECS)**: Efficient entity management with proper cleanup
+- **Collision Detection**: Optimized spatial checking for arena gameplay
+- **Performance Optimized**: Entity pooling, particle pooling, and efficient resource management
+- **Modular Design**: Clean separation of concerns with system-based architecture
+- **Visual Effects**: Comprehensive particle systems, screen effects, and audio-reactive visuals
+- **Screen Management**: Modular UI screens with smooth transitions
+- **Configuration Management**: Centralized config system for easy tuning
+- **High Score System**: LocalStorage and API-based high score tracking
+- **TWEEN.js**: Smooth animations and transitions
+
+## 🔧 Development
+
+### Game States
+- **START_SCREEN**: Initial menu
+- **PLAYING**: Active gameplay
+- **GAME_OVER**: End screen with statistics
+
+### Enemy Types
+- **DataMite**: Fast, basic enemies with simple movement
+- **ScanDrone**: Surveillance units with detection abilities and radar sweep
+- **ChaosWorm**: Unpredictable movement patterns with segmented body
+- **VoidSphere**: Area denial enemies with void effects
+- **CrystalShardSwarm**: Multi-unit coordinated attacks with crystal formations
+- **Boss**: Powerful end-level enemies with unique attack patterns
+
+### Key Design Patterns
+- **Entity Management**: All entities follow initialize/update/cleanup pattern
+- **Inheritance**: Base classes for common functionality (Enemy, PickupManager)
+- **System Communication**: Decoupled systems communicate through the main Game class
+- **Resource Cleanup**: Proper disposal prevents memory leaks during restarts
+- **Modularization**: Large systems split into focused modules (EffectsSystem, GameScreens)
+- **Configuration**: Centralized config with DEBUG_MODE flag for development
+- **Component-Based UI**: Screen components with shared transition utilities
+
+## 📋 Game Design
+
+Neural Break is based on a comprehensive Product Requirements Document focusing on:
+- Tutorial progression to brutal endgame
+- Balanced weapon upgrade systems
+- Professional visual effects with Three.js shaders
+- Speedrun-optimized gameplay mechanics
+
+## 🛠️ Technologies
+
+- **Three.js**: 3D graphics and WebGL rendering
+- **TypeScript**: Type-safe JavaScript development
+- **Vite**: Fast build tool and dev server
+- **Web Audio API**: Immersive sound design
+- **TWEEN.js**: Animation library for smooth transitions
+- **LocalStorage API**: Client-side high score persistence
+
+## 📄 License
+
+ISC License
+
+## 🚧 Development Status
+
+Active development - see commit history for latest updates and features.
+
+### Recent Improvements
+- ✅ Modularized UI screens (StartScreen, LeaderboardScreen, GameOverScreen)
+- ✅ Refactored EffectsSystem into focused modules
+- ✅ Split enemy classes into individual files
+- ✅ Created PickupManager base class for shared pickup logic
+- ✅ Centralized configuration system
+- ✅ Enhanced visual effects with audio-reactive systems
+- ✅ Improved code organization and maintainability
+
+## 📝 Code Organization
+
+The codebase follows best practices for maintainability:
+- **Separation of Concerns**: Each system has a single responsibility
+- **Modular Architecture**: Large files split into focused modules
+- **Type Safety**: Full TypeScript coverage with proper interfaces
+- **Configuration Management**: Centralized config for easy tuning
+- **Debug Mode**: Conditional logging and debug features via DEBUG_MODE flag

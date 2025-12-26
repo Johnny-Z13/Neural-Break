@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Neural Break</title>
+    <!-- 80s PIXEL FONT - Press Start 2P -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
       * {
         margin: 0;
@@ -14,8 +18,10 @@
       body {
         background: #000011;
         overflow: hidden;
-        font-family: 'Courier New', monospace;
+        font-family: 'Press Start 2P', 'Courier New', monospace;
         color: #00FFFF;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
       }
       
       #gameContainer {
@@ -26,6 +32,13 @@
       
       #gameCanvas {
         display: block;
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        background: #000011;
       }
       
       #ui {
@@ -40,13 +53,15 @@
       
       .hud-element {
         position: absolute;
-        background: rgba(0, 255, 255, 0.1);
-        border: 1px solid #00FFFF;
+        background: rgba(0, 0, 0, 0.8);
+        border: 3px solid #00FFFF;
         padding: 8px 12px;
-        border-radius: 4px;
-        font-size: 14px;
+        font-size: 10px;
         text-shadow: 0 0 10px #00FFFF;
-        box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        box-shadow: 
+          0 0 20px rgba(0, 255, 255, 0.3),
+          3px 3px 0 #006666;
+        image-rendering: pixelated;
       }
       
       #healthBar {
@@ -84,29 +99,87 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      
+      /* 🎮 RETRO HEALTH BAR PULSE ANIMATION 🎮 */
+      @keyframes healthPulse {
+        0%, 100% { 
+          box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+          border-color: rgba(255, 0, 0, 1);
+        }
+        50% { 
+          box-shadow: 0 0 30px rgba(255, 0, 0, 1);
+          border-color: rgba(255, 255, 255, 1);
+        }
+      }
+      
+      .health-critical {
+        animation: healthPulse 0.5s ease-in-out infinite;
+      }
     </style>
   </head>
   <body>
     <div id="gameContainer">
       <canvas id="gameCanvas"></canvas>
       <div id="ui">
-        <div id="healthBar" class="hud-element">
-          Neural Coherence: <span id="health">100</span>
+        <div id="healthBar" class="hud-element" style="top: 20px; left: 20px;">
+          <div style="font-size: 14px; margin-bottom: 4px; text-shadow: 0 0 5px currentColor;">HEALTH</div>
+          <div id="healthBarContainer" style="
+            width: 200px;
+            height: 20px;
+            border: 2px solid #00FFFF;
+            background: rgba(0, 0, 0, 0.7);
+            position: relative;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+          ">
+            <div id="healthBarFill" style="
+              width: 100%;
+              height: 100%;
+              background: linear-gradient(90deg, #00FF00 0%, #00FFFF 100%);
+              transition: width 0.3s ease, background 0.3s ease;
+              box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            "></div>
+            <div id="healthBarText" style="
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              color: #FFFFFF;
+              font-weight: bold;
+              font-size: 12px;
+              text-shadow: 0 0 5px #000000;
+              pointer-events: none;
+            ">100/100</div>
+          </div>
         </div>
         <div id="timer" class="hud-element">
           Time: <span id="timeRemaining">30:00</span>
         </div>
         <div id="level" class="hud-element">
-          Level: <span id="currentLevel">1</span> | XP: <span id="xp">0</span>/<span id="xpNext">15</span>
+          Game Level: <span id="gameLevel">1</span>/10 | Player Level: <span id="currentLevel">1</span> | XP: <span id="xp">0</span>/<span id="xpNext">15</span>
+        </div>
+        <div id="powerUp" class="hud-element" style="bottom: 60px; left: 50%; transform: translateX(-50%);">
+          Power-Up: <span id="powerUpLevel">0</span>/10
+        </div>
+        
+        <!-- 🎯 WEAPON TYPE UI ELEMENT 🎯 -->
+        <div id="weaponType" class="hud-element" style="bottom: 20px; right: 20px;">
+          <div style="font-size: 12px; margin-bottom: 4px; text-shadow: 0 0 5px currentColor;">WEAPON</div>
+          <div id="weaponTypeValue" style="
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px currentColor;
+            color: #FFAA00;
+          ">BULLETS</div>
+        </div>
+        <div id="score" class="hud-element" style="top: 20px; left: 50%; transform: translateX(-50%);">
+          Score: <span id="currentScore">0</span>
+        </div>
+        <div id="combo" class="hud-element" style="top: 70px; right: 20px; display: none;">
+          Combo: <span id="comboCount">0</span>x
         </div>
         <div id="loading">
           <div class="loading-spinner">⟳</div>
           Initializing Neural Network...
-        </div>
-        <div id="controls" style="position: absolute; bottom: 20px; right: 20px; background: rgba(0, 255, 255, 0.1); border: 1px solid #00FFFF; padding: 12px; border-radius: 4px; font-size: 12px; text-shadow: 0 0 10px #00FFFF; box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); pointer-events: none;">
-          <div>WASD: Move</div>
-          <div>SPACE: Fire</div>
-          <div>SHIFT: Dash</div>
         </div>
       </div>
     </div>
