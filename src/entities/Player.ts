@@ -1,22 +1,46 @@
 import * as THREE from 'three'
 import { InputManager } from '../core/InputManager'
 import { AudioManager } from '../audio/AudioManager'
+import { EffectsSystem } from '../graphics/EffectsSystem'
 
 export class Player {
-  private mesh: THREE.Mesh
+  private mesh!: THREE.Mesh // Initialized in initialize() method
   private position: THREE.Vector3
   private velocity: THREE.Vector3
   private health: number = 100
   private maxHealth: number = 100
-  private speed: number = 5
+  private baseSpeed: number = 6.25 // Base movement speed (+25% from 5)
+  private speed: number = 6.25 // Current speed (modified by speed-ups)
   private dashCooldown: number = 0
   private dashDuration: number = 0
-  private dashSpeed: number = 15
+  private dashSpeed: number = 30 // DOUBLED from 15 - more dramatic!
   private level: number = 1
   private xp: number = 0
   private xpToNext: number = 15
+  private powerUpLevel: number = 0 // Power-up level (0-10)
+  private speedUpLevel: number = 0 // Speed-up level (0-10) - each level = 5% faster
   private isDashing: boolean = false
+  private isInvulnerable: boolean = false // Invulnerability during dash
   private audioManager: AudioManager | null = null
+  private effectsSystem: EffectsSystem | null = null
+  private lastDashDirection: THREE.Vector3 = new THREE.Vector3(0, -1, 0) // Default backward
+  private jetTrailTimer: number = 0
+  private jetTrailInterval: number = 0.01 // Jet particles every 10ms
+  
+  // 🎮 ANALOG CONTROLS - Smooth movement! 🎮
+  private targetVelocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
+  private acceleration: number = 15.0 // How fast the ship accelerates
+  private deceleration: number = 12.0 // How fast the ship decelerates
+  private rotationSpeed: number = 8.0 // How fast the ship rotates to face movement direction
+  private targetRotation: number = 0 // Target rotation angle
+  
+  // Speed boost constants
+  private static readonly MAX_SPEED_LEVEL = 10
+  private static readonly SPEED_BOOST_PER_LEVEL = 0.15 // 15% per level (150% max boost = 2.5x speed!)
+  
+  // 🎬 ZOOM COMPENSATION - Keep ship visually consistent during camera zoom! 🎬
+  private zoomCompensationCallback: (() => number) | null = null
+  private baseShipScale: number = 1.0 // Base scale before zoom compensation
 
   constructor() {
     this.position = new THREE.Vector3(0, 0, 0)
@@ -25,31 +49,224 @@ export class Player {
 
   initialize(audioManager?: AudioManager): void {
     this.audioManager = audioManager || null
-    // Create player geometry - humanoid silhouette made of flowing data streams
-    const geometry = new THREE.ConeGeometry(0.3, 1, 8)
     
-    // Create glowing material with cyberpunk colors
-    const material = new THREE.MeshLambertMaterial({
-      color: 0x66CCFF,
-      emissive: 0x004466,
+    // 🚀 RETRO PIXEL-ART SPACESHIP - Inspired by classic arcade fighters! 🚀
+    // Silver metallic hull with blue cockpit and orange engine flames
+    const scale = 0.75
+    
+    // === MAIN HULL - Silver/metallic fuselage ===
+    const hullShape = new THREE.Shape()
+    // More detailed angular body shape
+    hullShape.moveTo(0 * scale, 1.3 * scale)           // Nose tip
+    hullShape.lineTo(0.15 * scale, 0.9 * scale)        // Nose right edge
+    hullShape.lineTo(0.2 * scale, 0.5 * scale)         // Upper body right
+    hullShape.lineTo(0.25 * scale, 0.1 * scale)        // Mid body right
+    hullShape.lineTo(0.7 * scale, -0.2 * scale)        // Right wing start
+    hullShape.lineTo(0.85 * scale, -0.5 * scale)       // Right wing tip
+    hullShape.lineTo(0.5 * scale, -0.4 * scale)        // Right wing inner
+    hullShape.lineTo(0.35 * scale, -0.6 * scale)       // Right booster top
+    hullShape.lineTo(0.35 * scale, -0.9 * scale)       // Right booster bottom
+    hullShape.lineTo(0.15 * scale, -0.85 * scale)      // Center right
+    hullShape.lineTo(0 * scale, -0.95 * scale)         // Center engine
+    hullShape.lineTo(-0.15 * scale, -0.85 * scale)     // Center left
+    hullShape.lineTo(-0.35 * scale, -0.9 * scale)      // Left booster bottom
+    hullShape.lineTo(-0.35 * scale, -0.6 * scale)      // Left booster top
+    hullShape.lineTo(-0.5 * scale, -0.4 * scale)       // Left wing inner
+    hullShape.lineTo(-0.85 * scale, -0.5 * scale)      // Left wing tip
+    hullShape.lineTo(-0.7 * scale, -0.2 * scale)       // Left wing start
+    hullShape.lineTo(-0.25 * scale, 0.1 * scale)       // Mid body left
+    hullShape.lineTo(-0.2 * scale, 0.5 * scale)        // Upper body left
+    hullShape.lineTo(-0.15 * scale, 0.9 * scale)       // Nose left edge
+    hullShape.lineTo(0 * scale, 1.3 * scale)           // Back to nose
+    
+    const hullGeometry = new THREE.ShapeGeometry(hullShape)
+    
+    // Silver/metallic hull material
+    const hullMaterial = new THREE.MeshLambertMaterial({
+      color: 0xB8C4D0,       // Silver-blue metallic
+      emissive: 0x334455,    // Subtle metallic glow
+      transparent: true,     // Required for death animation fade-out
+      opacity: 1.0
+    })
+    
+    this.mesh = new THREE.Mesh(hullGeometry, hullMaterial)
+    this.mesh.position.set(this.position.x, this.position.y, 0)
+    this.mesh.visible = true
+    
+    // === DARK PANEL LINES - Adds depth and detail ===
+    const panelShape = new THREE.Shape()
+    panelShape.moveTo(0 * scale, 0.85 * scale)
+    panelShape.lineTo(0.12 * scale, 0.5 * scale)
+    panelShape.lineTo(0.15 * scale, -0.2 * scale)
+    panelShape.lineTo(0.1 * scale, -0.6 * scale)
+    panelShape.lineTo(-0.1 * scale, -0.6 * scale)
+    panelShape.lineTo(-0.15 * scale, -0.2 * scale)
+    panelShape.lineTo(-0.12 * scale, 0.5 * scale)
+    panelShape.lineTo(0 * scale, 0.85 * scale)
+    
+    const panelGeometry = new THREE.ShapeGeometry(panelShape)
+    const panelMaterial = new THREE.MeshBasicMaterial({
+      color: 0x556677,       // Darker panel for depth
+      transparent: true,
+      opacity: 0.6
+    })
+    const panelLines = new THREE.Mesh(panelGeometry, panelMaterial)
+    panelLines.position.z = 0.005
+    this.mesh.add(panelLines) // Child 0: Panel lines
+    
+    // === COCKPIT - Glowing blue window (like the pixel art) ===
+    const cockpitShape = new THREE.Shape()
+    cockpitShape.moveTo(0 * scale, 0.7 * scale)        // Top point
+    cockpitShape.lineTo(0.1 * scale, 0.4 * scale)      // Right
+    cockpitShape.lineTo(0.08 * scale, 0.15 * scale)    // Bottom right
+    cockpitShape.lineTo(-0.08 * scale, 0.15 * scale)   // Bottom left
+    cockpitShape.lineTo(-0.1 * scale, 0.4 * scale)     // Left
+    cockpitShape.lineTo(0 * scale, 0.7 * scale)        // Back to top
+    
+    const cockpitGeometry = new THREE.ShapeGeometry(cockpitShape)
+    const cockpitMaterial = new THREE.MeshBasicMaterial({
+      color: 0x44AAFF,        // Bright blue cockpit glass
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    })
+    const cockpit = new THREE.Mesh(cockpitGeometry, cockpitMaterial)
+    cockpit.position.z = 0.01
+    this.mesh.add(cockpit) // Child 1: Cockpit
+    
+    // === COCKPIT HIGHLIGHT - Light reflection on glass ===
+    const highlightGeometry = new THREE.CircleGeometry(0.04 * scale, 6)
+    const highlightMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFFFFF,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending
+    })
+    const cockpitHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial)
+    cockpitHighlight.position.set(-0.03 * scale, 0.5 * scale, 0.015)
+    this.mesh.add(cockpitHighlight) // Child 2: Cockpit highlight
+    
+    // === ENGINE FLAMES - Orange/red thruster fire (3 engines) ===
+    // Center main engine (larger)
+    const mainFlameShape = new THREE.Shape()
+    mainFlameShape.moveTo(-0.08 * scale, -0.95 * scale)
+    mainFlameShape.lineTo(0 * scale, -1.4 * scale)     // Flame tip
+    mainFlameShape.lineTo(0.08 * scale, -0.95 * scale)
+    
+    const mainFlameGeometry = new THREE.ShapeGeometry(mainFlameShape)
+    const flameMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFF6600,        // Orange flame
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending
+    })
+    const mainFlame = new THREE.Mesh(mainFlameGeometry, flameMaterial)
+    mainFlame.position.z = -0.01
+    this.mesh.add(mainFlame) // Child 3: Main flame
+    
+    // Inner flame (brighter yellow core)
+    const innerFlameShape = new THREE.Shape()
+    innerFlameShape.moveTo(-0.04 * scale, -0.95 * scale)
+    innerFlameShape.lineTo(0 * scale, -1.25 * scale)
+    innerFlameShape.lineTo(0.04 * scale, -0.95 * scale)
+    
+    const innerFlameGeometry = new THREE.ShapeGeometry(innerFlameShape)
+    const innerFlameMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFCC00,        // Yellow inner flame
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    })
+    const innerFlame = new THREE.Mesh(innerFlameGeometry, innerFlameMaterial)
+    innerFlame.position.z = -0.005
+    this.mesh.add(innerFlame) // Child 4: Inner flame
+    
+    // Left booster flame
+    const leftBoosterFlameShape = new THREE.Shape()
+    leftBoosterFlameShape.moveTo(-0.28 * scale, -0.9 * scale)
+    leftBoosterFlameShape.lineTo(-0.32 * scale, -1.2 * scale)
+    leftBoosterFlameShape.lineTo(-0.36 * scale, -0.9 * scale)
+    
+    const leftBoosterGeometry = new THREE.ShapeGeometry(leftBoosterFlameShape)
+    const leftBoosterMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFF4400,        // Slightly redder flame
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    })
+    const leftBoosterFlame = new THREE.Mesh(leftBoosterGeometry, leftBoosterMaterial)
+    leftBoosterFlame.position.z = -0.01
+    this.mesh.add(leftBoosterFlame) // Child 5: Left booster flame
+    
+    // Right booster flame
+    const rightBoosterFlameShape = new THREE.Shape()
+    rightBoosterFlameShape.moveTo(0.28 * scale, -0.9 * scale)
+    rightBoosterFlameShape.lineTo(0.32 * scale, -1.2 * scale)
+    rightBoosterFlameShape.lineTo(0.36 * scale, -0.9 * scale)
+    
+    const rightBoosterGeometry = new THREE.ShapeGeometry(rightBoosterFlameShape)
+    const rightBoosterMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFF4400,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    })
+    const rightBoosterFlame = new THREE.Mesh(rightBoosterGeometry, rightBoosterMaterial)
+    rightBoosterFlame.position.z = -0.01
+    this.mesh.add(rightBoosterFlame) // Child 6: Right booster flame
+    
+    // === RED ACCENT STRIPES - Classic retro detail ===
+    const leftStripeShape = new THREE.Shape()
+    leftStripeShape.moveTo(-0.6 * scale, -0.3 * scale)
+    leftStripeShape.lineTo(-0.75 * scale, -0.45 * scale)
+    leftStripeShape.lineTo(-0.7 * scale, -0.48 * scale)
+    leftStripeShape.lineTo(-0.55 * scale, -0.33 * scale)
+    
+    const stripeGeometry = new THREE.ShapeGeometry(leftStripeShape)
+    const stripeMaterial = new THREE.MeshBasicMaterial({
+      color: 0xDD2222,        // Red accent
       transparent: true,
       opacity: 0.9
     })
-
-    this.mesh = new THREE.Mesh(geometry, material)
-    this.mesh.position.copy(this.position)
-    this.mesh.rotation.z = Math.PI // Rotate 180 degrees to point upward
+    const leftStripe = new THREE.Mesh(stripeGeometry, stripeMaterial)
+    leftStripe.position.z = 0.008
+    this.mesh.add(leftStripe) // Child 7: Left stripe
     
-    // Add a glowing outline effect
-    const outlineGeometry = new THREE.ConeGeometry(0.35, 1.05, 8)
-    const outlineMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FFFF,
+    // Right stripe (mirror)
+    const rightStripeShape = new THREE.Shape()
+    rightStripeShape.moveTo(0.6 * scale, -0.3 * scale)
+    rightStripeShape.lineTo(0.75 * scale, -0.45 * scale)
+    rightStripeShape.lineTo(0.7 * scale, -0.48 * scale)
+    rightStripeShape.lineTo(0.55 * scale, -0.33 * scale)
+    
+    const rightStripeGeometry = new THREE.ShapeGeometry(rightStripeShape)
+    const rightStripe = new THREE.Mesh(rightStripeGeometry, stripeMaterial.clone())
+    rightStripe.position.z = 0.008
+    this.mesh.add(rightStripe) // Child 8: Right stripe
+    
+    // === EDGE GLOW - Subtle outline for visibility ===
+    const glowShape = new THREE.Shape()
+    const gs = scale * 1.05 // Slightly larger
+    glowShape.moveTo(0 * gs, 1.35 * scale)
+    glowShape.lineTo(0.88 * scale, -0.52 * scale)
+    glowShape.lineTo(0.36 * scale, -0.92 * scale)
+    glowShape.lineTo(0 * scale, -1.0 * scale)
+    glowShape.lineTo(-0.36 * scale, -0.92 * scale)
+    glowShape.lineTo(-0.88 * scale, -0.52 * scale)
+    glowShape.lineTo(0 * gs, 1.35 * scale)
+    
+    const glowGeometry = new THREE.ShapeGeometry(glowShape)
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x6688AA,        // Blue-silver glow
       transparent: true,
       opacity: 0.3,
-      side: THREE.BackSide
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      wireframe: true
     })
-    const outline = new THREE.Mesh(outlineGeometry, outlineMaterial)
-    this.mesh.add(outline)
+    const edgeGlow = new THREE.Mesh(glowGeometry, glowMaterial)
+    edgeGlow.position.z = -0.02
+    this.mesh.add(edgeGlow) // Child 9: Edge glow
 
     // Add particle trail effect
     this.createParticleTrail()
@@ -67,10 +284,10 @@ export class Player {
       positions[i3 + 1] = 0
       positions[i3 + 2] = 0
 
-      // Cyan trail colors
-      colors[i3] = 0
-      colors[i3 + 1] = 1
-      colors[i3 + 2] = 1
+      // 🔥 ORANGE/YELLOW trail colors - Engine exhaust! 🔥
+      colors[i3] = 1.0       // R - full red
+      colors[i3 + 1] = 0.5   // G - orange
+      colors[i3 + 2] = 0.1   // B - hint of yellow
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
@@ -98,23 +315,52 @@ export class Player {
       this.dashDuration -= deltaTime
       if (this.dashDuration <= 0) {
         this.isDashing = false
+        this.isInvulnerable = false // End invulnerability when dash ends
       }
     }
+    
+    // Create JET VFX during dash!
+    if (this.isDashing && this.effectsSystem) {
+      this.updateJetVFX(deltaTime)
+    }
 
-    // Handle movement input
+    // 🎮 ANALOG MOVEMENT INPUT - Smooth acceleration! 🎮
     const movement = inputManager.getMovementVector()
+    
+    // Calculate target velocity based on input
+    const currentSpeed = this.isDashing ? this.dashSpeed : this.speed
+    this.targetVelocity.x = movement.x * currentSpeed
+    this.targetVelocity.y = movement.y * currentSpeed
+    
+    // 🎮 SMOOTH ACCELERATION/DECELERATION - Analog feel! 🎮
+    const moveMagnitude = Math.sqrt(movement.x * movement.x + movement.y * movement.y)
+    const accelRate = moveMagnitude > 0 ? this.acceleration : this.deceleration
+    
+    // Smoothly interpolate velocity towards target
+    const velDiffX = this.targetVelocity.x - this.velocity.x
+    const velDiffY = this.targetVelocity.y - this.velocity.y
+    
+    this.velocity.x += velDiffX * accelRate * deltaTime
+    this.velocity.y += velDiffY * accelRate * deltaTime
+    
+    // Apply friction when no input (smooth stop)
+    if (moveMagnitude === 0) {
+      const friction = 0.95 // Slight friction for smooth deceleration
+      this.velocity.x *= friction
+      this.velocity.y *= friction
+      
+      // Stop completely if velocity is very small
+      if (Math.abs(this.velocity.x) < 0.1) this.velocity.x = 0
+      if (Math.abs(this.velocity.y) < 0.1) this.velocity.y = 0
+    }
     
     // Handle dash input (now on Shift key)
     if (inputManager.isDashing() && this.dashCooldown <= 0 && !this.isDashing) {
-      this.startDash()
+      const movementVec = new THREE.Vector3(movement.x, movement.y, 0)
+      this.startDash(movementVec) // Pass movement direction for jet VFX
     }
-
-    // Apply movement
-    const currentSpeed = this.isDashing ? this.dashSpeed : this.speed
-    this.velocity.x = movement.x * currentSpeed
-    this.velocity.y = movement.y * currentSpeed
-
-    // Update position
+    
+    // Update position with smooth velocity
     this.position.x += this.velocity.x * deltaTime
     this.position.y += this.velocity.y * deltaTime
 
@@ -123,53 +369,336 @@ export class Player {
     this.position.x = Math.max(-bounds, Math.min(bounds, this.position.x))
     this.position.y = Math.max(-bounds, Math.min(bounds, this.position.y))
 
-    // Update mesh position
-    this.mesh.position.copy(this.position)
+    // Update mesh position (ensure z=0 for top-down view)
+    this.mesh.position.set(this.position.x, this.position.y, 0)
 
     // Update visual effects based on movement
-    this.updateVisualEffects()
+    this.updateVisualEffects(deltaTime)
   }
 
-  private startDash(): void {
+  private startDash(movement: THREE.Vector3): void {
     this.isDashing = true
-    this.dashDuration = 0.2 // 200ms dash duration
+    this.isInvulnerable = true // INVULNERABLE during dash!
+    this.dashDuration = 0.4 // DOUBLED from 0.2s to 0.4s - twice as long!
     this.dashCooldown = 3.0 // 3 second cooldown
     
-    // Visual effect for dash
-    const material = this.mesh.material as THREE.MeshLambertMaterial
-    material.emissive.setHex(0x00FFFF)
+    // Store dash direction for jet VFX (opposite of movement - behind player)
+    if (movement.length() > 0) {
+      this.lastDashDirection = new THREE.Vector3(-movement.x, -movement.y, 0).normalize()
+    } else {
+      // If no movement, use last velocity or default backward
+      if (this.velocity.length() > 0) {
+        this.lastDashDirection = this.velocity.clone().normalize().multiplyScalar(-1)
+      }
+    }
     
+    // Audio feedback for dash
+    if (this.audioManager) {
+      this.audioManager.playDashSound()
+    }
+    
+    // DRAMATIC visual effect for dash - Blue-white overdrive flash!
+    const material = this.mesh.material as THREE.MeshLambertMaterial
+    material.emissive.setHex(0x66AAFF) // Blue-white dash glow
+    material.color.setHex(0xDDEEFF)    // Hull goes bright white-blue
+    
+    // Note: Scale is now handled in updateVisualEffects with zoom compensation
+    // Reset material after dash
     setTimeout(() => {
-      material.emissive.setHex(0x004466)
-    }, 200)
+      material.emissive.setHex(0x334455) // Back to metallic glow
+      material.color.setHex(0xB8C4D0)   // Back to silver
+      this.isInvulnerable = false // End invulnerability
+    }, 400)
   }
 
-  private updateVisualEffects(): void {
-    // Rotate player based on movement direction
-    if (this.velocity.length() > 0) {
-      const angle = Math.atan2(this.velocity.y, this.velocity.x) + Math.PI / 2
-      this.mesh.rotation.z = angle + Math.PI // Add base 180-degree rotation
+  private updateVisualEffects(deltaTime: number): void {
+    // 🎮 SMOOTH ROTATION - Ship gradually turns to face movement direction! 🎮
+    if (this.velocity.length() > 0.1) {
+      const targetAngle = Math.atan2(this.velocity.y, this.velocity.x) - Math.PI / 2
+      this.targetRotation = targetAngle
+    }
+    
+    // Smoothly interpolate rotation towards target
+    let currentRotation = this.mesh.rotation.z
+    let angleDiff = this.targetRotation - currentRotation
+    
+    // Normalize angle difference to shortest path
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2
+    
+    currentRotation += angleDiff * this.rotationSpeed * deltaTime
+    this.mesh.rotation.z = currentRotation
+
+    // 🔥 ENGINE FLAME EFFECTS - Animate based on movement! 🔥
+    const velocityMagnitude = this.velocity.length()
+    const engineIntensity = Math.min(velocityMagnitude / this.speed, 1.0)
+    const flameFlicker = Math.sin(Date.now() * 0.025) * 0.15
+    
+    // Main flame (child 3)
+    if (this.mesh.children[3]) {
+      const mainFlame = this.mesh.children[3] as THREE.Mesh
+      const mainFlameMat = mainFlame.material as THREE.MeshBasicMaterial
+      mainFlameMat.opacity = 0.6 + engineIntensity * 0.35 + flameFlicker
+      const flameScale = 0.8 + engineIntensity * 0.6 + Math.sin(Date.now() * 0.03) * 0.2
+      mainFlame.scale.set(1, flameScale, 1)
+    }
+    
+    // Inner flame (child 4)
+    if (this.mesh.children[4]) {
+      const innerFlame = this.mesh.children[4] as THREE.Mesh
+      const innerFlameMat = innerFlame.material as THREE.MeshBasicMaterial
+      innerFlameMat.opacity = 0.5 + engineIntensity * 0.4 + flameFlicker * 0.8
+      const innerScale = 0.7 + engineIntensity * 0.5 + Math.sin(Date.now() * 0.04 + 0.5) * 0.15
+      innerFlame.scale.set(1, innerScale, 1)
+    }
+    
+    // Left booster flame (child 5)
+    if (this.mesh.children[5]) {
+      const leftBooster = this.mesh.children[5] as THREE.Mesh
+      const leftBoosterMat = leftBooster.material as THREE.MeshBasicMaterial
+      leftBoosterMat.opacity = 0.5 + engineIntensity * 0.4 + Math.sin(Date.now() * 0.028) * 0.15
+      const boosterScale = 0.7 + engineIntensity * 0.5 + Math.sin(Date.now() * 0.035) * 0.2
+      leftBooster.scale.set(1, boosterScale, 1)
+    }
+    
+    // Right booster flame (child 6)
+    if (this.mesh.children[6]) {
+      const rightBooster = this.mesh.children[6] as THREE.Mesh
+      const rightBoosterMat = rightBooster.material as THREE.MeshBasicMaterial
+      rightBoosterMat.opacity = 0.5 + engineIntensity * 0.4 + Math.sin(Date.now() * 0.028 + 0.3) * 0.15
+      const boosterScale = 0.7 + engineIntensity * 0.5 + Math.sin(Date.now() * 0.035 + 0.3) * 0.2
+      rightBooster.scale.set(1, boosterScale, 1)
+    }
+    
+    // Cockpit glow pulse (child 1)
+    if (this.mesh.children[1]) {
+      const cockpit = this.mesh.children[1] as THREE.Mesh
+      const cockpitMat = cockpit.material as THREE.MeshBasicMaterial
+      cockpitMat.opacity = 0.8 + Math.sin(Date.now() * 0.003) * 0.1
     }
 
-    // Pulsing effect when dashing
+    // 🎬 GET ZOOM COMPENSATION - Keep ship visually consistent! 🎬
+    const zoomCompensation = this.zoomCompensationCallback ? this.zoomCompensationCallback() : 1.0
+
+    // 🚀 DRAMATIC DASH EFFECTS - Silver ship goes OVERDRIVE! 🚀
     if (this.isDashing) {
-      const pulse = Math.sin(Date.now() * 0.02) * 0.1 + 1
-      this.mesh.scale.setScalar(pulse)
+      const pulse = 1.15 + Math.sin(Date.now() * 0.08) * 0.1
+      this.mesh.scale.setScalar(pulse * zoomCompensation)
+      
+      // Hull goes bright during dash
+      const material = this.mesh.material as THREE.MeshLambertMaterial
+      const intensity = 0.6 + Math.sin(Date.now() * 0.15) * 0.3
+      material.emissive.setHex(0x6699FF) // Blue-white dash glow
+      material.emissiveIntensity = intensity
+      
+      // Edge glow pulses cyan during invulnerability (child 9)
+      if (this.mesh.children[9]) {
+        const edgeGlow = this.mesh.children[9] as THREE.Mesh
+        const glowMaterial = edgeGlow.material as THREE.MeshBasicMaterial
+        glowMaterial.opacity = 0.6 + Math.sin(Date.now() * 0.2) * 0.3
+        glowMaterial.color.setHex(0x00FFFF) // Cyan shield effect
+      }
+      
+      // 🔥 MAXIMUM THRUST - All flames go BRIGHT during dash! 🔥
+      // Main flame - WHITE HOT
+      if (this.mesh.children[3]) {
+        const mainFlame = this.mesh.children[3] as THREE.Mesh
+        const mainFlameMat = mainFlame.material as THREE.MeshBasicMaterial
+        mainFlameMat.color.setHex(0xFFFFFF) // White hot
+        mainFlameMat.opacity = 1.0
+        mainFlame.scale.set(1.3, 1.8 + Math.sin(Date.now() * 0.05) * 0.3, 1)
+      }
+      // Inner flame
+      if (this.mesh.children[4]) {
+        const innerFlame = this.mesh.children[4] as THREE.Mesh
+        const innerFlameMat = innerFlame.material as THREE.MeshBasicMaterial
+        innerFlameMat.color.setHex(0xFFFF88) // Bright yellow
+        innerFlameMat.opacity = 1.0
+        innerFlame.scale.set(1.2, 1.6 + Math.sin(Date.now() * 0.06) * 0.25, 1)
+      }
+      // Booster flames
+      if (this.mesh.children[5]) {
+        const leftBooster = this.mesh.children[5] as THREE.Mesh
+        const leftMat = leftBooster.material as THREE.MeshBasicMaterial
+        leftMat.color.setHex(0xFFAA00) // Bright orange
+        leftMat.opacity = 1.0
+        leftBooster.scale.set(1.3, 1.5 + Math.sin(Date.now() * 0.055) * 0.3, 1)
+      }
+      if (this.mesh.children[6]) {
+        const rightBooster = this.mesh.children[6] as THREE.Mesh
+        const rightMat = rightBooster.material as THREE.MeshBasicMaterial
+        rightMat.color.setHex(0xFFAA00)
+        rightMat.opacity = 1.0
+        rightBooster.scale.set(1.3, 1.5 + Math.sin(Date.now() * 0.055 + 0.3) * 0.3, 1)
+      }
+      
+      // Cockpit goes bright cyan during dash (shield active!)
+      if (this.mesh.children[1]) {
+        const cockpit = this.mesh.children[1] as THREE.Mesh
+        const cockpitMat = cockpit.material as THREE.MeshBasicMaterial
+        cockpitMat.color.setHex(0x00FFFF)
+        cockpitMat.opacity = 1.0
+      }
     } else {
-      this.mesh.scale.setScalar(1)
+      this.mesh.scale.setScalar(1 * zoomCompensation)
+      const material = this.mesh.material as THREE.MeshLambertMaterial
+      material.emissiveIntensity = 1.0
+      material.emissive.setHex(0x334455) // Normal metallic glow
+      
+      // Reset edge glow
+      if (this.mesh.children[9]) {
+        const edgeGlow = this.mesh.children[9] as THREE.Mesh
+        const glowMaterial = edgeGlow.material as THREE.MeshBasicMaterial
+        glowMaterial.opacity = 0.3
+        glowMaterial.color.setHex(0x6688AA)
+      }
+      
+      // Reset flame colors
+      if (this.mesh.children[3]) {
+        const mainFlame = this.mesh.children[3] as THREE.Mesh
+        const mainFlameMat = mainFlame.material as THREE.MeshBasicMaterial
+        mainFlameMat.color.setHex(0xFF6600)
+      }
+      if (this.mesh.children[4]) {
+        const innerFlame = this.mesh.children[4] as THREE.Mesh
+        const innerFlameMat = innerFlame.material as THREE.MeshBasicMaterial
+        innerFlameMat.color.setHex(0xFFCC00)
+      }
+      if (this.mesh.children[5]) {
+        const leftBooster = this.mesh.children[5] as THREE.Mesh
+        const leftMat = leftBooster.material as THREE.MeshBasicMaterial
+        leftMat.color.setHex(0xFF4400)
+      }
+      if (this.mesh.children[6]) {
+        const rightBooster = this.mesh.children[6] as THREE.Mesh
+        const rightMat = rightBooster.material as THREE.MeshBasicMaterial
+        rightMat.color.setHex(0xFF4400)
+      }
+      
+      // Reset cockpit to blue
+      if (this.mesh.children[1]) {
+        const cockpit = this.mesh.children[1] as THREE.Mesh
+        const cockpitMat = cockpit.material as THREE.MeshBasicMaterial
+        cockpitMat.color.setHex(0x44AAFF)
+      }
+    }
+  }
+
+  private updateJetVFX(deltaTime: number): void {
+    if (!this.effectsSystem) return
+    
+    this.jetTrailTimer += deltaTime
+    
+    if (this.jetTrailTimer >= this.jetTrailInterval) {
+      // Calculate jet position (behind player)
+      const jetPosition = this.position.clone().add(
+        this.lastDashDirection.clone().multiplyScalar(0.5)
+      )
+      
+      // Create multiple jet particles for THICK DRAMATIC trail
+      for (let i = 0; i < 8; i++) { // INCREASED from 5 to 8 for more particles
+        // Random offset for spread
+        const spread = new THREE.Vector3(
+          (Math.random() - 0.5) * 0.4, // Wider spread
+          (Math.random() - 0.5) * 0.4,
+          (Math.random() - 0.5) * 0.3
+        )
+        
+        const jetPos = jetPosition.clone().add(spread)
+        
+        // Jet velocity (opposite of movement direction, with spread) - FASTER!
+        const jetVelocity = this.lastDashDirection.clone()
+          .multiplyScalar(12 + Math.random() * 6) // FASTER jet particles (was 8+4)
+          .add(new THREE.Vector3(
+            (Math.random() - 0.5) * 3, // More spread
+            (Math.random() - 0.5) * 3,
+            (Math.random() - 0.5) * 1.5
+          ))
+        
+        // Orange/yellow jet colors (like rocket exhaust) - BRIGHTER!
+        const jetColor = new THREE.Color().setHSL(
+          0.08 + Math.random() * 0.08, // Orange-yellow range
+          1.0,
+          0.7 + Math.random() * 0.3 // Brighter
+        )
+        
+        // Create jet particle
+        this.effectsSystem.createSparkle(jetPos, jetVelocity, jetColor, 0.4 + Math.random() * 0.3)
+      }
+      
+      // Also create larger explosion particles for main jet - MORE DRAMATIC!
+      for (let i = 0; i < 5; i++) { // INCREASED from 3 to 5
+        const mainJetPos = jetPosition.clone().add(
+          new THREE.Vector3(
+            (Math.random() - 0.5) * 0.3, // Wider spread
+            (Math.random() - 0.5) * 0.3,
+            (Math.random() - 0.5) * 0.2
+          )
+        )
+        
+        const mainJetVelocity = this.lastDashDirection.clone()
+          .multiplyScalar(10 + Math.random() * 5) // FASTER (was 6+3)
+        
+        // 75% saturated, 25% bright to prevent whiteouts
+        const useSaturated = Math.random() < 0.75
+        const mainJetColor = new THREE.Color().setHSL(0.08, 1.0, useSaturated ? 0.55 : 0.7) // Saturated orange
+        this.effectsSystem.createSparkle(mainJetPos, mainJetVelocity, mainJetColor, 0.5)
+      }
+      
+      // Create vector-style jet lines for extra DRAMA!
+      for (let i = 0; i < 3; i++) {
+        const vectorJetPos = jetPosition.clone().add(
+          new THREE.Vector3(
+            (Math.random() - 0.5) * 0.2,
+            (Math.random() - 0.5) * 0.2,
+            0
+          )
+        )
+        
+        const vectorJetVelocity = this.lastDashDirection.clone()
+          .multiplyScalar(15 + Math.random() * 5)
+        
+        // 75% saturated, 25% bright
+        const useSaturatedVector = Math.random() < 0.75
+        const vectorColor = new THREE.Color().setHSL(0.1, 1.0, useSaturatedVector ? 0.55 : 0.75) // Saturated orange-yellow
+        this.effectsSystem.createJetVector(vectorJetPos, vectorJetVelocity, vectorColor, 0.6, 1) // Type 1 = line
+      }
+      
+      this.jetTrailTimer = 0
     }
   }
 
   takeDamage(damage: number): void {
     this.health = Math.max(0, this.health - damage)
     
-    // Visual feedback for taking damage
+    // Visual feedback for taking damage - RED flash on metallic hull
     const material = this.mesh.material as THREE.MeshLambertMaterial
-    material.emissive.setHex(0xFF0000)
+    material.emissive.setHex(0xFF2200) // Red-orange damage flash
+    material.color.setHex(0xFF6666)    // Hull goes reddish
     
     setTimeout(() => {
-      material.emissive.setHex(0x004466)
+      material.emissive.setHex(0x334455) // Back to metallic glow
+      material.color.setHex(0xB8C4D0)   // Back to silver
     }, 100)
+  }
+
+  // 💚 HEAL METHOD - Restore health from med packs! 💚
+  heal(amount: number): void {
+    const oldHealth = this.health
+    this.health = Math.min(this.maxHealth, this.health + amount)
+    const actualHeal = this.health - oldHealth
+    
+    if (actualHeal > 0) {
+      // Visual feedback for healing - green flash on metallic hull
+      const material = this.mesh.material as THREE.MeshLambertMaterial
+      material.emissive.setHex(0x00FF66) // Green heal glow
+      material.color.setHex(0x88FFAA)   // Hull tints green
+      
+      setTimeout(() => {
+        material.emissive.setHex(0x334455) // Back to metallic
+        material.color.setHex(0xB8C4D0)   // Back to silver
+      }, 300)
+    }
   }
 
   addXP(amount: number): void {
@@ -191,21 +720,21 @@ export class Player {
       this.audioManager.playLevelUpSound()
     }
     
-    // Visual effect for level up
+    // Visual effect for level up - GOLD FLASH!
     const material = this.mesh.material as THREE.MeshLambertMaterial
-    material.emissive.setHex(0x00FF00)
+    material.emissive.setHex(0xFFDD00) // Gold level up flash
+    material.color.setHex(0xFFEE88)   // Hull goes golden
     
     setTimeout(() => {
-      material.emissive.setHex(0x004466)
+      material.emissive.setHex(0x334455) // Back to metallic glow
+      material.color.setHex(0xB8C4D0)   // Back to silver
     }, 500)
-    
-    console.log(`Level Up! Now level ${this.level}`)
   }
 
   // Collision detection
   isCollidingWith(other: { getPosition(): THREE.Vector3, getRadius(): number }): boolean {
     const distance = this.position.distanceTo(other.getPosition())
-    return distance < (0.3 + other.getRadius()) // Player radius is 0.3
+    return distance < (this.getRadius() + other.getRadius()) // Use actual player radius
   }
 
   // Getters
@@ -242,6 +771,131 @@ export class Player {
   }
 
   getRadius(): number {
-    return 0.3
+    return 0.5 // Matches the spaceship visual size better
+  }
+
+  /**
+   * 🎯 Get the direction the ship is currently facing (based on mesh rotation)
+   * This is used by WeaponSystem to fire bullets in the correct direction
+   */
+  getFacingDirection(): THREE.Vector3 {
+    // Convert mesh rotation to direction vector
+    // Ship nose points up (positive Y) at rotation 0, so we need to account for that
+    const rotation = this.mesh.rotation.z
+    return new THREE.Vector3(
+      Math.sin(-rotation),  // X component
+      Math.cos(-rotation),  // Y component (ship nose points up)
+      0
+    ).normalize()
+  }
+
+  collectPowerUp(): boolean {
+    // Store old level for verification
+    const oldLevel = this.powerUpLevel
+    
+    if (this.powerUpLevel < 10) {
+      this.powerUpLevel++
+      
+      // Ensure level doesn't exceed 10 (safety check)
+      if (this.powerUpLevel > 10) {
+        this.powerUpLevel = 10
+      }
+      
+      // Audio feedback handled by Game.ts (playPowerUpCollectSound)
+      
+      // Visual effect for power-up collection - CYAN flash (weapon power!)
+      const material = this.mesh.material as THREE.MeshLambertMaterial
+      material.emissive.setHex(0x00FFFF) // Cyan flash for weapon power
+      material.color.setHex(0x88FFFF)   // Hull tints cyan
+      
+      setTimeout(() => {
+        material.emissive.setHex(0x334455) // Back to metallic glow
+        material.color.setHex(0xB8C4D0)   // Back to silver
+      }, 300)
+      
+      return true // Successfully collected
+    } else {
+      return false // Already at max
+    }
+  }
+
+  getPowerUpLevel(): number {
+    return this.powerUpLevel
+  }
+  
+  isAtMaxPowerUp(): boolean {
+    return this.powerUpLevel >= 10
+  }
+
+  resetPowerUpLevel(): void {
+    this.powerUpLevel = 0
+  }
+  
+  // ⚡ SPEED-UP SYSTEM - 5% faster per pickup, max 10 levels (50% max boost) ⚡
+  collectSpeedUp(): boolean {
+    const oldLevel = this.speedUpLevel
+    
+    if (this.speedUpLevel < Player.MAX_SPEED_LEVEL) {
+      this.speedUpLevel++
+      
+      // Safety check
+      if (this.speedUpLevel > Player.MAX_SPEED_LEVEL) {
+        this.speedUpLevel = Player.MAX_SPEED_LEVEL
+      }
+      
+      // Recalculate speed
+      this.updateSpeed()
+      
+      // Visual effect for speed-up collection - YELLOW flash (speed boost!)
+      const material = this.mesh.material as THREE.MeshLambertMaterial
+      material.emissive.setHex(0xFFFF00) // Yellow flash for speed
+      material.color.setHex(0xFFFF88)   // Hull tints yellow
+      
+      setTimeout(() => {
+        material.emissive.setHex(0x334455) // Back to metallic glow
+        material.color.setHex(0xB8C4D0)   // Back to silver
+      }, 300)
+      
+      return true // Successfully collected
+    } else {
+      return false // Already at max
+    }
+  }
+  
+  private updateSpeed(): void {
+    // Calculate speed: base speed * (1 + boost percentage)
+    // Each level adds 15% of base speed (was 5%, now much more noticeable!)
+    const boostMultiplier = 1 + (this.speedUpLevel * Player.SPEED_BOOST_PER_LEVEL)
+    const oldSpeed = this.speed
+    this.speed = this.baseSpeed * boostMultiplier
+    
+    // Also scale dash speed proportionally
+    this.dashSpeed = 30 * boostMultiplier
+  }
+  
+  getSpeedUpLevel(): number {
+    return this.speedUpLevel
+  }
+  
+  isAtMaxSpeed(): boolean {
+    return this.speedUpLevel >= Player.MAX_SPEED_LEVEL
+  }
+  
+  resetSpeedUpLevel(): void {
+    this.speedUpLevel = 0
+    this.updateSpeed()
+  }
+
+  isInvulnerableNow(): boolean {
+    return this.isInvulnerable
+  }
+
+  setEffectsSystem(effectsSystem: EffectsSystem): void {
+    this.effectsSystem = effectsSystem
+  }
+
+  // 🎬 SET ZOOM COMPENSATION - Callback to get zoom scale from SceneManager! 🎬
+  setZoomCompensationCallback(callback: () => number): void {
+    this.zoomCompensationCallback = callback
   }
 }
