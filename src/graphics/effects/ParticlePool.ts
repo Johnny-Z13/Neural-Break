@@ -96,12 +96,12 @@ export class ParticlePool {
     this.geometry.setAttribute('size', new THREE.BufferAttribute(this.sizes, 1))
     
     // Create material based on effect type
-    // NOTE: Lower opacity (0.5) prevents additive blending from causing white-out
+    // 🔥 HIGHER OPACITY for more emissive/visible particles!
     this.material = new THREE.PointsMaterial({
       size: this.getBaseSize(effectType),
       vertexColors: true,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.75,
       blending: THREE.AdditiveBlending,
       sizeAttenuation: false
     })
@@ -115,14 +115,15 @@ export class ParticlePool {
   }
   
   private getBaseSize(effectType: string): number {
+    // 🔥 BIGGER, MORE VISIBLE PARTICLES! (explosion/death 2x for player death visibility) 🔥
     switch (effectType) {
-      case 'explosion': return 0.3
-      case 'spark': return 0.15
-      case 'trail': return 0.1
-      case 'death': return 0.4
-      case 'impact': return 0.2
-      case 'electric': return 0.25
-      default: return 0.2
+      case 'explosion': return 1.2  // 2x bigger for player death explosions!
+      case 'spark': return 0.35
+      case 'trail': return 0.2
+      case 'death': return 1.6      // 2x bigger for death particles!
+      case 'impact': return 0.4
+      case 'electric': return 0.5
+      default: return 0.4
     }
   }
 

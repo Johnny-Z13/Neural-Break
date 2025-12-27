@@ -15,7 +15,7 @@ import { AudioManager } from '../audio/AudioManager'
 export class CrystalShardSwarm extends Enemy {
   private shards: THREE.Mesh[] = []
   private shardCount: number = 18 // More shards!
-  private orbitRadius: number = 10.8 // 9x bigger orbit - MASSIVE!
+  private orbitRadius: number = 4.0 // Compact orbit
   private orbitSpeed: number = 0
   private lightningEffects: THREE.Line[] = []
   
@@ -39,10 +39,10 @@ export class CrystalShardSwarm extends Enemy {
     // 🔥 MASSIVE HEALTH - NEEDS LOTS OF BULLETS! 🔥
     this.health = 120
     this.maxHealth = 120
-    this.speed = 1.5 // Slightly slower because MASSIVE
-    this.damage = 50 // DEVASTATING collision damage!
+    this.speed = 1.8 // Fast
+    this.damage = 40 // Collision damage
     this.xpValue = 45 // Big reward
-    this.radius = 9.0 // 9x bigger hitbox - MASSIVE!
+    this.radius = 4.5 // Hitbox matches orbit radius
     this.orbitSpeed = Math.random() * 1.5 + 0.8
   }
   
@@ -60,7 +60,7 @@ export class CrystalShardSwarm extends Enemy {
 
   initialize(): void {
     // Create invisible center
-    const centerGeometry = new THREE.SphereGeometry(0.9, 8, 8)
+    const centerGeometry = new THREE.SphereGeometry(0.3, 8, 8)
     const centerMaterial = new THREE.MeshBasicMaterial({ 
       color: 0x00FFFF,
       transparent: true, 
@@ -71,7 +71,7 @@ export class CrystalShardSwarm extends Enemy {
     this.mesh.position.copy(this.position)
     
     // 💎 CRYSTAL CORE - Pulsing center 💎
-    const coreGeometry = new THREE.OctahedronGeometry(2.4, 2)
+    const coreGeometry = new THREE.OctahedronGeometry(0.8, 2)
     const coreMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FFFF,
       transparent: true,
@@ -82,7 +82,7 @@ export class CrystalShardSwarm extends Enemy {
     this.mesh.add(core)
     
     // Core wireframe
-    const coreWireGeometry = new THREE.OctahedronGeometry(2.55, 2)
+    const coreWireGeometry = new THREE.OctahedronGeometry(0.85, 2)
     const coreWireMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FFFF,
       wireframe: true,
@@ -93,10 +93,10 @@ export class CrystalShardSwarm extends Enemy {
     const coreWire = new THREE.Mesh(coreWireGeometry, coreWireMaterial)
     this.mesh.add(coreWire)
 
-    // 🎮 ASTEROIDS-STYLE CRYSTAL SHARDS - 9X BIGGER! 🎮
+    // 🎮 ASTEROIDS-STYLE CRYSTAL SHARDS 🎮
     for (let i = 0; i < this.shardCount; i++) {
-      // Sharp crystal geometry - 9x bigger
-      const shardGeometry = new THREE.ConeGeometry(0.9, 5.4, 6)
+      // Sharp crystal geometry - compact
+      const shardGeometry = new THREE.ConeGeometry(0.3, 1.8, 6)
       
       // Prismatic colors
       const hue = (i / this.shardCount + Math.random() * 0.1) % 1
@@ -112,7 +112,7 @@ export class CrystalShardSwarm extends Enemy {
       const shard = new THREE.Mesh(shardGeometry, shardMaterial)
       
       // 🌟 WIREFRAME OUTLINE - Classic vector style! 🌟
-      const wireframeGeometry = new THREE.ConeGeometry(0.96, 5.55, 6)
+      const wireframeGeometry = new THREE.ConeGeometry(0.32, 1.85, 6)
       const wireframeMaterial = new THREE.MeshBasicMaterial({
         color: color,
         wireframe: true,
@@ -124,7 +124,7 @@ export class CrystalShardSwarm extends Enemy {
       shard.add(wireframe)
       
       // 💫 ENERGY AURA - Glowing tip! 💫
-      const tipGeometry = new THREE.SphereGeometry(0.72, 8, 8) // 9x - MASSIVE!
+      const tipGeometry = new THREE.SphereGeometry(0.24, 8, 8)
       const tipMaterial = new THREE.MeshBasicMaterial({
         color: color,
         transparent: true,
@@ -132,11 +132,11 @@ export class CrystalShardSwarm extends Enemy {
         blending: THREE.AdditiveBlending
       })
       const tip = new THREE.Mesh(tipGeometry, tipMaterial)
-      tip.position.y = 2.7
+      tip.position.y = 0.9
       shard.add(tip)
       
       // ⚡ INNER CRYSTAL GLOW ⚡
-      const innerGeometry = new THREE.ConeGeometry(0.45, 3.6, 6)
+      const innerGeometry = new THREE.ConeGeometry(0.15, 1.2, 6)
       const innerMaterial = new THREE.MeshBasicMaterial({
         color: 0xFFFFFF,
         transparent: true,
@@ -177,9 +177,9 @@ export class CrystalShardSwarm extends Enemy {
         const t = j / 6
         const midPoint = start.clone().lerp(end, t)
         midPoint.add(new THREE.Vector3(
-          (Math.random() - 0.5) * 2.4, // 9x bigger deviation
-          (Math.random() - 0.5) * 2.4,
-          (Math.random() - 0.5) * 1.8
+          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 0.6
         ))
         points.push(midPoint)
       }
@@ -201,8 +201,8 @@ export class CrystalShardSwarm extends Enemy {
     
     // 🔮 OUTER ENERGY RINGS 🔮
     for (let i = 0; i < 3; i++) {
-      const ringRadius = this.orbitRadius + 1.5 + i * 1.2
-      const ringGeometry = new THREE.RingGeometry(ringRadius - 0.3, ringRadius, 32)
+      const ringRadius = this.orbitRadius + 0.5 + i * 0.4
+      const ringGeometry = new THREE.RingGeometry(ringRadius - 0.1, ringRadius, 32)
       const ringMaterial = new THREE.MeshBasicMaterial({
         color: new THREE.Color().setHSL(0.5 + i * 0.1, 1.0, 0.7),
         transparent: true,
@@ -330,20 +330,23 @@ export class CrystalShardSwarm extends Enemy {
 
   protected updateVisuals(deltaTime: number): void {
     const time = Date.now() * 0.001
+    
+    // 🛡️ SAFEGUARD: Ensure container mesh never scales (prevents size growth bug)
+    this.mesh.scale.setScalar(1)
 
-    // Orbit shards around center - 9x bigger orbit
+    // Orbit shards around center
     for (let i = 0; i < this.shards.length; i++) {
       const shard = this.shards[i]
       const baseAngle = (i / this.shardCount) * Math.PI * 2
       const angle = baseAngle + time * this.orbitSpeed
       
-      // Varying orbit radius for more chaos - 9x bigger
-      const radius = this.orbitRadius + Math.sin(time * 3 + i) * 2.7
+      // Varying orbit radius for more chaos - small variation
+      const radius = this.orbitRadius + Math.sin(time * 3 + i) * 0.5
       
       shard.position.set(
         Math.cos(angle) * radius,
         Math.sin(angle) * radius,
-        Math.sin(time * 4 + i * 0.5) * 1.8
+        Math.sin(time * 4 + i * 0.5) * 0.3
       )
       
       // Point outward and spin
@@ -357,8 +360,8 @@ export class CrystalShardSwarm extends Enemy {
       material.color.copy(color)
       material.emissive.copy(color).multiplyScalar(0.5)
       
-      // Scale pulsing - bigger pulse
-      const scale = 1 + Math.sin(time * 6 + i) * 0.5
+      // Scale pulsing - minimal to prevent growth
+      const scale = 1 + Math.sin(time * 6 + i) * 0.1
       shard.scale.setScalar(scale)
     }
 
@@ -377,9 +380,9 @@ export class CrystalShardSwarm extends Enemy {
         const t = j / 6
         const midPoint = start.clone().lerp(end, t)
         midPoint.add(new THREE.Vector3(
-          (Math.random() - 0.5) * 2.4,
-          (Math.random() - 0.5) * 2.4,
-          (Math.random() - 0.5) * 1.8
+          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 0.6
         ))
         points.push(midPoint)
       }
@@ -412,7 +415,7 @@ export class CrystalShardSwarm extends Enemy {
       if (tip) {
         const tipMaterial = tip.material as THREE.MeshBasicMaterial
         tipMaterial.opacity = 0.6 + Math.sin(time * 15 + i) * 0.4
-        tip.scale.setScalar(1 + Math.sin(time * 10 + i) * 0.6)
+        tip.scale.setScalar(1 + Math.sin(time * 10 + i) * 0.15)
       }
       
       // Inner glow
@@ -430,7 +433,8 @@ export class CrystalShardSwarm extends Enemy {
       core.rotation.y = time * 1.5
       const coreMaterial = core.material as THREE.MeshBasicMaterial
       coreMaterial.opacity = 0.4 + Math.sin(time * 8) * 0.3
-      const coreScale = 1 + Math.sin(time * 6) * 0.2
+      // Minimal core scaling to prevent growth
+      const coreScale = 1 + Math.sin(time * 6) * 0.05
       core.scale.setScalar(coreScale)
     }
     
@@ -452,9 +456,8 @@ export class CrystalShardSwarm extends Enemy {
       }
     }
 
-    // Whole swarm pulsing - bigger pulse
-    const swarmPulse = 1 + Math.sin(time * 2) * 0.15
-    this.mesh.scale.setScalar(swarmPulse)
+    // NO whole-mesh scaling - prevents size growth bug!
+    // Mesh scale locked to 1 at start of updateVisuals
   }
   
   // Override destroy to cleanup projectiles

@@ -18,6 +18,9 @@ export abstract class Enemy {
   protected lastPosition: THREE.Vector3 = new THREE.Vector3()
   protected trailTimer: number = 0
   protected trailInterval: number = 0.05 // Trail every 50ms
+  
+  // 📊 KILL TRACKING - Separate from alive flag for enemies with death animations! 📊
+  private killTracked: boolean = false
 
   constructor(x: number, y: number) {
     this.position = new THREE.Vector3(x, y, 0)
@@ -241,6 +244,21 @@ export abstract class Enemy {
 
   isAlive(): boolean {
     return this.alive
+  }
+  
+  // 📊 KILL TRACKING - For enemies with death animations (ChaosWorm, Boss) 📊
+  // This ensures kills are counted even when alive is temporarily set back to true
+  hasBeenKillTracked(): boolean {
+    return this.killTracked
+  }
+  
+  markKillTracked(): void {
+    this.killTracked = true
+  }
+  
+  // Check if enemy should be counted as a kill (dead or dying with death animation)
+  shouldTrackKill(): boolean {
+    return this.health <= 0 && !this.killTracked
   }
   
   // 🎆 SET EFFECTS SYSTEM FOR SUPER JUICY EFFECTS! 🎆

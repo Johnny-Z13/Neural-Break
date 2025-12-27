@@ -3,8 +3,12 @@ import { GameTimer } from '../core/GameTimer'
 import { GameStats } from '../core/GameState'
 import { LevelManager } from '../core/LevelManager'
 
+/**
+ * UIManager - Unified HUD and Notification System
+ * Uses CSS classes from the unified design system in index.html
+ */
 export class UIManager {
-  private healthElement: HTMLElement | null = null // Optional - doesn't exist in HTML
+  private healthElement: HTMLElement | null = null
   private healthBarFill: HTMLElement
   private healthBarText: HTMLElement
   private healthBarContainer: HTMLElement
@@ -23,7 +27,6 @@ export class UIManager {
 
   initialize(): void {
     // Get UI elements
-    // Note: 'health' element doesn't exist in HTML, so we make it optional
     this.healthElement = document.getElementById('health') || null
     this.healthBarFill = document.getElementById('healthBarFill')!
     this.healthBarText = document.getElementById('healthBarText')!
@@ -48,73 +51,10 @@ export class UIManager {
       console.error('❌ Critical UI elements not found! Game may not function properly.')
       throw new Error('Required UI elements are missing from the DOM')
     }
-    
-    // 🎯 ADD ARCADE SCORE ANIMATION STYLES 🎯
-    this.addArcadeScoreStyles()
-  }
-  
-  private addArcadeScoreStyles(): void {
-    // Check if styles already exist
-    if (document.getElementById('arcade-score-styles')) return
-    
-    const style = document.createElement('style')
-    style.id = 'arcade-score-styles'
-    style.textContent = `
-      @keyframes killScoreFloat {
-        0% { 
-          opacity: 1; 
-          transform: translateY(0) scale(1);
-        }
-        50% {
-          opacity: 1;
-          transform: translateY(-30px) scale(1.1);
-        }
-        100% { 
-          opacity: 0; 
-          transform: translateY(-60px) scale(0.8);
-        }
-      }
-      
-      @keyframes multiplierPop {
-        0% { 
-          opacity: 0; 
-          transform: translate(-50%, -50%) scale(0.3);
-        }
-        30% {
-          opacity: 1;
-          transform: translate(-50%, -50%) scale(1.3);
-        }
-        50% {
-          transform: translate(-50%, -50%) scale(1);
-        }
-        100% { 
-          opacity: 0; 
-          transform: translate(-50%, -50%) scale(1.5);
-        }
-      }
-      
-      @keyframes multiplierLost {
-        0% { 
-          opacity: 1; 
-          transform: translate(-50%, -50%) scale(1);
-        }
-        20% {
-          transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
-        }
-        40% {
-          transform: translate(-50%, -50%) scale(1.1) rotate(5deg);
-        }
-        100% { 
-          opacity: 0; 
-          transform: translate(-50%, -50%) scale(0.5) translateY(50px);
-        }
-      }
-    `
-    document.head.appendChild(style)
   }
 
   update(player: Player, gameTimer: GameTimer, gameStats?: GameStats, combo?: number, levelManager?: LevelManager): void {
-    // 🎮 RETRO-STYLE HEALTH BAR UPDATE! 🎮
+    // 🎮 HEALTH BAR UPDATE 🎮
     const health = player.getHealth()
     const maxHealth = player.getMaxHealth()
     const healthPercentage = health / maxHealth
@@ -123,51 +63,36 @@ export class UIManager {
     this.healthBarFill.style.width = `${healthPercentage * 100}%`
     this.healthBarText.textContent = `${Math.ceil(health)}/${maxHealth}`
     
-    // 🎨 RETRO COLOR SCHEME BASED ON HEALTH! 🎨
-    let barColor: string
-    let borderColor: string
-    let shadowColor: string
+    // 🎨 COLOR SCHEME BASED ON HEALTH 🎨
+    const healthBar = this.healthBarContainer.parentElement!
     
     if (healthPercentage < 0.25) {
       // 🔴 CRITICAL - RED AND PULSING! 🔴
-      barColor = 'linear-gradient(90deg, #FF0000 0%, #FF4400 100%)'
-      borderColor = '#FF0000'
-      shadowColor = 'rgba(255, 0, 0, 0.8)'
+      this.healthBarFill.style.background = 'linear-gradient(90deg, #FF0000 0%, #FF4400 100%)'
+      this.healthBarContainer.style.borderColor = '#FF0000'
+      this.healthBarContainer.style.boxShadow = '0 0 15px rgba(255, 0, 0, 0.8)'
+      healthBar.classList.add('health-critical')
       
-      // Add CSS class for pulsing animation
-      this.healthBarContainer.classList.add('health-critical')
-      
-      // Start pulsing animation if not already running
       if (!this.healthPulseAnimation) {
         this.startHealthPulse()
       }
     } else if (healthPercentage < 0.5) {
-      // Remove critical class
-      this.healthBarContainer.classList.remove('health-critical')
-      this.stopHealthPulse()
       // 🟠 LOW - ORANGE! 🟠
-      barColor = 'linear-gradient(90deg, #FF6600 0%, #FF8800 100%)'
-      borderColor = '#FF6600'
-      shadowColor = 'rgba(255, 102, 0, 0.6)'
+      this.healthBarFill.style.background = 'linear-gradient(90deg, #FF6600 0%, #FF8800 100%)'
+      this.healthBarContainer.style.borderColor = '#FF6600'
+      this.healthBarContainer.style.boxShadow = '0 0 15px rgba(255, 102, 0, 0.6)'
+      healthBar.classList.remove('health-critical')
       this.stopHealthPulse()
     } else {
       // 🟢 HEALTHY - GREEN/CYAN! 🟢
-      barColor = 'linear-gradient(90deg, #00FF00 0%, #00FFFF 100%)'
-      borderColor = '#00FFFF'
-      shadowColor = 'rgba(0, 255, 255, 0.5)'
-      
-      // Remove critical class
-      this.healthBarContainer.classList.remove('health-critical')
+      this.healthBarFill.style.background = 'linear-gradient(90deg, #00FF00 0%, #00FFFF 100%)'
+      this.healthBarContainer.style.borderColor = '#00FFFF'
+      this.healthBarContainer.style.boxShadow = '0 0 15px rgba(0, 255, 255, 0.5)'
+      healthBar.classList.remove('health-critical')
       this.stopHealthPulse()
     }
     
-    // Apply colors
-    this.healthBarFill.style.background = barColor
-    this.healthBarFill.style.boxShadow = `0 0 10px ${shadowColor}`
-    this.healthBarContainer.style.borderColor = borderColor
-    this.healthBarContainer.style.boxShadow = `0 0 10px ${shadowColor}`
-    
-    // Update old health element if it exists (for backwards compatibility)
+    // Update old health element if it exists
     if (this.healthElement) {
       this.healthElement.textContent = `${Math.ceil(health)}`
     }
@@ -177,16 +102,19 @@ export class UIManager {
     
     // Change timer color as time runs out
     const timePercentage = gameTimer.getProgressPercentage()
-    const timerBar = this.timerElement.parentElement!
+    const timerElement = this.timerElement.parentElement!
     if (timePercentage > 90) {
-      timerBar.style.borderColor = '#FF0000'
-      timerBar.style.color = '#FF0000'
+      timerElement.style.borderColor = '#FF0000'
+      timerElement.style.color = '#FF0000'
+      timerElement.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5), 3px 3px 0 #660000'
     } else if (timePercentage > 75) {
-      timerBar.style.borderColor = '#FF6600'
-      timerBar.style.color = '#FF6600'
+      timerElement.style.borderColor = '#FF6600'
+      timerElement.style.color = '#FF6600'
+      timerElement.style.boxShadow = '0 0 20px rgba(255, 102, 0, 0.5), 3px 3px 0 #663300'
     } else {
-      timerBar.style.borderColor = '#00FFFF'
-      timerBar.style.color = '#00FFFF'
+      timerElement.style.borderColor = '#00FFFF'
+      timerElement.style.color = '#00FFFF'
+      timerElement.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.3), 3px 3px 0 #006666'
     }
 
     // Update game level display
@@ -199,38 +127,34 @@ export class UIManager {
     this.xpElement.textContent = `${player.getXP()}`
     this.xpNextElement.textContent = `${player.getXPToNext()}`
     
-    // Update power-up level display - ensure it matches player's actual level
+    // Update power-up level display
     const powerUpLevel = player.getPowerUpLevel()
-    const validPowerUpLevel = Math.max(0, Math.min(10, powerUpLevel)) // Clamp to 0-10
+    const validPowerUpLevel = Math.max(0, Math.min(10, powerUpLevel))
     this.powerUpLevelElement.textContent = `${validPowerUpLevel}`
     
-    // Add visual feedback for power-up level
-    const powerUpBar = this.powerUpLevelElement.parentElement!
+    // Power-up level visual feedback
+    const powerUpBar = this.powerUpLevelElement.parentElement!.parentElement!
     if (powerUpLevel >= 10) {
       powerUpBar.style.borderColor = '#FFD700'
       powerUpBar.style.color = '#FFD700'
-      powerUpBar.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.5)'
+      powerUpBar.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.5), 3px 3px 0 #886600'
     } else if (powerUpLevel >= 5) {
       powerUpBar.style.borderColor = '#00FF00'
       powerUpBar.style.color = '#00FF00'
-      powerUpBar.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)'
-    } else if (powerUpLevel > 0) {
-      powerUpBar.style.borderColor = '#00FFFF'
-      powerUpBar.style.color = '#00FFFF'
-      powerUpBar.style.boxShadow = '0 0 15px rgba(0, 255, 255, 0.2)'
+      powerUpBar.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3), 3px 3px 0 #006600'
     } else {
       powerUpBar.style.borderColor = '#00FFFF'
       powerUpBar.style.color = '#00FFFF'
-      powerUpBar.style.boxShadow = 'none'
+      powerUpBar.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.3), 3px 3px 0 #006666'
     }
 
-    // Add glow effect when close to level up
+    // XP bar glow effect when close to level up
     const xpPercentage = player.getXP() / player.getXPToNext()
-    const levelBar = this.levelElement.parentElement!
+    const levelBar = this.levelElement.parentElement!.parentElement!
     if (xpPercentage > 0.8) {
-      levelBar.style.boxShadow = '0 0 30px rgba(0, 255, 0, 0.5)'
+      levelBar.style.boxShadow = '0 0 30px rgba(0, 255, 0, 0.5), 3px 3px 0 #660066'
     } else {
-      levelBar.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.3)'
+      levelBar.style.boxShadow = '0 0 20px rgba(255, 0, 255, 0.3), 3px 3px 0 #660066'
     }
 
     // Update score display
@@ -244,18 +168,21 @@ export class UIManager {
         this.comboElement.style.display = 'block'
         this.comboCountElement.textContent = `${combo}`
         
-        // Add special effects for high combos
+        // Color coding for high combos
         if (combo >= 10) {
+          this.comboElement.style.borderColor = '#FFD700'
           this.comboElement.style.color = '#FFD700'
-          this.comboElement.style.textShadow = '0 0 20px #FFD700'
-          this.comboElement.style.animation = 'pulse 0.5s ease-in-out infinite alternate'
+          this.comboElement.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.6), 3px 3px 0 #886600'
+          this.comboElement.style.animation = 'pulse 0.5s ease-in-out infinite'
         } else if (combo >= 5) {
+          this.comboElement.style.borderColor = '#FF6600'
           this.comboElement.style.color = '#FF6600'
-          this.comboElement.style.textShadow = '0 0 15px #FF6600'
+          this.comboElement.style.boxShadow = '0 0 25px rgba(255, 102, 0, 0.5), 3px 3px 0 #663300'
           this.comboElement.style.animation = 'none'
         } else {
+          this.comboElement.style.borderColor = '#00FFFF'
           this.comboElement.style.color = '#00FFFF'
-          this.comboElement.style.textShadow = '0 0 10px #00FFFF'
+          this.comboElement.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.3), 3px 3px 0 #006666'
           this.comboElement.style.animation = 'none'
         }
       } else {
@@ -264,79 +191,217 @@ export class UIManager {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // NOTIFICATION SYSTEM - Using unified CSS classes
+  // ═══════════════════════════════════════════════════════════════════
+
   showLevelUpNotification(level?: number): void {
-    // Create temporary level up notification
-    const notification = document.createElement('div')
-    notification.textContent = level ? `LEVEL ${level} STARTED!` : 'LEVEL UP!'
-    notification.style.cssText = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 36px;
-      color: #00FF00;
-      text-shadow: 0 0 20px #00FF00;
-      pointer-events: none;
-      z-index: 1000;
-      animation: fadeInOut 2s ease-in-out;
-    `
-
-    // Add CSS animation
-    const style = document.createElement('style')
-    style.textContent = `
-      @keyframes fadeInOut {
-        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-        20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-        80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-      }
-    `
-    document.head.appendChild(style)
-
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      document.body.removeChild(notification)
-      document.head.removeChild(style)
-    }, 2000)
+    const notification = this.createNotification(
+      level ? `LEVEL ${level} STARTED!` : 'LEVEL UP!',
+      'notification-level-up'
+    )
+    this.showAndRemove(notification, 2000)
   }
 
   showDamageIndicator(damage: number): void {
-    // Create damage indicator
-    const indicator = document.createElement('div')
-    indicator.textContent = `-${damage}`
-    indicator.style.cssText = `
-      position: absolute;
-      top: 20%;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 24px;
-      color: #FF0000;
-      text-shadow: 0 0 10px #FF0000;
-      pointer-events: none;
-      z-index: 1000;
-      animation: damageFloat 1s ease-out;
-    `
-
-    // Add CSS animation
-    const style = document.createElement('style')
-    style.textContent = `
-      @keyframes damageFloat {
-        0% { opacity: 1; transform: translateX(-50%) translateY(0); }
-        100% { opacity: 0; transform: translateX(-50%) translateY(-50px); }
-      }
-    `
-    document.head.appendChild(style)
-
-    document.body.appendChild(indicator)
-    
-    setTimeout(() => {
-      document.body.removeChild(indicator)
-      document.head.removeChild(style)
-    }, 1000)
+    const notification = this.createNotification(
+      `-${damage}`,
+      'notification-damage'
+    )
+    this.showAndRemove(notification, 1000)
   }
 
-  // 🔴 HEALTH PULSE ANIMATION - When health is critical! 🔴
+  showPowerUpCollected(level: number): void {
+    const validLevel = Math.max(0, Math.min(10, level))
+    const text = validLevel >= 10 ? '⚡ POWER-UP MAXED! ⚡' : `⚡ POWER-UP ${validLevel}/10 ⚡`
+    
+    const notification = this.createNotification(text, 'notification-powerup')
+    
+    // Gold color for maxed
+    if (validLevel >= 10) {
+      notification.style.color = '#FFD700'
+      notification.style.textShadow = '0 0 30px rgba(255, 215, 0, 0.8), 3px 3px 0 #886600'
+    }
+    
+    this.showAndRemove(notification, 1500)
+  }
+  
+  showSpeedUpCollected(level: number): void {
+    const validLevel = Math.max(0, Math.min(10, level))
+    const text = validLevel >= 10 ? '⚡ SPEED MAXED! ⚡' : `⚡ SPEED +${validLevel * 5}% ⚡`
+    
+    const notification = this.createNotification(text, 'notification-powerup')
+    notification.style.color = validLevel >= 10 ? '#FFD700' : '#FFFF00'
+    notification.style.textShadow = `0 0 30px ${validLevel >= 10 ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 255, 0, 0.6)'}, 3px 3px 0 #886600`
+    
+    this.showAndRemove(notification, 1500)
+  }
+
+  updateWeaponType(weaponType: string): void {
+    if (this.weaponTypeValueElement) {
+      const upperType = weaponType.toUpperCase()
+      this.weaponTypeValueElement.textContent = upperType
+      
+      // Color based on weapon type
+      const colors: Record<string, string> = {
+        'bullets': '#FFAA00',
+        'lasers': '#FF0066',
+        'photons': '#00FFFF'
+      }
+      this.weaponTypeValueElement.style.color = colors[weaponType.toLowerCase()] || '#FFAA00'
+    }
+  }
+  
+  showWeaponTypeChangeNotification(weaponType: string): void {
+    const colors: Record<string, string> = {
+      'bullets': '#FFAA00',
+      'lasers': '#FF0066',
+      'photons': '#00FFFF'
+    }
+    const color = colors[weaponType.toLowerCase()] || '#FFAA00'
+    
+    const notification = this.createNotification(
+      `WEAPON: ${weaponType.toUpperCase()}`,
+      'notification-weapon'
+    )
+    notification.style.color = color
+    
+    this.showAndRemove(notification, 2000)
+  }
+  
+  // 🎯 ARCADE-STYLE KILL SCORE POPUP 🎯
+  showKillScore(points: number, multiplier: number, x: number, y: number): void {
+    const notification = document.createElement('div')
+    notification.className = 'kill-score-popup'
+    
+    // Format: "+500 x3" or just "+100" for x1
+    const multiplierText = multiplier > 1 ? ` x${multiplier}` : ''
+    const totalPoints = points * multiplier
+    notification.textContent = `+${totalPoints.toLocaleString()}${multiplierText}`
+    
+    // Color and size based on multiplier level
+    let color = '#00FF00'
+    let fontSize = 'clamp(0.8rem, 2vw, 1.2rem)'
+    let glowIntensity = 10
+    
+    if (multiplier >= 10) {
+      color = '#FF00FF'
+      fontSize = 'clamp(1.4rem, 3vw, 2rem)'
+      glowIntensity = 30
+    } else if (multiplier >= 7) {
+      color = '#FFD700'
+      fontSize = 'clamp(1.2rem, 2.5vw, 1.8rem)'
+      glowIntensity = 25
+    } else if (multiplier >= 5) {
+      color = '#FF6600'
+      fontSize = 'clamp(1.1rem, 2.3vw, 1.6rem)'
+      glowIntensity = 20
+    } else if (multiplier >= 3) {
+      color = '#FFFF00'
+      fontSize = 'clamp(1rem, 2vw, 1.4rem)'
+      glowIntensity = 15
+    } else if (multiplier >= 2) {
+      color = '#00FFFF'
+      fontSize = 'clamp(0.9rem, 2vw, 1.3rem)'
+      glowIntensity = 12
+    }
+    
+    // Random offset for variety
+    const offsetX = (Math.random() - 0.5) * 60
+    const offsetY = (Math.random() - 0.5) * 40
+    
+    notification.style.cssText = `
+      left: ${x + offsetX}px;
+      top: ${y + offsetY}px;
+      font-size: ${fontSize};
+      color: ${color};
+      text-shadow: 0 0 ${glowIntensity}px ${color}, 0 0 ${glowIntensity * 2}px ${color};
+    `
+    
+    document.body.appendChild(notification)
+    
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification)
+      }
+    }, 1200)
+  }
+  
+  // 🔥 MULTIPLIER INCREASE NOTIFICATION 🔥
+  showMultiplierIncrease(multiplier: number): void {
+    if (multiplier < 2) return
+    
+    let text = `x${multiplier} MULTIPLIER!`
+    let color = '#00FFFF'
+    let fontSize = 'clamp(1.2rem, 3vw, 1.8rem)'
+    
+    if (multiplier >= 10) {
+      color = '#FF00FF'
+      fontSize = 'clamp(2rem, 4vw, 3rem)'
+      text = `x${multiplier} INSANE!!!`
+    } else if (multiplier >= 7) {
+      color = '#FFD700'
+      fontSize = 'clamp(1.8rem, 3.5vw, 2.5rem)'
+      text = `x${multiplier} INCREDIBLE!`
+    } else if (multiplier >= 5) {
+      color = '#FF6600'
+      fontSize = 'clamp(1.5rem, 3vw, 2.2rem)'
+      text = `x${multiplier} AMAZING!`
+    } else if (multiplier >= 3) {
+      color = '#FFFF00'
+      fontSize = 'clamp(1.3rem, 2.8vw, 2rem)'
+      text = `x${multiplier} GREAT!`
+    }
+    
+    const notification = this.createNotification(text, 'notification-multiplier')
+    notification.style.color = color
+    notification.style.fontSize = fontSize
+    
+    this.showAndRemove(notification, 800)
+  }
+  
+  // 💀 MULTIPLIER LOST NOTIFICATION 💀
+  showMultiplierLost(): void {
+    const notification = this.createNotification(
+      'MULTIPLIER LOST!',
+      'notification-multiplier-lost'
+    )
+    this.showAndRemove(notification, 1000)
+  }
+
+  // 🚫 ALREADY AT MAX NOTIFICATION 🚫
+  showAlreadyAtMax(type: 'weapons' | 'speed'): void {
+    const text = type === 'weapons' ? 'ALREADY AT MAX WEAPONS!' : 'ALREADY AT MAX SPEED!'
+    const color = type === 'weapons' ? '#00FFFF' : '#FFFF00'
+    
+    const notification = this.createNotification(text, 'notification-powerup')
+    notification.style.color = color
+    notification.style.top = '25%'
+    
+    this.showAndRemove(notification, 1500)
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // HELPER METHODS
+  // ═══════════════════════════════════════════════════════════════════
+
+  private createNotification(text: string, className: string): HTMLElement {
+    const notification = document.createElement('div')
+    notification.className = `game-notification ${className}`
+    notification.textContent = text
+    return notification
+  }
+
+  private showAndRemove(element: HTMLElement, duration: number): void {
+    document.body.appendChild(element)
+    setTimeout(() => {
+      if (document.body.contains(element)) {
+        document.body.removeChild(element)
+      }
+    }, duration)
+  }
+
+  // 🔴 HEALTH PULSE ANIMATION 🔴
   private startHealthPulse(): void {
     if (this.healthPulseAnimation) return
     
@@ -357,364 +422,5 @@ export class UIManager {
       cancelAnimationFrame(this.healthPulseAnimation)
       this.healthPulseAnimation = null
     }
-  }
-
-  // 🎯 UPDATE WEAPON TYPE DISPLAY 🎯
-  updateWeaponType(weaponType: string): void {
-    if (this.weaponTypeValueElement) {
-      const upperType = weaponType.toUpperCase()
-      this.weaponTypeValueElement.textContent = upperType
-      
-      // Color based on weapon type
-      switch (weaponType.toLowerCase()) {
-        case 'bullets':
-          this.weaponTypeValueElement.style.color = '#FFAA00'
-          break
-        case 'lasers':
-          this.weaponTypeValueElement.style.color = '#FF0066'
-          break
-        case 'photons':
-          this.weaponTypeValueElement.style.color = '#00FFFF'
-          break
-        default:
-          this.weaponTypeValueElement.style.color = '#FFAA00'
-      }
-    }
-  }
-  
-  // 🎯 SHOW WEAPON TYPE CHANGE NOTIFICATION 🎯
-  showWeaponTypeChangeNotification(weaponType: string): void {
-    const notification = document.createElement('div')
-    notification.textContent = `WEAPON: ${weaponType.toUpperCase()}`
-    notification.style.cssText = `
-      position: absolute;
-      top: 40%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 32px;
-      font-weight: bold;
-      text-shadow: 0 0 20px currentColor;
-      pointer-events: none;
-      z-index: 1000;
-      animation: weaponFadeInOut 2s ease-in-out;
-    `
-    
-    // Color based on weapon type
-    switch (weaponType.toLowerCase()) {
-      case 'bullets':
-        notification.style.color = '#FFAA00'
-        break
-      case 'lasers':
-        notification.style.color = '#FF0066'
-        break
-      case 'photons':
-        notification.style.color = '#00FFFF'
-        break
-      default:
-        notification.style.color = '#FFAA00'
-    }
-    
-    // Add CSS animation
-    const style = document.createElement('style')
-    style.textContent = `
-      @keyframes weaponFadeInOut {
-        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-        20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-        80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-      }
-    `
-    document.head.appendChild(style)
-    
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification)
-      }
-      if (document.head.contains(style)) {
-        document.head.removeChild(style)
-      }
-    }, 2000)
-  }
-
-  showPowerUpCollected(level: number): void {
-    // Ensure level is valid (0-10)
-    const validLevel = Math.max(0, Math.min(10, level))
-    
-    // Create power-up collected notification
-    const notification = document.createElement('div')
-    notification.textContent = validLevel >= 10 ? 'POWER-UP MAXED!' : `POWER-UP ${validLevel}/10`
-    notification.style.cssText = `
-      position: absolute;
-      top: 30%;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 28px;
-      color: ${validLevel >= 10 ? '#FFD700' : '#00FFFF'};
-      text-shadow: 0 0 20px ${validLevel >= 10 ? '#FFD700' : '#00FFFF'};
-      pointer-events: none;
-      z-index: 1000;
-      animation: powerUpFloat 1.5s ease-out;
-    `
-
-    // Add CSS animation
-    const style = document.createElement('style')
-    style.textContent = `
-      @keyframes powerUpFloat {
-        0% { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.5); }
-        20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.2); }
-        80% { opacity: 1; transform: translateX(-50%) translateY(-30px) scale(1); }
-        100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.8); }
-      }
-    `
-    document.head.appendChild(style)
-
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      document.body.removeChild(notification)
-      document.head.removeChild(style)
-    }, 1500)
-  }
-  
-  // ⚡ SPEED-UP COLLECTED NOTIFICATION ⚡
-  showSpeedUpCollected(level: number): void {
-    // Ensure level is valid (0-10)
-    const validLevel = Math.max(0, Math.min(10, level))
-    
-    // Create speed-up collected notification
-    const notification = document.createElement('div')
-    notification.textContent = validLevel >= 10 ? 'SPEED MAXED!' : `SPEED +${validLevel * 5}%`
-    notification.style.cssText = `
-      position: absolute;
-      top: 35%;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 28px;
-      color: ${validLevel >= 10 ? '#FFD700' : '#FFFF00'};
-      text-shadow: 0 0 20px ${validLevel >= 10 ? '#FFD700' : '#FFAA00'};
-      pointer-events: none;
-      z-index: 1000;
-      animation: speedUpFloat 1.5s ease-out;
-    `
-
-    // Add CSS animation
-    const style = document.createElement('style')
-    style.textContent = `
-      @keyframes speedUpFloat {
-        0% { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.5); }
-        20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.2); }
-        80% { opacity: 1; transform: translateX(-50%) translateY(-30px) scale(1); }
-        100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.8); }
-      }
-    `
-    document.head.appendChild(style)
-
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification)
-      }
-      if (document.head.contains(style)) {
-        document.head.removeChild(style)
-      }
-    }, 1500)
-  }
-  
-  // 🎯 ARCADE-STYLE KILL SCORE POPUP! 🎯
-  showKillScore(points: number, multiplier: number, x: number, y: number): void {
-    const notification = document.createElement('div')
-    
-    // Format: "+500 x3" or just "+100" for x1
-    const multiplierText = multiplier > 1 ? ` x${multiplier}` : ''
-    const totalPoints = points * multiplier
-    notification.textContent = `+${totalPoints.toLocaleString()}${multiplierText}`
-    
-    // Color based on multiplier level
-    let color = '#00FF00' // Green for x1
-    let fontSize = 20
-    let glowIntensity = 10
-    
-    if (multiplier >= 10) {
-      color = '#FF00FF' // Magenta for x10+
-      fontSize = 36
-      glowIntensity = 30
-    } else if (multiplier >= 7) {
-      color = '#FFD700' // Gold for x7+
-      fontSize = 32
-      glowIntensity = 25
-    } else if (multiplier >= 5) {
-      color = '#FF6600' // Orange for x5+
-      fontSize = 28
-      glowIntensity = 20
-    } else if (multiplier >= 3) {
-      color = '#FFFF00' // Yellow for x3+
-      fontSize = 24
-      glowIntensity = 15
-    } else if (multiplier >= 2) {
-      color = '#00FFFF' // Cyan for x2
-      fontSize = 22
-      glowIntensity = 12
-    }
-    
-    // Random offset for variety
-    const offsetX = (Math.random() - 0.5) * 60
-    const offsetY = (Math.random() - 0.5) * 40
-    
-    notification.style.cssText = `
-      position: absolute;
-      left: ${x + offsetX}px;
-      top: ${y + offsetY}px;
-      font-size: ${fontSize}px;
-      font-weight: bold;
-      font-family: 'Press Start 2P', 'Courier New', monospace;
-      color: ${color};
-      text-shadow: 0 0 ${glowIntensity}px ${color}, 0 0 ${glowIntensity * 2}px ${color};
-      pointer-events: none;
-      z-index: 2000;
-      animation: killScoreFloat 1.2s ease-out forwards;
-      white-space: nowrap;
-    `
-    
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification)
-      }
-    }, 1200)
-  }
-  
-  // 🔥 MULTIPLIER INCREASE NOTIFICATION! 🔥
-  showMultiplierIncrease(multiplier: number): void {
-    // Only show for significant multipliers
-    if (multiplier < 2) return
-    
-    const notification = document.createElement('div')
-    notification.textContent = `x${multiplier} MULTIPLIER!`
-    
-    // Color and size based on multiplier
-    let color = '#00FFFF'
-    let fontSize = 28
-    
-    if (multiplier >= 10) {
-      color = '#FF00FF'
-      fontSize = 48
-      notification.textContent = `x${multiplier} INSANE!!!`
-    } else if (multiplier >= 7) {
-      color = '#FFD700'
-      fontSize = 42
-      notification.textContent = `x${multiplier} INCREDIBLE!`
-    } else if (multiplier >= 5) {
-      color = '#FF6600'
-      fontSize = 36
-      notification.textContent = `x${multiplier} AMAZING!`
-    } else if (multiplier >= 3) {
-      color = '#FFFF00'
-      fontSize = 32
-      notification.textContent = `x${multiplier} GREAT!`
-    }
-    
-    notification.style.cssText = `
-      position: absolute;
-      top: 45%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: ${fontSize}px;
-      font-weight: bold;
-      font-family: 'Press Start 2P', 'Courier New', monospace;
-      color: ${color};
-      text-shadow: 0 0 20px ${color}, 0 0 40px ${color};
-      pointer-events: none;
-      z-index: 2001;
-      animation: multiplierPop 0.8s ease-out forwards;
-      white-space: nowrap;
-    `
-    
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification)
-      }
-    }, 800)
-  }
-  
-  // 💀 MULTIPLIER LOST NOTIFICATION! 💀
-  showMultiplierLost(): void {
-    const notification = document.createElement('div')
-    notification.textContent = 'MULTIPLIER LOST!'
-    
-    notification.style.cssText = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 24px;
-      font-weight: bold;
-      font-family: 'Press Start 2P', 'Courier New', monospace;
-      color: #FF0000;
-      text-shadow: 0 0 15px #FF0000;
-      pointer-events: none;
-      z-index: 2001;
-      animation: multiplierLost 1s ease-out forwards;
-      white-space: nowrap;
-    `
-    
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification)
-      }
-    }, 1000)
-  }
-
-  // 🚫 ALREADY AT MAX NOTIFICATION 🚫
-  showAlreadyAtMax(type: 'weapons' | 'speed'): void {
-    const notification = document.createElement('div')
-    notification.textContent = type === 'weapons' ? 'ALREADY AT MAX WEAPONS!' : 'ALREADY AT MAX SPEED!'
-    
-    const color = type === 'weapons' ? '#00FFFF' : '#FFFF00'
-    
-    notification.style.cssText = `
-      position: absolute;
-      top: 25%;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 24px;
-      color: ${color};
-      text-shadow: 0 0 15px ${color};
-      pointer-events: none;
-      z-index: 1000;
-      opacity: 0.9;
-      animation: maxNotification 1.5s ease-out;
-    `
-
-    // Add CSS animation
-    const style = document.createElement('style')
-    style.textContent = `
-      @keyframes maxNotification {
-        0% { opacity: 0; transform: translateX(-50%) scale(0.8); }
-        20% { opacity: 1; transform: translateX(-50%) scale(1.1); }
-        30% { transform: translateX(-50%) scale(1); }
-        70% { opacity: 1; }
-        100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-      }
-    `
-    document.head.appendChild(style)
-
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification)
-      }
-      if (document.head.contains(style)) {
-        document.head.removeChild(style)
-      }
-    }, 1500)
   }
 }

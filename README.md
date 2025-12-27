@@ -9,7 +9,7 @@ Neural Break is a top-down survival shooter where players must survive for 30 mi
 - **Cyberpunk Aesthetic**: Immersive digital environment with neural network themes
 - **Progressive Difficulty**: Escalating challenge from tutorial to brutal finale
 - **Combat System**: Projectile-based weapons with upgrade mechanics
-- **Multiple Enemy Types**: DataMites, ScanDrones, ChaosWorms, VoidSpheres, and CrystalShardSwarms
+- **Multiple Enemy Types**: DataMites, ScanDrones, ChaosWorms, VoidSpheres, CrystalShardSwarms, Fizzers, UFOs, and Bosses
 - **XP Progression**: Level up and improve your neural coherence
 - **Speedrun Optimization**: Designed for competitive play and replayability
 
@@ -99,6 +99,8 @@ src/
 │   ├── ChaosWorm.ts       # Unpredictable enemy
 │   ├── VoidSphere.ts      # Area denial enemy
 │   ├── CrystalShardSwarm.ts # Multi-unit enemy
+│   ├── Fizzer.ts          # Chaos reward enemy (high multiplier spawn)
+│   ├── UFO.ts             # Late-game intelligent craft with laser
 │   ├── Boss.ts            # Boss enemy
 │   ├── PowerUp.ts         # Power-up pickup
 │   ├── MedPack.ts         # Health pickup
@@ -155,10 +157,12 @@ src/
 
 ### Enemy Types
 - **DataMite**: Fast, basic enemies with simple movement
-- **ScanDrone**: Surveillance units with detection abilities and radar sweep
-- **ChaosWorm**: Unpredictable movement patterns with segmented body
-- **VoidSphere**: Area denial enemies with void effects
+- **ScanDrone**: Surveillance units with detection abilities and radar sweep (shoots bullets)
+- **ChaosWorm**: Unpredictable movement patterns with segmented body and multi-stage death
+- **VoidSphere**: Area denial enemies with void effects and burst-fire projectiles
 - **CrystalShardSwarm**: Multi-unit coordinated attacks with crystal formations
+- **Fizzer**: ⚡ Tiny electric chaos orb that spawns when player achieves high multiplier (x5/x8/x11) without taking damage - fast, erratic, hard to hit, fires rapid bullet bursts
+- **UFO**: 🛸 Intelligent alien craft appearing in late game (level 5+) - organic curved movement patterns, charges and fires laser beams (10% damage - reduced for testing)
 - **Boss**: Powerful end-level enemies with unique attack patterns
 
 ### Key Design Patterns
@@ -203,6 +207,10 @@ Active development - see commit history for latest updates and features.
 - ✅ Centralized configuration system
 - ✅ Enhanced visual effects with audio-reactive systems
 - ✅ Improved code organization and maintainability
+- ✅ Added Fizzer enemy - chaos reward for skilled players with high multiplier streaks
+- ✅ Added UFO enemy - late-game intelligent craft with devastating laser beam attack
+- ✅ Updated threat database on title screen with new enemies
+- ✅ Integrated UFO laser collision detection in game loop
 
 ## 📝 Code Organization
 

@@ -10,4 +10,6 @@ export { ChaosWorm } from './ChaosWorm'
 export { VoidSphere } from './VoidSphere'
 export { CrystalShardSwarm } from './CrystalShardSwarm'
 export { Boss } from './Boss'
+export { Fizzer } from './Fizzer'
+export { UFO } from './UFO'
 

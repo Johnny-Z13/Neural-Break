@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Enemy } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
+import { AudioManager } from '../audio/AudioManager'
 
 export class ScanDrone extends Enemy {
   private scanBeamMesh: THREE.Mesh
@@ -13,6 +14,11 @@ export class ScanDrone extends Enemy {
   private fireRate: number = 1.5 // Fire every 1.5 seconds when alerted
   private sceneManager: any = null // Will be set by EnemyManager
   private projectiles: any[] = []
+  private audioManager: AudioManager | null = null
+  
+  // 📡 Scan sound timer
+  private scanSoundTimer: number = 0
+  private scanSoundInterval: number = 2.0
 
   constructor(x: number, y: number) {
     super(x, y)
@@ -21,12 +27,16 @@ export class ScanDrone extends Enemy {
     this.speed = 1.5
     this.damage = 15 // INCREASED collision damage!
     this.xpValue = 5
-    this.radius = 0.55 // 130% bigger hitbox (was 0.4)
+    this.radius = 1.1 // 2x larger hitbox (was 0.55)
     this.patrolTarget = new THREE.Vector3(x, y, 0)
   }
 
   setSceneManager(sceneManager: any): void {
     this.sceneManager = sceneManager
+  }
+  
+  setAudioManager(audioManager: AudioManager): void {
+    this.audioManager = audioManager
   }
 
   getProjectiles(): any[] {
@@ -45,9 +55,9 @@ export class ScanDrone extends Enemy {
     this.mesh.position.copy(this.position)
     
     // ═══ HEXAGONAL BODY - Classic 80s arcade wireframe ═══
-    // 130% BIGGER!
-    const hexRadius = 0.35 * 1.3
-    const hexHeight = 0.15 * 1.3
+    // 2x SIZE!
+    const hexRadius = 0.35 * 2.6
+    const hexHeight = 0.15 * 2.6
     const hexGeometry = new THREE.CylinderGeometry(hexRadius, hexRadius, hexHeight, 6)
     const hexMaterial = new THREE.MeshBasicMaterial({
       color: 0xFF6600,
@@ -75,8 +85,8 @@ export class ScanDrone extends Enemy {
     // ═══ ROTATING RADAR DISH - 80s surveillance aesthetic ═══
     const dishGroup = new THREE.Group()
     
-    // Dish base ring - 130% BIGGER
-    const dishRingGeometry = new THREE.RingGeometry(0.12 * 1.3, 0.18 * 1.3, 8)
+    // Dish base ring - 2x SIZE
+    const dishRingGeometry = new THREE.RingGeometry(0.12 * 2.6, 0.18 * 2.6, 8)
     const dishRingMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FFFF, // Cyan accent - very 80s!
       transparent: true,
@@ -87,10 +97,10 @@ export class ScanDrone extends Enemy {
     const dishRing = new THREE.Mesh(dishRingGeometry, dishRingMaterial)
     dishGroup.add(dishRing)
     
-    // Radar sweep arm - 130% BIGGER
+    // Radar sweep arm - 2x SIZE
     const sweepGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, 0.02),
-      new THREE.Vector3(0.52, 0, 0.02)
+      new THREE.Vector3(0, 0, 0.04),
+      new THREE.Vector3(1.04, 0, 0.04)
     ])
     const sweepMaterial = new THREE.LineBasicMaterial({
       color: 0x00FF00, // Green sweep line
@@ -101,11 +111,11 @@ export class ScanDrone extends Enemy {
     const sweepLine = new THREE.Line(sweepGeometry, sweepMaterial)
     dishGroup.add(sweepLine)
     
-    // Radar sweep cone (like classic radar) - 130% BIGGER
+    // Radar sweep cone (like classic radar) - 2x SIZE
     const sweepConeShape = new THREE.Shape()
     sweepConeShape.moveTo(0, 0)
-    sweepConeShape.lineTo(0.52, 0.1)
-    sweepConeShape.lineTo(0.52, -0.1)
+    sweepConeShape.lineTo(1.04, 0.2)
+    sweepConeShape.lineTo(1.04, -0.2)
     sweepConeShape.lineTo(0, 0)
     const sweepConeGeometry = new THREE.ShapeGeometry(sweepConeShape)
     const sweepConeMaterial = new THREE.MeshBasicMaterial({
@@ -119,17 +129,17 @@ export class ScanDrone extends Enemy {
     sweepCone.position.z = 0.01
     dishGroup.add(sweepCone)
     
-    dishGroup.position.z = 0.1 // Above the body
+    dishGroup.position.z = 0.2 // Above the body (2x)
     this.mesh.add(dishGroup)
     
     // ═══ SCANNING GRID BELOW - Matrix-style scan effect ═══
     const gridGroup = new THREE.Group()
     
-    // Horizontal scan lines - 130% BIGGER
+    // Horizontal scan lines - 2x SIZE
     for (let i = -2; i <= 2; i++) {
       const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(-0.65, i * 0.195, 0),
-        new THREE.Vector3(0.65, i * 0.195, 0)
+        new THREE.Vector3(-1.3, i * 0.39, 0),
+        new THREE.Vector3(1.3, i * 0.39, 0)
       ])
       const lineMaterial = new THREE.LineBasicMaterial({
         color: 0xFF4400,
@@ -141,11 +151,11 @@ export class ScanDrone extends Enemy {
       gridGroup.add(line)
     }
     
-    // Vertical scan lines - 130% BIGGER
+    // Vertical scan lines - 2x SIZE
     for (let i = -2; i <= 2; i++) {
       const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(i * 0.195, -0.65, 0),
-        new THREE.Vector3(i * 0.195, 0.65, 0)
+        new THREE.Vector3(i * 0.39, -1.3, 0),
+        new THREE.Vector3(i * 0.39, 1.3, 0)
       ])
       const lineMaterial = new THREE.LineBasicMaterial({
         color: 0xFF4400,
@@ -157,8 +167,8 @@ export class ScanDrone extends Enemy {
       gridGroup.add(line)
     }
     
-    // Scanning beam (sweeps down) - 130% BIGGER
-    const scanBeamGeometry = new THREE.PlaneGeometry(1.3, 0.1)
+    // Scanning beam (sweeps down) - 2x SIZE
+    const scanBeamGeometry = new THREE.PlaneGeometry(2.6, 0.2)
     const scanBeamMaterial = new THREE.MeshBasicMaterial({
       color: 0xFF0000,
       transparent: true,
@@ -169,7 +179,7 @@ export class ScanDrone extends Enemy {
     this.scanBeamMesh = new THREE.Mesh(scanBeamGeometry, scanBeamMaterial)
     gridGroup.add(this.scanBeamMesh)
     
-    gridGroup.position.z = -0.3 // Below the body
+    gridGroup.position.z = -0.6 // Below the body (2x)
     gridGroup.rotation.x = 0 // Flat
     this.mesh.add(gridGroup)
     
@@ -177,8 +187,8 @@ export class ScanDrone extends Enemy {
     for (let i = 0; i < 6; i++) {
       const angle = (i / 6) * Math.PI * 2
       
-      // Outer ring for each sensor - 130% BIGGER
-      const sensorRingGeometry = new THREE.RingGeometry(0.052, 0.078, 6)
+      // Outer ring for each sensor - 2x SIZE
+      const sensorRingGeometry = new THREE.RingGeometry(0.104, 0.156, 6)
       const sensorRingMaterial = new THREE.MeshBasicMaterial({
         color: 0xFF8800,
         transparent: true,
@@ -188,14 +198,14 @@ export class ScanDrone extends Enemy {
       })
       const sensorRing = new THREE.Mesh(sensorRingGeometry, sensorRingMaterial)
       sensorRing.position.set(
-        Math.cos(angle) * (hexRadius + 0.1),
-        Math.sin(angle) * (hexRadius + 0.1),
+        Math.cos(angle) * (hexRadius + 0.2),
+        Math.sin(angle) * (hexRadius + 0.2),
         0
       )
       this.mesh.add(sensorRing)
       
-      // Inner sensor "eye" - 130% BIGGER
-      const sensorEyeGeometry = new THREE.CircleGeometry(0.039, 6)
+      // Inner sensor "eye" - 2x SIZE
+      const sensorEyeGeometry = new THREE.CircleGeometry(0.078, 6)
       const sensorEyeMaterial = new THREE.MeshBasicMaterial({
         color: 0xFF0000,
         transparent: true,
@@ -204,18 +214,18 @@ export class ScanDrone extends Enemy {
       })
       const sensorEye = new THREE.Mesh(sensorEyeGeometry, sensorEyeMaterial)
       sensorEye.position.set(
-        Math.cos(angle) * (hexRadius + 0.1),
-        Math.sin(angle) * (hexRadius + 0.1),
-        0.01
+        Math.cos(angle) * (hexRadius + 0.2),
+        Math.sin(angle) * (hexRadius + 0.2),
+        0.02
       )
       this.mesh.add(sensorEye)
     }
     
     // ═══ ANTENNA WITH BEACON - Pulsing warning light ═══
-    // Antenna stalk - 130% BIGGER
+    // Antenna stalk - 2x SIZE
     const antennaGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, 0.13),
-      new THREE.Vector3(0, 0, 0.52)
+      new THREE.Vector3(0, 0, 0.26),
+      new THREE.Vector3(0, 0, 1.04)
     ])
     const antennaMaterial = new THREE.LineBasicMaterial({
       color: 0x00FFFF,
@@ -226,8 +236,8 @@ export class ScanDrone extends Enemy {
     const antenna = new THREE.Line(antennaGeometry, antennaMaterial)
     this.mesh.add(antenna)
     
-    // Beacon tip (pulsing) - 130% BIGGER
-    const beaconGeometry = new THREE.OctahedronGeometry(0.078, 0)
+    // Beacon tip (pulsing) - 2x SIZE
+    const beaconGeometry = new THREE.OctahedronGeometry(0.156, 0)
     const beaconMaterial = new THREE.MeshBasicMaterial({
       color: 0xFF0000,
       transparent: true,
@@ -235,11 +245,11 @@ export class ScanDrone extends Enemy {
       blending: THREE.AdditiveBlending
     })
     const beacon = new THREE.Mesh(beaconGeometry, beaconMaterial)
-    beacon.position.z = 0.52
+    beacon.position.z = 1.04
     this.mesh.add(beacon)
     
-    // ═══ OUTER DETECTION RING - Rotating wireframe ═══ - 130% BIGGER
-    const outerRingGeometry = new THREE.RingGeometry(0.715, 0.754, 12)
+    // ═══ OUTER DETECTION RING - Rotating wireframe ═══ - 2x SIZE
+    const outerRingGeometry = new THREE.RingGeometry(1.43, 1.508, 12)
     const outerRingMaterial = new THREE.MeshBasicMaterial({
       color: 0xFF6600,
       transparent: true,
@@ -250,12 +260,12 @@ export class ScanDrone extends Enemy {
     const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial)
     this.mesh.add(outerRing)
     
-    // Detection range markers (dashed circle effect) - 130% BIGGER
+    // Detection range markers (dashed circle effect) - 2x SIZE
     for (let i = 0; i < 12; i++) {
       const markerAngle = (i / 12) * Math.PI * 2
       const markerGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(Math.cos(markerAngle) * 0.676, Math.sin(markerAngle) * 0.676, 0),
-        new THREE.Vector3(Math.cos(markerAngle) * 0.806, Math.sin(markerAngle) * 0.806, 0)
+        new THREE.Vector3(Math.cos(markerAngle) * 1.352, Math.sin(markerAngle) * 1.352, 0),
+        new THREE.Vector3(Math.cos(markerAngle) * 1.612, Math.sin(markerAngle) * 1.612, 0)
       ])
       const markerMaterial = new THREE.LineBasicMaterial({
         color: 0xFF4400,
@@ -274,6 +284,10 @@ export class ScanDrone extends Enemy {
 
     // Check if player is within scan range
     if (distanceToPlayer < 5) {
+      // 🚨 Play alert sound when first entering alert state! 🚨
+      if (!this.alertState && this.audioManager) {
+        this.audioManager.playScanDroneAlertSound()
+      }
       this.alertState = true
     }
 
@@ -293,6 +307,12 @@ export class ScanDrone extends Enemy {
         this.fireTimer = 0
       }
     } else {
+      // 📡 Play periodic scan sound while patrolling 📡
+      this.scanSoundTimer += deltaTime
+      if (this.scanSoundTimer >= this.scanSoundInterval && this.audioManager) {
+        this.audioManager.playScanDroneScanSound()
+        this.scanSoundTimer = 0
+      }
       // Patrol behavior
       const distanceToPatrol = this.position.distanceTo(this.patrolTarget)
       
@@ -328,6 +348,11 @@ export class ScanDrone extends Enemy {
     this.projectiles.push(projectile)
     if (this.sceneManager) {
       this.sceneManager.addToScene(projectile.getMesh())
+    }
+    
+    // 🔫 Play fire sound! 🔫
+    if (this.audioManager) {
+      this.audioManager.playScanDroneFireSound()
     }
   }
   
@@ -424,7 +449,7 @@ export class ScanDrone extends Enemy {
       
       // Animate scan beam (sweeps up and down)
       if (this.scanBeamMesh) {
-        this.scanBeamMesh.position.y = Math.sin(time * (this.alertState ? 6 : 2)) * 0.4
+        this.scanBeamMesh.position.y = Math.sin(time * (this.alertState ? 6 : 2)) * 0.8
         const beamMaterial = this.scanBeamMesh.material as THREE.MeshBasicMaterial
         beamMaterial.opacity = this.alertState ? 
           0.7 + Math.sin(time * 20) * 0.3 : 

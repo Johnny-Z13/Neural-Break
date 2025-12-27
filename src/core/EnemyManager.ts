@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Enemy, DataMite, ScanDrone, ChaosWorm, VoidSphere, CrystalShardSwarm, Boss } from '../entities'
+import { Enemy, DataMite, ScanDrone, ChaosWorm, VoidSphere, CrystalShardSwarm, Boss, Fizzer, UFO } from '../entities'
 import { Player } from '../entities/Player'
 import { SceneManager } from '../graphics/SceneManager'
 import { EffectsSystem } from '../graphics/EffectsSystem'
@@ -18,9 +18,14 @@ export class EnemyManager {
   private voidSphereTimer: number = 0
   private crystalSwarmTimer: number = 0
   private bossTimer: number = 0
+  private ufoTimer: number = 0
   private effectsSystem: EffectsSystem | null = null
   private levelManager: LevelManager | null = null
   private audioManager: AudioManager | null = null
+  
+  // ⚡ FIZZER SPAWN CONDITIONS ⚡
+  private fizzersSpawnedThisStreak: number = 0
+  private maxFizzersPerStreak: number = 3
 
   initialize(sceneManager: SceneManager, player: Player): void {
     this.sceneManager = sceneManager
@@ -43,6 +48,7 @@ export class EnemyManager {
     this.voidSphereTimer += deltaTime
     this.crystalSwarmTimer += deltaTime
     this.bossTimer += deltaTime
+    this.ufoTimer += deltaTime
 
     // Get level-based spawn rates
     if (!this.levelManager) {
@@ -97,6 +103,16 @@ export class EnemyManager {
     if (levelConfig.bossSpawnRate !== Infinity && this.bossTimer >= levelConfig.bossSpawnRate) {
       this.spawnBoss()
       this.bossTimer = 0
+    }
+
+    // 🛸 Spawn UFO - Later game enemy (level 5+)
+    const currentLevel = this.levelManager?.getCurrentLevel() || 1
+    if (currentLevel >= 5) {
+      const ufoSpawnRate = Math.max(20, 50 - (currentLevel - 5) * 5) // 50s at level 5, down to 20s at level 10
+      if (this.ufoTimer >= ufoSpawnRate) {
+        this.spawnUFO()
+        this.ufoTimer = 0
+      }
     }
 
     // Update all enemies
@@ -185,6 +201,11 @@ export class EnemyManager {
       
       this.sceneManager.addToScene(mesh)
       
+      // 🎵 Play spawn sound (quiet for DataMites - they're small) 🎵
+      if (this.audioManager && Math.random() < 0.3) { // Only 30% chance to avoid spam
+        this.audioManager.playDataMiteBuzzSound()
+      }
+      
       if (DEBUG_MODE) console.log('✅ Spawned DataMite, total enemies:', this.enemies.length)
     } catch (error) {
       console.error('❌ Error spawning DataMite:', error)
@@ -209,8 +230,18 @@ export class EnemyManager {
     // 🔫 Connect sceneManager so drone can fire bullets!
     drone.setSceneManager(this.sceneManager)
     
+    // 🎵 Connect audioManager for sounds!
+    if (this.audioManager) {
+      drone.setAudioManager(this.audioManager)
+    }
+    
     this.enemies.push(drone)
     this.sceneManager.addToScene(drone.getMesh())
+    
+    // 🎵 Play spawn sound! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemySpawnSound('ScanDrone')
+    }
   }
 
   private spawnChaosWorm(): void {
@@ -223,8 +254,18 @@ export class EnemyManager {
       worm.setEffectsSystem(this.effectsSystem)
     }
     
+    // 🎵 Connect audioManager for death sequence sounds!
+    if (this.audioManager) {
+      worm.setAudioManager(this.audioManager)
+    }
+    
     this.enemies.push(worm)
     this.sceneManager.addToScene(worm.getMesh())
+    
+    // 🎵 Play spawn sound! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemySpawnSound('ChaosWorm')
+    }
   }
 
   private spawnVoidSphere(): void {
@@ -248,6 +289,11 @@ export class EnemyManager {
     this.enemies.push(voidSphere)
     this.sceneManager.addToScene(voidSphere.getMesh())
     
+    // 🎵 Play spawn sound! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemySpawnSound('VoidSphere')
+    }
+    
     if (DEBUG_MODE) console.log('🌀 MASSIVE VOID SPHERE SPAWNED! 🌀')
   }
 
@@ -261,8 +307,21 @@ export class EnemyManager {
       crystalSwarm.setEffectsSystem(this.effectsSystem)
     }
     
+    // 🔫 Connect sceneManager so crystalSwarm can fire bullets!
+    crystalSwarm.setSceneManager(this.sceneManager)
+    
+    // 🎵 Connect audioManager for crystal sounds!
+    if (this.audioManager) {
+      crystalSwarm.setAudioManager(this.audioManager)
+    }
+    
     this.enemies.push(crystalSwarm)
     this.sceneManager.addToScene(crystalSwarm.getMesh())
+    
+    // 🎵 Play spawn sound! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemySpawnSound('CrystalShardSwarm')
+    }
   }
 
   private spawnBoss(): void {
@@ -284,7 +343,80 @@ export class EnemyManager {
     this.enemies.push(boss)
     this.sceneManager.addToScene(boss.getMesh())
     
+    // 🎵 Play BOSS entrance sound! 🎵
+    if (this.audioManager) {
+      this.audioManager.playBossEntranceSound()
+    }
+    
     if (DEBUG_MODE) console.log('👹 BOSS SPAWNED! 👹')
+  }
+
+  // ⚡ FIZZER - Spawns when player achieves high multiplier without taking hits ⚡
+  spawnFizzer(): void {
+    if (this.fizzersSpawnedThisStreak >= this.maxFizzersPerStreak) {
+      return // Don't spawn more than max per streak
+    }
+    
+    const spawnPos = this.getSpawnPosition()
+    const fizzer = new Fizzer(spawnPos.x, spawnPos.y)
+    fizzer.initialize()
+    
+    if (this.effectsSystem) {
+      fizzer.setEffectsSystem(this.effectsSystem)
+    }
+    if (this.sceneManager) {
+      fizzer.setSceneManager(this.sceneManager)
+    }
+    if (this.audioManager) {
+      fizzer.setAudioManager(this.audioManager)
+      this.audioManager.playFizzerSpawnSound()
+    }
+    
+    this.enemies.push(fizzer)
+    this.sceneManager.addToScene(fizzer.getMesh())
+    this.fizzersSpawnedThisStreak++
+    
+    if (DEBUG_MODE) console.log('⚡ FIZZER SPAWNED! Total this streak:', this.fizzersSpawnedThisStreak, '⚡')
+  }
+
+  // Called when player takes damage - reset Fizzer streak counter
+  resetFizzerStreak(): void {
+    this.fizzersSpawnedThisStreak = 0
+  }
+
+  // 🛸 UFO - Later game enemy with organic movement and laser beams 🛸
+  private spawnUFO(): void {
+    const spawnPos = this.getSpawnPosition()
+    const ufo = new UFO(spawnPos.x, spawnPos.y)
+    ufo.initialize()
+    
+    if (this.effectsSystem) {
+      ufo.setEffectsSystem(this.effectsSystem)
+    }
+    if (this.sceneManager) {
+      ufo.setSceneManager(this.sceneManager)
+    }
+    if (this.audioManager) {
+      ufo.setAudioManager(this.audioManager)
+      this.audioManager.playEnemySpawnSound('UFO')
+    }
+    
+    this.enemies.push(ufo)
+    this.sceneManager.addToScene(ufo.getMesh())
+    
+    if (DEBUG_MODE) console.log('🛸 UFO SPAWNED! 🛸')
+  }
+
+  // 🛸 Check UFO laser hits against player 🛸
+  checkUFOLaserHits(player: Player): { hit: boolean, damage: number } {
+    for (const enemy of this.enemies) {
+      if (enemy instanceof UFO && enemy.isAlive() && enemy.isLaserActive()) {
+        if (enemy.checkLaserHit(player)) {
+          return { hit: true, damage: enemy.getLaserDamage() }
+        }
+      }
+    }
+    return { hit: false, damage: 0 }
   }
 
   private getSpawnPosition(): THREE.Vector3 {
@@ -359,6 +491,8 @@ export class EnemyManager {
     this.voidSphereTimer = 0
     this.crystalSwarmTimer = 0
     this.bossTimer = 0
+    this.ufoTimer = 0
+    this.fizzersSpawnedThisStreak = 0
   }
 
   getBossProjectiles(): EnemyProjectile[] {
@@ -371,7 +505,7 @@ export class EnemyManager {
     return allProjectiles
   }
   
-  // 🔫 GET ALL ENEMY PROJECTILES (including ScanDrone + VoidSphere bullets!) 🔫
+  // 🔫 GET ALL ENEMY PROJECTILES (including ScanDrone + VoidSphere + Fizzer + ChaosWorm death bullets!) 🔫
   getAllEnemyProjectiles(): EnemyProjectile[] {
     const allProjectiles: EnemyProjectile[] = []
     for (const enemy of this.enemies) {
@@ -382,7 +516,14 @@ export class EnemyManager {
           allProjectiles.push(...enemy.getProjectiles())
         } else if (enemy instanceof VoidSphere) {
           allProjectiles.push(...enemy.getProjectiles())
+        } else if (enemy instanceof Fizzer) {
+          allProjectiles.push(...enemy.getProjectiles())
         }
+      }
+      // 💥 CHAOS WORM DEATH BULLETS - Include even when dying! 💥
+      if (enemy instanceof ChaosWorm) {
+        // Include projectiles even during death animation
+        allProjectiles.push(...enemy.getProjectiles())
       }
     }
     return allProjectiles

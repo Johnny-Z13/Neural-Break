@@ -12,6 +12,13 @@ export class MedPack {
   private healthRestore: number = 25 // Restore 25 health
   private crossMesh: THREE.Mesh
   private glowMesh: THREE.Mesh
+  
+  // 🧲 MAGNETISM SYSTEM 🧲
+  private static readonly MAGNET_RADIUS = 4.0        // Distance at which magnetism kicks in
+  private static readonly MAGNET_STRENGTH = 12.0     // Acceleration towards player
+  private static readonly MAX_MAGNET_SPEED = 18.0    // Max speed when being pulled
+  private velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
+  private isMagnetized: boolean = false
 
   constructor(x: number, y: number) {
     this.position = new THREE.Vector3(x, y, 0)
@@ -125,16 +132,26 @@ export class MedPack {
     }
   }
 
-  update(deltaTime: number): void {
+  update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     if (!this.alive) return
+
+    // 🧲 APPLY MAGNETISM - Pull towards player! 🧲
+    if (playerPosition) {
+      this.applyMagnetism(playerPosition, deltaTime)
+    }
 
     // 💚 PULSING ANIMATION - Breathing effect! 💚
     this.pulseTime += deltaTime
-    const pulse = 0.85 + Math.sin(this.pulseTime * 3) * 0.2 // More dramatic pulse
+    // More dramatic pulse when magnetized!
+    const basePulse = this.isMagnetized ? 0.95 : 0.85
+    const pulseAmount = this.isMagnetized ? 0.15 : 0.2
+    const pulseSpeed = this.isMagnetized ? 6 : 3
+    const pulse = basePulse + Math.sin(this.pulseTime * pulseSpeed) * pulseAmount
     this.mesh.scale.setScalar(pulse)
 
-    // 🌪️ GENTLE ROTATION 🌪️
-    this.mesh.rotation.z += deltaTime * this.rotationSpeed * 0.5
+    // 🌪️ GENTLE ROTATION (faster when magnetized) 🌪️
+    const rotSpeed = this.isMagnetized ? this.rotationSpeed * 2 : this.rotationSpeed * 0.5
+    this.mesh.rotation.z += deltaTime * rotSpeed
 
     // 💚 ANIMATE GREEN GLOW - Pulsing green aura! 💚
     if (this.glowMesh) {
@@ -170,12 +187,13 @@ export class MedPack {
       horizMaterial.opacity = 0.8 + Math.sin(this.pulseTime * 5 + 0.5) * 0.2
     }
     
-    // ✨ ANIMATE PARTICLES - Orbiting particles! ✨
+    // ✨ ANIMATE PARTICLES - Orbiting particles (faster when magnetized)! ✨
+    const orbitSpeed = this.isMagnetized ? 4 : 2
     for (let i = 8; i < this.mesh.children.length; i++) {
       const child = this.mesh.children[i]
       if (child instanceof THREE.Mesh) {
         const particleIndex = i - 8
-        const angle = (particleIndex / 6) * Math.PI * 2 + this.pulseTime * 2
+        const angle = (particleIndex / 6) * Math.PI * 2 + this.pulseTime * orbitSpeed
         const radius = 0.5 + Math.sin(this.pulseTime * 3 + particleIndex) * 0.1
         child.position.set(
           Math.cos(angle) * radius,
@@ -185,6 +203,37 @@ export class MedPack {
         const particleMaterial = child.material as THREE.MeshBasicMaterial
         particleMaterial.opacity = 0.6 + Math.sin(this.pulseTime * 6 + particleIndex) * 0.3
       }
+    }
+  }
+
+  // 🧲 MAGNETISM - Suck pickup towards player when close! 🧲
+  private applyMagnetism(playerPosition: THREE.Vector3, deltaTime: number): void {
+    const toPlayer = playerPosition.clone().sub(this.position)
+    const distance = toPlayer.length()
+    
+    if (distance < MedPack.MAGNET_RADIUS && distance > 0.1) {
+      this.isMagnetized = true
+      
+      // Calculate attraction strength (stronger when closer)
+      const normalizedDistance = distance / MedPack.MAGNET_RADIUS
+      const attractionStrength = MedPack.MAGNET_STRENGTH * (1 - normalizedDistance * 0.5)
+      
+      // Apply acceleration towards player
+      const direction = toPlayer.normalize()
+      this.velocity.add(direction.multiplyScalar(attractionStrength * deltaTime))
+      
+      // Clamp velocity
+      if (this.velocity.length() > MedPack.MAX_MAGNET_SPEED) {
+        this.velocity.normalize().multiplyScalar(MedPack.MAX_MAGNET_SPEED)
+      }
+      
+      // Update position
+      this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
+      this.mesh.position.copy(this.position)
+    } else {
+      this.isMagnetized = false
+      // Slow down when not magnetized
+      this.velocity.multiplyScalar(0.9)
     }
   }
 

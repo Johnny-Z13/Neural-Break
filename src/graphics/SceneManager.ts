@@ -96,8 +96,9 @@ export class SceneManager {
       this.renderer.toneMappingExposure = 1.5 // More intense!
       
       // Enable shadows
-      this.renderer.shadowMap.enabled = true
-      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+      // 🎯 PERFORMANCE: Disable shadow maps - not needed for 2D top-down game
+      this.renderer.shadowMap.enabled = false
+      // this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
       
       console.log('✅ Renderer created and configured:', {
         width: window.innerWidth,
@@ -176,20 +177,21 @@ export class SceneManager {
     // Main directional light - purple-cyan glow!
     const directionalLight = new THREE.DirectionalLight(0x8844FF, 1.2)
     directionalLight.position.set(0, 0, 5)
-    directionalLight.castShadow = true
-    directionalLight.shadow.mapSize.width = 2048
-    directionalLight.shadow.mapSize.height = 2048
+    // 🎯 PERFORMANCE: Shadows disabled for 2D game
+    directionalLight.castShadow = false
     this.scene.add(directionalLight)
 
     // Add CRAZY atmospheric point lights that MOVE! - Deep purple-blue tones
     const pointLight1 = new THREE.PointLight(0x6622CC, 0.7, 50)
     pointLight1.position.set(10, 10, 2)
-    pointLight1.castShadow = true
+    // 🎯 PERFORMANCE: Shadows disabled
+    pointLight1.castShadow = false
     this.scene.add(pointLight1)
 
     const pointLight2 = new THREE.PointLight(0x2244AA, 0.5, 30)
     pointLight2.position.set(-8, -5, 2)
-    pointLight2.castShadow = true
+    // 🎯 PERFORMANCE: Shadows disabled
+    pointLight2.castShadow = false
     this.scene.add(pointLight2)
     
     // NEW: Pulsing accent lights - magenta and deep blue

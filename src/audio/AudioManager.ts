@@ -359,6 +359,12 @@ export class AudioManager {
         case 'CrystalShardSwarm':
           this.playCrystalSwarmDeathInternal(ctx, now)
           break
+        case 'Fizzer':
+          this.playFizzerDeathInternal(ctx, now)
+          break
+        case 'UFO':
+          this.playUFODeathInternal(ctx, now)
+          break
         default:
           this.playGenericDeathInternal(ctx, now)
       }
@@ -1598,6 +1604,688 @@ export class AudioManager {
   }
 
   // ============================================
+  // 🐜 DATA MITE SOUNDS - Buzzing swarm! 🐜
+  // ============================================
+
+  /**
+   * 🐜 DataMite Buzz - Quick insectoid chirp when spawning/moving
+   */
+  playDataMiteBuzzSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // High-pitched digital buzz
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      const filter = ctx.createBiquadFilter()
+      
+      const freq = 1800 + Math.random() * 600
+      osc.frequency.setValueAtTime(freq, now)
+      osc.frequency.linearRampToValueAtTime(freq * 0.7, now + 0.08)
+      osc.type = 'square'
+      
+      filter.type = 'bandpass'
+      filter.frequency.value = freq
+      filter.Q.value = 8
+      
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.005)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+      
+      osc.connect(filter)
+      filter.connect(gain)
+      gain.connect(this.sfxGainNode!)
+      
+      osc.start(now)
+      osc.stop(now + 0.12)
+    })
+  }
+
+  // ============================================
+  // 🔍 SCAN DRONE SOUNDS - Surveillance horror! 🔍
+  // ============================================
+
+  /**
+   * 🚨 ScanDrone Alert - When player detected!
+   */
+  playScanDroneAlertSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Warning siren - two-tone alert
+      for (let i = 0; i < 2; i++) {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        const delay = i * 0.15
+        
+        osc.frequency.setValueAtTime(i === 0 ? 800 : 1200, now + delay)
+        osc.frequency.linearRampToValueAtTime(i === 0 ? 1200 : 800, now + delay + 0.12)
+        osc.type = 'square'
+        
+        gain.gain.setValueAtTime(0, now + delay)
+        gain.gain.linearRampToValueAtTime(0.25, now + delay + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.14)
+        
+        osc.connect(gain)
+        gain.connect(this.sfxGainNode!)
+        
+        osc.start(now + delay)
+        osc.stop(now + delay + 0.16)
+      }
+      
+      // Underlying alarm buzz
+      const buzz = ctx.createOscillator()
+      const buzzGain = ctx.createGain()
+      
+      buzz.frequency.value = 60
+      buzz.type = 'sawtooth'
+      
+      buzzGain.gain.setValueAtTime(0, now)
+      buzzGain.gain.linearRampToValueAtTime(0.15, now + 0.02)
+      buzzGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3)
+      
+      buzz.connect(buzzGain)
+      buzzGain.connect(this.sfxGainNode!)
+      
+      buzz.start(now)
+      buzz.stop(now + 0.35)
+    })
+  }
+
+  /**
+   * 📡 ScanDrone Scan Sweep - Periodic scanning sound
+   */
+  playScanDroneScanSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Ascending radar sweep
+      const sweep = ctx.createOscillator()
+      const sweepGain = ctx.createGain()
+      const sweepFilter = ctx.createBiquadFilter()
+      
+      sweep.frequency.setValueAtTime(200, now)
+      sweep.frequency.exponentialRampToValueAtTime(2000, now + 0.3)
+      sweep.type = 'sine'
+      
+      sweepFilter.type = 'bandpass'
+      sweepFilter.frequency.setValueAtTime(300, now)
+      sweepFilter.frequency.exponentialRampToValueAtTime(2500, now + 0.3)
+      sweepFilter.Q.value = 4
+      
+      sweepGain.gain.setValueAtTime(0, now)
+      sweepGain.gain.linearRampToValueAtTime(0.15, now + 0.05)
+      sweepGain.gain.linearRampToValueAtTime(0.08, now + 0.2)
+      sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
+      
+      sweep.connect(sweepFilter)
+      sweepFilter.connect(sweepGain)
+      sweepGain.connect(this.sfxGainNode!)
+      
+      sweep.start(now)
+      sweep.stop(now + 0.4)
+      
+      // Digital blip at end
+      const blip = ctx.createOscillator()
+      const blipGain = ctx.createGain()
+      
+      blip.frequency.setValueAtTime(2000, now + 0.28)
+      blip.type = 'sine'
+      
+      blipGain.gain.setValueAtTime(0, now + 0.28)
+      blipGain.gain.linearRampToValueAtTime(0.2, now + 0.29)
+      blipGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
+      
+      blip.connect(blipGain)
+      blipGain.connect(this.sfxGainNode!)
+      
+      blip.start(now + 0.28)
+      blip.stop(now + 0.38)
+    })
+  }
+
+  /**
+   * 🔫 ScanDrone Fire - Projectile launch
+   */
+  playScanDroneFireSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Sharp zap
+      const zap = ctx.createOscillator()
+      const zapGain = ctx.createGain()
+      
+      zap.frequency.setValueAtTime(1400, now)
+      zap.frequency.exponentialRampToValueAtTime(400, now + 0.06)
+      zap.type = 'sawtooth'
+      
+      zapGain.gain.setValueAtTime(0, now)
+      zapGain.gain.linearRampToValueAtTime(0.3, now + 0.003)
+      zapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
+      
+      zap.connect(zapGain)
+      zapGain.connect(this.sfxGainNode!)
+      
+      zap.start(now)
+      zap.stop(now + 0.1)
+      
+      // Sub thump
+      const thump = ctx.createOscillator()
+      const thumpGain = ctx.createGain()
+      
+      thump.frequency.setValueAtTime(100, now)
+      thump.frequency.exponentialRampToValueAtTime(40, now + 0.05)
+      thump.type = 'sine'
+      
+      thumpGain.gain.setValueAtTime(0, now)
+      thumpGain.gain.linearRampToValueAtTime(0.25, now + 0.005)
+      thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
+      
+      thump.connect(thumpGain)
+      thumpGain.connect(this.sfxGainNode!)
+      
+      thump.start(now)
+      thump.stop(now + 0.1)
+    })
+  }
+
+  // ============================================
+  // 👹 BOSS SOUNDS - Ultimate threat! 👹
+  // ============================================
+
+  /**
+   * 👹 Boss Entrance - Dramatic spawn sound
+   */
+  playBossEntranceSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Deep rumbling bass
+      const rumble = ctx.createOscillator()
+      const rumbleGain = ctx.createGain()
+      const rumbleFilter = ctx.createBiquadFilter()
+      
+      rumble.frequency.setValueAtTime(30, now)
+      rumble.frequency.linearRampToValueAtTime(60, now + 0.5)
+      rumble.frequency.linearRampToValueAtTime(40, now + 1.0)
+      rumble.type = 'sine'
+      
+      rumbleFilter.type = 'lowpass'
+      rumbleFilter.frequency.value = 100
+      
+      rumbleGain.gain.setValueAtTime(0, now)
+      rumbleGain.gain.linearRampToValueAtTime(0.5, now + 0.3)
+      rumbleGain.gain.linearRampToValueAtTime(0.3, now + 0.8)
+      rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2)
+      
+      rumble.connect(rumbleFilter)
+      rumbleFilter.connect(rumbleGain)
+      rumbleGain.connect(this.sfxGainNode!)
+      
+      rumble.start(now)
+      rumble.stop(now + 1.3)
+      
+      // Dramatic brass-like fanfare
+      const brassFreqs = [110, 138, 165, 220]
+      brassFreqs.forEach((freq, i) => {
+        const brass = ctx.createOscillator()
+        const brassGain = ctx.createGain()
+        const delay = i * 0.1 + 0.2
+        
+        brass.frequency.value = freq
+        brass.type = 'sawtooth'
+        
+        brassGain.gain.setValueAtTime(0, now + delay)
+        brassGain.gain.linearRampToValueAtTime(0.15, now + delay + 0.1)
+        brassGain.gain.linearRampToValueAtTime(0.1, now + delay + 0.4)
+        brassGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.8)
+        
+        brass.connect(brassGain)
+        brassGain.connect(this.sfxGainNode!)
+        
+        brass.start(now + delay)
+        brass.stop(now + delay + 0.9)
+      })
+      
+      // Impact crash
+      const crash = ctx.createBufferSource()
+      const crashBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate)
+      const crashData = crashBuffer.getChannelData(0)
+      
+      for (let i = 0; i < crashData.length; i++) {
+        const t = i / crashData.length
+        crashData[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.5) * 0.8
+      }
+      
+      crash.buffer = crashBuffer
+      
+      const crashGain = ctx.createGain()
+      const crashFilter = ctx.createBiquadFilter()
+      crashFilter.type = 'lowpass'
+      crashFilter.frequency.value = 2000
+      
+      crashGain.gain.setValueAtTime(0, now + 0.5)
+      crashGain.gain.linearRampToValueAtTime(0.4, now + 0.52)
+      crashGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9)
+      
+      crash.connect(crashFilter)
+      crashFilter.connect(crashGain)
+      crashGain.connect(this.sfxGainNode!)
+      
+      crash.start(now + 0.5)
+      crash.stop(now + 0.9)
+    })
+  }
+
+  /**
+   * 🔥 Boss Attack Phase Change - When boss changes attack pattern
+   */
+  playBossPhaseChangeSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Power-up surge
+      const surge = ctx.createOscillator()
+      const surgeGain = ctx.createGain()
+      
+      surge.frequency.setValueAtTime(100, now)
+      surge.frequency.exponentialRampToValueAtTime(400, now + 0.2)
+      surge.type = 'sawtooth'
+      
+      surgeGain.gain.setValueAtTime(0, now)
+      surgeGain.gain.linearRampToValueAtTime(0.35, now + 0.15)
+      surgeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3)
+      
+      surge.connect(surgeGain)
+      surgeGain.connect(this.sfxGainNode!)
+      
+      surge.start(now)
+      surge.stop(now + 0.35)
+      
+      // Warning tone
+      for (let i = 0; i < 3; i++) {
+        const tone = ctx.createOscillator()
+        const toneGain = ctx.createGain()
+        const delay = i * 0.08
+        
+        tone.frequency.value = 600 + i * 100
+        tone.type = 'square'
+        
+        toneGain.gain.setValueAtTime(0, now + delay)
+        toneGain.gain.linearRampToValueAtTime(0.2, now + delay + 0.02)
+        toneGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.1)
+        
+        tone.connect(toneGain)
+        toneGain.connect(this.sfxGainNode!)
+        
+        tone.start(now + delay)
+        tone.stop(now + delay + 0.12)
+      }
+    })
+  }
+
+  /**
+   * 🔫 Boss Fire - Heavy projectile launch
+   */
+  playBossFireSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Heavy cannon blast
+      const cannon = ctx.createOscillator()
+      const cannonGain = ctx.createGain()
+      const cannonFilter = ctx.createBiquadFilter()
+      
+      cannon.frequency.setValueAtTime(200, now)
+      cannon.frequency.exponentialRampToValueAtTime(60, now + 0.1)
+      cannon.type = 'sawtooth'
+      
+      cannonFilter.type = 'lowpass'
+      cannonFilter.frequency.setValueAtTime(800, now)
+      cannonFilter.frequency.exponentialRampToValueAtTime(200, now + 0.1)
+      
+      cannonGain.gain.setValueAtTime(0, now)
+      cannonGain.gain.linearRampToValueAtTime(0.45, now + 0.01)
+      cannonGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+      
+      cannon.connect(cannonFilter)
+      cannonFilter.connect(cannonGain)
+      cannonGain.connect(this.sfxGainNode!)
+      
+      cannon.start(now)
+      cannon.stop(now + 0.18)
+      
+      // Mechanical click
+      const click = ctx.createOscillator()
+      const clickGain = ctx.createGain()
+      
+      click.frequency.value = 2000
+      click.type = 'square'
+      
+      clickGain.gain.setValueAtTime(0, now)
+      clickGain.gain.linearRampToValueAtTime(0.15, now + 0.002)
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02)
+      
+      click.connect(clickGain)
+      clickGain.connect(this.sfxGainNode!)
+      
+      click.start(now)
+      click.stop(now + 0.03)
+    })
+  }
+
+  // ============================================
+  // 🌀 ENEMY SPAWN SOUNDS - Emergence! 🌀
+  // ============================================
+
+  /**
+   * 🌀 Enemy Spawn - Digital materialization
+   */
+  playEnemySpawnSound(enemyType?: string): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Base materialization whoosh
+      const whoosh = ctx.createOscillator()
+      const whooshGain = ctx.createGain()
+      const whooshFilter = ctx.createBiquadFilter()
+      
+      // Different spawn sounds for different enemies
+      let baseFreq = 300
+      let duration = 0.15
+      
+      switch (enemyType) {
+        case 'Boss':
+          baseFreq = 80
+          duration = 0.4
+          break
+        case 'VoidSphere':
+          baseFreq = 60
+          duration = 0.3
+          break
+        case 'ChaosWorm':
+          baseFreq = 100
+          duration = 0.3
+          break
+        case 'CrystalShardSwarm':
+          baseFreq = 400
+          duration = 0.25
+          break
+        case 'ScanDrone':
+          baseFreq = 500
+          duration = 0.2
+          break
+        case 'Fizzer':
+          baseFreq = 1200
+          duration = 0.1
+          break
+        case 'UFO':
+          baseFreq = 150
+          duration = 0.35
+          break
+        default: // DataMite
+          baseFreq = 800
+          duration = 0.12
+      }
+      
+      whoosh.frequency.setValueAtTime(baseFreq * 3, now)
+      whoosh.frequency.exponentialRampToValueAtTime(baseFreq, now + duration)
+      whoosh.type = 'sine'
+      
+      whooshFilter.type = 'bandpass'
+      whooshFilter.frequency.setValueAtTime(baseFreq * 2, now)
+      whooshFilter.frequency.exponentialRampToValueAtTime(baseFreq, now + duration)
+      whooshFilter.Q.value = 3
+      
+      const volume = enemyType === 'Boss' ? 0.4 : 0.2
+      whooshGain.gain.setValueAtTime(0, now)
+      whooshGain.gain.linearRampToValueAtTime(volume, now + duration * 0.3)
+      whooshGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 1.2)
+      
+      whoosh.connect(whooshFilter)
+      whooshFilter.connect(whooshGain)
+      whooshGain.connect(this.sfxGainNode!)
+      
+      whoosh.start(now)
+      whoosh.stop(now + duration * 1.5)
+      
+      // Digital glitch for spawn
+      const glitch = ctx.createBufferSource()
+      const glitchBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate)
+      const glitchData = glitchBuffer.getChannelData(0)
+      
+      for (let i = 0; i < glitchData.length; i++) {
+        glitchData[i] = (Math.random() * 2 - 1) * 0.3 * Math.pow(1 - i / glitchData.length, 2)
+      }
+      
+      glitch.buffer = glitchBuffer
+      
+      const glitchGain = ctx.createGain()
+      const glitchFilter = ctx.createBiquadFilter()
+      glitchFilter.type = 'highpass'
+      glitchFilter.frequency.value = 1000
+      
+      glitchGain.gain.value = 0.15
+      
+      glitch.connect(glitchFilter)
+      glitchFilter.connect(glitchGain)
+      glitchGain.connect(this.sfxGainNode!)
+      
+      glitch.start(now)
+      glitch.stop(now + 0.06)
+    })
+  }
+
+  // ============================================
+  // 💊 PICKUP SOUNDS - Rewards! 💊
+  // ============================================
+
+  /**
+   * 💚 Med Pack Collect - Healing sound
+   */
+  playMedPackCollectSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Soothing heal chord
+      const healFreqs = [261, 329, 392, 523] // C major
+      healFreqs.forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        const delay = i * 0.04
+        
+        osc.frequency.value = freq
+        osc.type = 'sine'
+        
+        gain.gain.setValueAtTime(0, now + delay)
+        gain.gain.linearRampToValueAtTime(0.2, now + delay + 0.03)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.3)
+        
+        osc.connect(gain)
+        gain.connect(this.sfxGainNode!)
+        
+        osc.start(now + delay)
+        osc.stop(now + delay + 0.35)
+      })
+      
+      // Shimmer effect
+      for (let i = 0; i < 5; i++) {
+        const shimmer = ctx.createOscillator()
+        const shimmerGain = ctx.createGain()
+        const delay = i * 0.03 + 0.1
+        
+        shimmer.frequency.value = 1000 + i * 200
+        shimmer.type = 'sine'
+        
+        shimmerGain.gain.setValueAtTime(0, now + delay)
+        shimmerGain.gain.linearRampToValueAtTime(0.1, now + delay + 0.01)
+        shimmerGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.15)
+        
+        shimmer.connect(shimmerGain)
+        shimmerGain.connect(this.sfxGainNode!)
+        
+        shimmer.start(now + delay)
+        shimmer.stop(now + delay + 0.2)
+      }
+    })
+  }
+
+  /**
+   * ⚡ Speed Up Collect - Energy boost sound
+   */
+  playSpeedUpCollectSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Accelerating whoosh
+      const whoosh = ctx.createOscillator()
+      const whooshGain = ctx.createGain()
+      const whooshFilter = ctx.createBiquadFilter()
+      
+      whoosh.frequency.setValueAtTime(200, now)
+      whoosh.frequency.exponentialRampToValueAtTime(1200, now + 0.2)
+      whoosh.type = 'sawtooth'
+      
+      whooshFilter.type = 'bandpass'
+      whooshFilter.frequency.setValueAtTime(300, now)
+      whooshFilter.frequency.exponentialRampToValueAtTime(1500, now + 0.2)
+      whooshFilter.Q.value = 4
+      
+      whooshGain.gain.setValueAtTime(0, now)
+      whooshGain.gain.linearRampToValueAtTime(0.25, now + 0.05)
+      whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
+      
+      whoosh.connect(whooshFilter)
+      whooshFilter.connect(whooshGain)
+      whooshGain.connect(this.sfxGainNode!)
+      
+      whoosh.start(now)
+      whoosh.stop(now + 0.3)
+      
+      // Energy zaps
+      for (let i = 0; i < 4; i++) {
+        const zap = ctx.createOscillator()
+        const zapGain = ctx.createGain()
+        const delay = i * 0.04
+        
+        zap.frequency.value = 600 + i * 200
+        zap.type = 'square'
+        
+        zapGain.gain.setValueAtTime(0, now + delay)
+        zapGain.gain.linearRampToValueAtTime(0.15, now + delay + 0.005)
+        zapGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.06)
+        
+        zap.connect(zapGain)
+        zapGain.connect(this.sfxGainNode!)
+        
+        zap.start(now + delay)
+        zap.stop(now + delay + 0.08)
+      }
+    })
+  }
+
+  // ============================================
+  // 🌌 ENHANCED AMBIENT - Deep space atmosphere 🌌
+  // ============================================
+
+  /**
+   * 🌌 Neural Static - Digital noise texture
+   */
+  private createNeuralStatic(): void {
+    if (!this.audioContext || !this.ambientGainNode) return
+    
+    const scheduleStatic = () => {
+      if (!this.isAmbientPlaying || !this.audioContext) return
+      
+      const ctx = this.audioContext
+      const now = ctx.currentTime
+      
+      if (Math.random() > 0.7) {
+        // Filtered noise burst
+        const noise = ctx.createBufferSource()
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate)
+        const noiseData = noiseBuffer.getChannelData(0)
+        
+        for (let i = 0; i < noiseData.length; i++) {
+          const env = Math.sin(Math.PI * i / noiseData.length)
+          noiseData[i] = (Math.random() * 2 - 1) * env * 0.3
+        }
+        
+        noise.buffer = noiseBuffer
+        
+        const noiseFilter = ctx.createBiquadFilter()
+        noiseFilter.type = 'bandpass'
+        noiseFilter.frequency.value = 1000 + Math.random() * 2000
+        noiseFilter.Q.value = 10
+        
+        const noiseGain = ctx.createGain()
+        noiseGain.gain.value = 0.04
+        
+        noise.connect(noiseFilter)
+        noiseFilter.connect(noiseGain)
+        noiseGain.connect(this.ambientGainNode!)
+        
+        noise.start(now)
+        noise.stop(now + 0.12)
+      }
+      
+      const nextDelay = 800 + Math.random() * 2000
+      const timeoutId = window.setTimeout(() => scheduleStatic(), nextDelay)
+      this.ambientTimeouts.push(timeoutId)
+    }
+    
+    scheduleStatic()
+  }
+
+  /**
+   * 🔮 Tension Drone - Low ominous undertone that intensifies
+   */
+  private createTensionDrone(): void {
+    if (!this.audioContext || !this.ambientGainNode) return
+    
+    // Very low sub-bass
+    const sub = this.audioContext.createOscillator()
+    const subGain = this.audioContext.createGain()
+    const subFilter = this.audioContext.createBiquadFilter()
+    
+    sub.frequency.value = 35
+    sub.type = 'sine'
+    
+    subFilter.type = 'lowpass'
+    subFilter.frequency.value = 60
+    
+    subGain.gain.value = 0.08
+    
+    // Slow LFO for subtle pulsing
+    const lfo = this.audioContext.createOscillator()
+    const lfoGain = this.audioContext.createGain()
+    lfo.frequency.value = 0.1
+    lfoGain.gain.value = 0.03
+    
+    lfo.connect(lfoGain)
+    lfoGain.connect(subGain.gain)
+    
+    sub.connect(subFilter)
+    subFilter.connect(subGain)
+    subGain.connect(this.ambientGainNode)
+    
+    sub.start()
+    lfo.start()
+    
+    this.ambientNodes.push(sub, lfo)
+  }
+
+  // ============================================
   // 🎵 AMBIENT SOUNDSCAPE - Streamlined Aphex Twin vibes
   // ============================================
 
@@ -1607,11 +2295,15 @@ export class AudioManager {
       
       this.isAmbientPlaying = true
       
-      // Core ambient layers - LESS IS MORE
+      // Core ambient layers - Aphex Twin / Autechre vibes
       this.createAmbientDrone()
       this.createEvolvingPads()
       this.createSubtleGlitches()
       this.createRhythmicPulse()
+      
+      // Enhanced layers for deeper atmosphere
+      this.createNeuralStatic()
+      this.createTensionDrone()
     })
   }
 
@@ -1813,6 +2505,302 @@ export class AudioManager {
     // Clear all timeouts
     this.ambientTimeouts.forEach(id => window.clearTimeout(id))
     this.ambientTimeouts = []
+  }
+
+  // ============================================
+  // ⚡ FIZZER SOUNDS ⚡
+  // ============================================
+
+  playFizzerZapSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Quick electric zap - chaotic and snappy
+      const zap = ctx.createOscillator()
+      const zapGain = ctx.createGain()
+      const noise = ctx.createOscillator()
+      const noiseGain = ctx.createGain()
+      
+      // Main zap
+      zap.frequency.setValueAtTime(2000, now)
+      zap.frequency.exponentialRampToValueAtTime(400, now + 0.04)
+      zap.type = 'sawtooth'
+      
+      zapGain.gain.setValueAtTime(0, now)
+      zapGain.gain.linearRampToValueAtTime(0.2, now + 0.002)
+      zapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+      
+      // Crackling noise overlay
+      noise.frequency.setValueAtTime(1500 + Math.random() * 500, now)
+      noise.type = 'square'
+      
+      noiseGain.gain.setValueAtTime(0, now)
+      noiseGain.gain.linearRampToValueAtTime(0.1, now + 0.003)
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04)
+      
+      zap.connect(zapGain)
+      noise.connect(noiseGain)
+      zapGain.connect(this.sfxGainNode!)
+      noiseGain.connect(this.sfxGainNode!)
+      
+      zap.start(now)
+      noise.start(now)
+      zap.stop(now + 0.06)
+      noise.stop(now + 0.05)
+    })
+  }
+
+  playFizzerSpawnSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Rapid electric materialization
+      for (let i = 0; i < 3; i++) {
+        const spark = ctx.createOscillator()
+        const sparkGain = ctx.createGain()
+        const delay = i * 0.03
+        
+        spark.frequency.setValueAtTime(1800 + Math.random() * 400, now + delay)
+        spark.frequency.exponentialRampToValueAtTime(600, now + delay + 0.05)
+        spark.type = 'sawtooth'
+        
+        sparkGain.gain.setValueAtTime(0, now + delay)
+        sparkGain.gain.linearRampToValueAtTime(0.15, now + delay + 0.005)
+        sparkGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.06)
+        
+        spark.connect(sparkGain)
+        sparkGain.connect(this.sfxGainNode!)
+        
+        spark.start(now + delay)
+        spark.stop(now + delay + 0.07)
+      }
+    })
+  }
+
+  private playFizzerDeathInternal(ctx: AudioContext, now: number): void {
+    // Electric pop with multiple sparks
+    for (let i = 0; i < 4; i++) {
+      const spark = ctx.createOscillator()
+      const sparkGain = ctx.createGain()
+      const delay = i * 0.02
+      
+      spark.frequency.setValueAtTime(2500 - i * 300, now + delay)
+      spark.frequency.exponentialRampToValueAtTime(200, now + delay + 0.08)
+      spark.type = 'sawtooth'
+      
+      sparkGain.gain.setValueAtTime(0, now + delay)
+      sparkGain.gain.linearRampToValueAtTime(0.25, now + delay + 0.005)
+      sparkGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.1)
+      
+      spark.connect(sparkGain)
+      sparkGain.connect(this.sfxGainNode!)
+      
+      spark.start(now + delay)
+      spark.stop(now + delay + 0.12)
+    }
+  }
+
+  // ============================================
+  // 🛸 UFO SOUNDS 🛸
+  // ============================================
+
+  playUFOChargeSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Rising warning tone - building tension
+      const charge = ctx.createOscillator()
+      const chargeGain = ctx.createGain()
+      const chargeFilter = ctx.createBiquadFilter()
+      
+      charge.frequency.setValueAtTime(100, now)
+      charge.frequency.exponentialRampToValueAtTime(800, now + 1.4)
+      charge.type = 'sawtooth'
+      
+      chargeFilter.type = 'lowpass'
+      chargeFilter.frequency.setValueAtTime(200, now)
+      chargeFilter.frequency.exponentialRampToValueAtTime(2000, now + 1.4)
+      chargeFilter.Q.value = 5
+      
+      chargeGain.gain.setValueAtTime(0, now)
+      chargeGain.gain.linearRampToValueAtTime(0.2, now + 0.2)
+      chargeGain.gain.linearRampToValueAtTime(0.3, now + 1.2)
+      chargeGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5)
+      
+      charge.connect(chargeFilter)
+      chargeFilter.connect(chargeGain)
+      chargeGain.connect(this.sfxGainNode!)
+      
+      charge.start(now)
+      charge.stop(now + 1.6)
+      
+      // Warning blips
+      for (let i = 0; i < 6; i++) {
+        const blip = ctx.createOscillator()
+        const blipGain = ctx.createGain()
+        const delay = i * 0.2
+        
+        blip.frequency.value = 1200 + i * 100
+        blip.type = 'sine'
+        
+        blipGain.gain.setValueAtTime(0, now + delay)
+        blipGain.gain.linearRampToValueAtTime(0.1, now + delay + 0.02)
+        blipGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.1)
+        
+        blip.connect(blipGain)
+        blipGain.connect(this.sfxGainNode!)
+        
+        blip.start(now + delay)
+        blip.stop(now + delay + 0.12)
+      }
+    })
+  }
+
+  playUFOLaserSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Devastating laser beam - sustained and powerful
+      const laser = ctx.createOscillator()
+      const laserGain = ctx.createGain()
+      const laserFilter = ctx.createBiquadFilter()
+      
+      laser.frequency.setValueAtTime(150, now)
+      laser.frequency.setValueAtTime(180, now + 0.1)
+      laser.frequency.setValueAtTime(150, now + 0.2)
+      laser.frequency.setValueAtTime(170, now + 0.4)
+      laser.type = 'sawtooth'
+      
+      laserFilter.type = 'bandpass'
+      laserFilter.frequency.value = 300
+      laserFilter.Q.value = 3
+      
+      laserGain.gain.setValueAtTime(0, now)
+      laserGain.gain.linearRampToValueAtTime(0.35, now + 0.02)
+      laserGain.gain.setValueAtTime(0.3, now + 0.6)
+      laserGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
+      
+      laser.connect(laserFilter)
+      laserFilter.connect(laserGain)
+      laserGain.connect(this.sfxGainNode!)
+      
+      laser.start(now)
+      laser.stop(now + 0.85)
+      
+      // High frequency sizzle overlay
+      const sizzle = ctx.createOscillator()
+      const sizzleGain = ctx.createGain()
+      
+      sizzle.frequency.setValueAtTime(4000, now)
+      sizzle.frequency.linearRampToValueAtTime(3000, now + 0.8)
+      sizzle.type = 'square'
+      
+      sizzleGain.gain.setValueAtTime(0, now)
+      sizzleGain.gain.linearRampToValueAtTime(0.08, now + 0.02)
+      sizzleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
+      
+      sizzle.connect(sizzleGain)
+      sizzleGain.connect(this.sfxGainNode!)
+      
+      sizzle.start(now)
+      sizzle.stop(now + 0.85)
+    })
+  }
+
+  playUFOHumSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Eerie hovering hum
+      const hum = ctx.createOscillator()
+      const humGain = ctx.createGain()
+      
+      hum.frequency.setValueAtTime(80, now)
+      hum.frequency.linearRampToValueAtTime(90, now + 1)
+      hum.frequency.linearRampToValueAtTime(75, now + 2)
+      hum.type = 'triangle'
+      
+      humGain.gain.setValueAtTime(0, now)
+      humGain.gain.linearRampToValueAtTime(0.1, now + 0.3)
+      humGain.gain.linearRampToValueAtTime(0.08, now + 1.5)
+      humGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5)
+      
+      hum.connect(humGain)
+      humGain.connect(this.sfxGainNode!)
+      
+      hum.start(now)
+      hum.stop(now + 2.6)
+    })
+  }
+
+  private playUFODeathInternal(ctx: AudioContext, now: number): void {
+    // Alien spacecraft explosion - metallic + eerie
+    const explosion = ctx.createOscillator()
+    const expGain = ctx.createGain()
+    const expFilter = ctx.createBiquadFilter()
+    
+    explosion.frequency.setValueAtTime(200, now)
+    explosion.frequency.exponentialRampToValueAtTime(40, now + 0.4)
+    explosion.type = 'sawtooth'
+    
+    expFilter.type = 'lowpass'
+    expFilter.frequency.setValueAtTime(800, now)
+    expFilter.frequency.exponentialRampToValueAtTime(100, now + 0.4)
+    
+    expGain.gain.setValueAtTime(0, now)
+    expGain.gain.linearRampToValueAtTime(0.4, now + 0.02)
+    expGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+    
+    explosion.connect(expFilter)
+    expFilter.connect(expGain)
+    expGain.connect(this.sfxGainNode!)
+    
+    explosion.start(now)
+    explosion.stop(now + 0.55)
+    
+    // Eerie descending whistle (alien tech failing)
+    const whistle = ctx.createOscillator()
+    const whistleGain = ctx.createGain()
+    
+    whistle.frequency.setValueAtTime(1500, now)
+    whistle.frequency.exponentialRampToValueAtTime(100, now + 0.5)
+    whistle.type = 'sine'
+    
+    whistleGain.gain.setValueAtTime(0, now)
+    whistleGain.gain.linearRampToValueAtTime(0.2, now + 0.05)
+    whistleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+    
+    whistle.connect(whistleGain)
+    whistleGain.connect(this.sfxGainNode!)
+    
+    whistle.start(now)
+    whistle.stop(now + 0.55)
+    
+    // Metallic debris
+    for (let i = 0; i < 4; i++) {
+      const debris = ctx.createOscillator()
+      const debrisGain = ctx.createGain()
+      const delay = 0.1 + i * 0.08
+      
+      debris.frequency.setValueAtTime(800 + Math.random() * 400, now + delay)
+      debris.frequency.exponentialRampToValueAtTime(100, now + delay + 0.15)
+      debris.type = 'triangle'
+      
+      debrisGain.gain.setValueAtTime(0, now + delay)
+      debrisGain.gain.linearRampToValueAtTime(0.15, now + delay + 0.01)
+      debrisGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.18)
+      
+      debris.connect(debrisGain)
+      debrisGain.connect(this.sfxGainNode!)
+      
+      debris.start(now + delay)
+      debris.stop(now + delay + 0.2)
+    }
   }
 
   // ============================================

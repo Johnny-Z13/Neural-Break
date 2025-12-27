@@ -9,7 +9,7 @@ import { GameTimer } from './GameTimer'
 import { AudioManager } from '../audio/AudioManager'
 import { GameStateType, GameStats, ScoreManager, KILL_POINTS } from './GameState'
 import { GameScreens } from '../ui/GameScreens'
-import { Enemy, DataMite, ScanDrone, ChaosWorm, VoidSphere, CrystalShardSwarm, Boss } from '../entities'
+import { Enemy, DataMite, ScanDrone, ChaosWorm, VoidSphere, CrystalShardSwarm, Fizzer, UFO, Boss } from '../entities'
 import { LevelManager } from './LevelManager'
 import { PowerUpManager } from './PowerUpManager'
 import { MedPackManager } from './MedPackManager'
@@ -96,6 +96,8 @@ export class Game {
       chaosWormsKilled: 0,
       voidSpheresKilled: 0,
       crystalSwarmsKilled: 0,
+      fizzersKilled: 0,
+      ufosKilled: 0,
       bossesKilled: 0,
       damageTaken: 0,
       totalXP: 0,
@@ -694,6 +696,9 @@ export class Game {
           }
           this.scoreMultiplier = 1
           this.combo = 0
+          
+          // ⚡ RESET FIZZER STREAK ⚡
+          this.enemyManager.resetFizzerStreak()
         }
       }
     }
@@ -714,7 +719,30 @@ export class Game {
           }
           this.scoreMultiplier = 1
           this.combo = 0
+          
+          // ⚡ RESET FIZZER STREAK ⚡
+          this.enemyManager.resetFizzerStreak()
         }
+      }
+    }
+    
+    // 🛸 CHECK UFO LASER HITS 🛸
+    if (!this.player.isInvulnerableNow()) {
+      const laserHit = this.enemyManager.checkUFOLaserHits(this.player)
+      if (laserHit.hit) {
+        this.player.takeDamage(laserHit.damage)
+        this.audioManager.playHitSound()
+        this.sceneManager.addScreenShake(0.6, 0.3) // Big shake for laser
+        
+        // 💀 RESET MULTIPLIER ON DAMAGE! 💀
+        if (this.scoreMultiplier >= 3) {
+          this.uiManager.showMultiplierLost()
+        }
+        this.scoreMultiplier = 1
+        this.combo = 0
+        
+        // ⚡ RESET FIZZER STREAK ⚡
+        this.enemyManager.resetFizzerStreak()
       }
     }
     
@@ -727,7 +755,13 @@ export class Game {
           projectile.destroy()
           this.weaponSystem.removeProjectile(projectile)
           
-          if (!enemy.isAlive()) {
+          // 📊 Use shouldTrackKill() instead of !isAlive() to handle death animations! 📊
+          // ChaosWorm and Boss temporarily set alive=true during death animation,
+          // so we need a separate flag to track if the kill has been counted.
+          if (enemy.shouldTrackKill()) {
+            // Mark as tracked FIRST to prevent double counting
+            enemy.markKillTracked()
+            
             // Track enemy kills by type
             this.trackEnemyKill(enemy)
             
@@ -747,6 +781,12 @@ export class Game {
                   currentTime - this.lastMultiplierShown > 0.3) {
                 this.uiManager.showMultiplierIncrease(this.scoreMultiplier)
                 this.lastMultiplierShown = currentTime
+              }
+              
+              // ⚡ SPAWN FIZZER at high multiplier! ⚡
+              // Spawns when player reaches x5, x8, x11 multiplier without taking hits
+              if ((this.scoreMultiplier === 5 || this.scoreMultiplier === 8 || this.scoreMultiplier === 11)) {
+                this.enemyManager.spawnFizzer()
               }
             }
             
@@ -886,8 +926,8 @@ export class Game {
           // Show notification with speed level
           this.uiManager.showSpeedUpCollected(newSpeedLevel)
           
-          // Audio feedback
-          this.audioManager.playPowerUpCollectSound()
+          // ⚡ Audio feedback - Speed up sound! ⚡
+          this.audioManager.playSpeedUpCollectSound()
           
           if (DEBUG_MODE) {
             console.log(`⚡ Speed-Up collected! Level: ${oldSpeedLevel} → ${newSpeedLevel}/10`)
@@ -896,7 +936,7 @@ export class Game {
           // Show "already at max speed" notification
           this.uiManager.showAlreadyAtMax('speed')
           // Still play a sound
-          this.audioManager.playPowerUpCollectSound()
+          this.audioManager.playSpeedUpCollectSound()
         }
       }
     }
@@ -916,8 +956,8 @@ export class Game {
         // Visual feedback
         this.sceneManager.addScreenShake(0.15, 0.1)
         
-        // Audio feedback
-        this.audioManager.playLevelUpSound() // Reuse level up sound for healing
+        // 💚 Audio feedback - Healing sound! 💚
+        this.audioManager.playMedPackCollectSound()
       }
     }
   }
@@ -936,6 +976,12 @@ export class Game {
       this.gameStats.voidSpheresKilled++
     } else if (enemy instanceof CrystalShardSwarm) {
       this.gameStats.crystalSwarmsKilled++
+    } else if (enemy instanceof Fizzer) {
+      this.gameStats.fizzersKilled++
+      if (DEBUG_MODE) console.log('⚡ FIZZER DESTROYED! ⚡')
+    } else if (enemy instanceof UFO) {
+      this.gameStats.ufosKilled++
+      if (DEBUG_MODE) console.log('🛸 UFO DESTROYED! 🛸')
     } else if (enemy instanceof Boss) {
       this.gameStats.bossesKilled++
       if (DEBUG_MODE) console.log('👹 BOSS DEFEATED! 👹')

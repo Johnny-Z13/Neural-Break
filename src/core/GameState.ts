@@ -14,6 +14,8 @@ export interface GameStats {
   chaosWormsKilled: number
   voidSpheresKilled: number
   crystalSwarmsKilled: number
+  fizzersKilled: number       // Chaos reward enemies
+  ufosKilled: number          // Late-game UFO craft
   bossesKilled: number
   damageTaken: number
   totalXP: number
@@ -38,6 +40,8 @@ export const KILL_POINTS = {
   ChaosWorm: 500,
   VoidSphere: 1000,
   CrystalShardSwarm: 750,
+  Fizzer: 200,      // Chaos reward enemy - hard to hit!
+  UFO: 1500,        // Late-game dangerous craft
   Boss: 5000
 } as const
 

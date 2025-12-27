@@ -55,7 +55,7 @@ export class Starfield {
 
   private initDemoEnemies(): void {
     this.demoEnemies = []
-    const enemyTypes: EnemyType[] = ['datamite', 'scandrone', 'chaosworm', 'voidsphere', 'crystal']
+    const enemyTypes: EnemyType[] = ['datamite', 'scandrone', 'chaosworm', 'voidsphere', 'crystal', 'fizzer', 'ufo']
     
     for (let i = 0; i < this.numEnemies; i++) {
       const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)]
@@ -191,6 +191,8 @@ export class Starfield {
       case 'chaosworm': color = `hsl(${Math.random() * 360}, 100%, 50%)`; break
       case 'voidsphere': color = '#8800FF'; break
       case 'crystal': color = '#00FFFF'; break
+      case 'fizzer': color = '#00FF88'; break
+      case 'ufo': color = '#88AAFF'; break
       default: color = '#FF4400'
     }
     
@@ -296,6 +298,12 @@ export class Starfield {
         break
       case 'crystal':
         this.drawCrystal(enemy)
+        break
+      case 'fizzer':
+        this.drawFizzer(enemy)
+        break
+      case 'ufo':
+        this.drawUFO(enemy)
         break
     }
     
@@ -480,6 +488,110 @@ export class Starfield {
       
       this.ctx.restore()
     }
+  }
+
+  private drawFizzer(enemy: DemoEnemy): void {
+    const size = enemy.size * 0.7 // Small!
+    const pulse = 0.7 + Math.sin(enemy.phase * 5) * 0.3
+    
+    // Electric glow
+    this.ctx.globalAlpha = 0.4
+    const gradient = this.ctx.createRadialGradient(enemy.x, enemy.y, 0, enemy.x, enemy.y, size * 2)
+    gradient.addColorStop(0, '#00FF88')
+    gradient.addColorStop(1, 'transparent')
+    this.ctx.fillStyle = gradient
+    this.ctx.beginPath()
+    this.ctx.arc(enemy.x, enemy.y, size * 2, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    // Core
+    this.ctx.globalAlpha = 0.95
+    this.ctx.fillStyle = '#FFFFFF'
+    this.ctx.beginPath()
+    this.ctx.arc(enemy.x, enemy.y, size * pulse * 0.5, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    // Outer shell
+    this.ctx.fillStyle = '#00FF88'
+    this.ctx.beginPath()
+    this.ctx.arc(enemy.x, enemy.y, size * pulse, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    // Electric spikes - random positions!
+    this.ctx.strokeStyle = '#00FFFF'
+    this.ctx.lineWidth = 2
+    this.ctx.globalAlpha = 0.8 + Math.sin(enemy.phase * 10) * 0.2
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 * i) / 6 + Math.sin(this.time * 20 + i) * 0.5
+      const length = size * (1 + Math.sin(this.time * 15 + i * 2) * 0.5)
+      this.ctx.beginPath()
+      this.ctx.moveTo(enemy.x, enemy.y)
+      this.ctx.lineTo(
+        enemy.x + Math.cos(angle) * length,
+        enemy.y + Math.sin(angle) * length
+      )
+      this.ctx.stroke()
+    }
+  }
+
+  private drawUFO(enemy: DemoEnemy): void {
+    const size = enemy.size * 1.2 // Bigger
+    
+    this.ctx.save()
+    this.ctx.translate(enemy.x, enemy.y)
+    this.ctx.rotate(enemy.rotation * 0.1) // Slight tilt
+    
+    // Jet trails
+    this.ctx.globalAlpha = 0.6
+    const gradient = this.ctx.createLinearGradient(0, 0, 0, size)
+    gradient.addColorStop(0, '#FF6600')
+    gradient.addColorStop(1, 'transparent')
+    this.ctx.fillStyle = gradient
+    this.ctx.fillRect(-size * 0.3 - 1, size * 0.2, 3, size * 0.5 + Math.sin(this.time * 10) * 2)
+    this.ctx.fillRect(size * 0.3 - 1, size * 0.2, 3, size * 0.5 + Math.sin(this.time * 10 + 1) * 2)
+    
+    // Saucer body
+    this.ctx.globalAlpha = 0.9
+    this.ctx.fillStyle = '#556677'
+    this.ctx.beginPath()
+    this.ctx.ellipse(0, 0, size, size * 0.3, 0, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    // Saucer edge highlight
+    this.ctx.strokeStyle = '#88AAFF'
+    this.ctx.lineWidth = 2
+    this.ctx.stroke()
+    
+    // Cockpit dome
+    this.ctx.fillStyle = '#88AAFF'
+    this.ctx.globalAlpha = 0.8
+    this.ctx.beginPath()
+    this.ctx.ellipse(0, -size * 0.15, size * 0.4, size * 0.25, 0, Math.PI, 0)
+    this.ctx.fill()
+    
+    // Running lights
+    const lightPhase = Math.floor(this.time * 6) % 3
+    for (let i = 0; i < 3; i++) {
+      const angle = (Math.PI * 2 * i) / 3 + Math.PI / 2
+      const lx = Math.cos(angle) * size * 0.7
+      const ly = Math.sin(angle) * size * 0.15
+      
+      const colors = ['#FF0000', '#00FF00', '#0088FF']
+      this.ctx.globalAlpha = i === lightPhase ? 1 : 0.3
+      this.ctx.fillStyle = colors[i]
+      this.ctx.beginPath()
+      this.ctx.arc(lx, ly, 2, 0, Math.PI * 2)
+      this.ctx.fill()
+    }
+    
+    // Bottom glow / laser charging
+    this.ctx.globalAlpha = 0.3 + Math.sin(this.time * 2) * 0.2
+    this.ctx.fillStyle = '#00FF88'
+    this.ctx.beginPath()
+    this.ctx.arc(0, size * 0.15, size * 0.3, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    this.ctx.restore()
   }
 
   private drawEffect(effect: BackgroundEffect): void {
@@ -743,7 +855,7 @@ interface Star {
   color: string
 }
 
-type EnemyType = 'datamite' | 'scandrone' | 'chaosworm' | 'voidsphere' | 'crystal'
+type EnemyType = 'datamite' | 'scandrone' | 'chaosworm' | 'voidsphere' | 'crystal' | 'fizzer' | 'ufo'
 
 interface WormSegment {
   x: number

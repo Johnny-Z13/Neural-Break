@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Enemy } from './Enemy'
 import { Player } from './Player'
 import { AudioManager } from '../audio/AudioManager'
+import { EnemyProjectile } from '../weapons/EnemyProjectile'
 
 /**
  * 🐛 CHAOS WORM - MASSIVE RAINBOW SERPENT 🐛
@@ -29,6 +30,18 @@ export class ChaosWorm extends Enemy {
   private deathTimer: number = 0
   private deathDuration: number = 2.0 // 2 second death sequence
   private explodedSegments: Set<number> = new Set()
+  
+  // 💥 DEATH BULLETS - RUN AWAY! 💥
+  private deathProjectiles: EnemyProjectile[] = []
+  private static readonly BULLETS_PER_SEGMENT = 6     // Bullets spawned per exploding segment
+  private static readonly DEATH_BULLET_SPEED = 8      // How fast death bullets travel
+  private static readonly DEATH_BULLET_DAMAGE = 15    // Damage per death bullet
+  
+  // 🔴 HIT FLASH STATE 🔴
+  private isFlashing: boolean = false
+  private flashTimer: number = 0
+  private flashDuration: number = 0.15 // 150ms flash
+  private originalColors: THREE.Color[] = []
 
   constructor(x: number, y: number) {
     super(x, y)
@@ -38,7 +51,8 @@ export class ChaosWorm extends Enemy {
     this.speed = 2.0 // Fast worm
     this.damage = 25 // Collision damage
     this.xpValue = 35 // Big reward
-    this.radius = 0.6 // Hitbox matches head segment size
+    this.radius = 2.5 // Larger hitbox to cover worm body
+    this.trailInterval = 0.1 // Slower trail for performance (parent default is 0.05)
   }
   
   setAudioManager(audioManager: AudioManager): void {
@@ -47,6 +61,16 @@ export class ChaosWorm extends Enemy {
   
   setSceneManager(sceneManager: any): void {
     this.sceneManager = sceneManager
+  }
+  
+  // 💥 GET DEATH PROJECTILES - For collision checking! 💥
+  getProjectiles(): EnemyProjectile[] {
+    return this.deathProjectiles
+  }
+  
+  // Check if worm is in death animation (still spawning projectiles)
+  isDyingAnimation(): boolean {
+    return this.isDying
   }
 
   initialize(): void {
@@ -218,6 +242,9 @@ export class ChaosWorm extends Enemy {
       }
     }
     
+    // 💥 UPDATE DEATH PROJECTILES 💥
+    this.updateDeathProjectiles(deltaTime)
+    
     // Remaining segments shake violently
     const time = Date.now() * 0.001
     for (let i = 0; i < this.segments.length; i++) {
@@ -242,6 +269,22 @@ export class ChaosWorm extends Enemy {
     if (progress >= 1.0) {
       this.finalDeathExplosion()
       this.alive = false
+    }
+  }
+  
+  // 💥 UPDATE DEATH PROJECTILES 💥
+  private updateDeathProjectiles(deltaTime: number): void {
+    for (let i = this.deathProjectiles.length - 1; i >= 0; i--) {
+      const projectile = this.deathProjectiles[i]
+      projectile.update(deltaTime)
+      
+      // Remove dead projectiles
+      if (!projectile.isAlive()) {
+        if (this.sceneManager) {
+          this.sceneManager.removeFromScene(projectile.getMesh())
+        }
+        this.deathProjectiles.splice(i, 1)
+      }
     }
   }
   
@@ -270,8 +313,49 @@ export class ChaosWorm extends Enemy {
       }
     }
     
+    // 💥 SPAWN DEATH BULLETS - GET AWAY FROM THE WORM! 💥
+    this.spawnDeathBullets(worldPos, index)
+    
     // Hide the segment
     segment.visible = false
+  }
+  
+  // 💥 DEATH BULLETS - Radial spray from each exploding segment! 💥
+  private spawnDeathBullets(position: THREE.Vector3, segmentIndex: number): void {
+    const bulletsToSpawn = ChaosWorm.BULLETS_PER_SEGMENT
+    const baseAngle = (segmentIndex / this.segmentCount) * Math.PI * 2 // Offset based on segment
+    
+    for (let i = 0; i < bulletsToSpawn; i++) {
+      // Spread bullets in a radial pattern with some randomness
+      const angle = baseAngle + (i / bulletsToSpawn) * Math.PI * 2 + (Math.random() - 0.5) * 0.3
+      const direction = new THREE.Vector3(
+        Math.cos(angle),
+        Math.sin(angle),
+        0
+      )
+      
+      // Vary speed slightly for organic feel
+      const speed = ChaosWorm.DEATH_BULLET_SPEED * (0.8 + Math.random() * 0.4)
+      
+      const projectile = new EnemyProjectile(
+        position.clone(),
+        direction,
+        speed,
+        ChaosWorm.DEATH_BULLET_DAMAGE
+      )
+      
+      // Connect effects system for trails
+      if (this.effectsSystem) {
+        projectile.setEffectsSystem(this.effectsSystem)
+      }
+      
+      this.deathProjectiles.push(projectile)
+      
+      // Add projectile mesh to scene
+      if (this.sceneManager) {
+        this.sceneManager.addToScene(projectile.getMesh())
+      }
+    }
   }
   
   private finalDeathExplosion(): void {
@@ -303,9 +387,73 @@ export class ChaosWorm extends Enemy {
       )
     }
     
+    // 💥💥💥 FINAL DEATH NOVA - MASSIVE BULLET BURST! 💥💥💥
+    this.spawnFinalDeathNova()
+    
     // Final sound
     if (this.audioManager) {
       this.audioManager.playChaosWormFinalDeathSound()
+    }
+  }
+  
+  // 💥💥💥 DEATH NOVA - Final burst of bullets in all directions! 💥💥💥
+  private spawnFinalDeathNova(): void {
+    const bulletCount = 16 // Big final burst!
+    
+    for (let i = 0; i < bulletCount; i++) {
+      const angle = (i / bulletCount) * Math.PI * 2
+      const direction = new THREE.Vector3(
+        Math.cos(angle),
+        Math.sin(angle),
+        0
+      )
+      
+      // Fast bullets for the final nova!
+      const speed = ChaosWorm.DEATH_BULLET_SPEED * 1.5
+      
+      const projectile = new EnemyProjectile(
+        this.position.clone(),
+        direction,
+        speed,
+        ChaosWorm.DEATH_BULLET_DAMAGE * 1.5 // Extra damage for final burst
+      )
+      
+      if (this.effectsSystem) {
+        projectile.setEffectsSystem(this.effectsSystem)
+      }
+      
+      this.deathProjectiles.push(projectile)
+      
+      if (this.sceneManager) {
+        this.sceneManager.addToScene(projectile.getMesh())
+      }
+    }
+  }
+
+  // 🔴 OVERRIDE TAKE DAMAGE - Flash red, don't scale container! 🔴
+  takeDamage(damage: number): void {
+    this.health -= damage
+    
+    // Flash all segments RED
+    if (!this.isFlashing) {
+      this.isFlashing = true
+      this.flashTimer = 0
+      
+      // Store original colors
+      this.originalColors = []
+      for (const segment of this.segments) {
+        const material = segment.material as THREE.MeshLambertMaterial
+        this.originalColors.push(material.color.clone())
+        
+        // Set to bright RED
+        material.color.setRGB(1, 0, 0)
+        material.emissive.setRGB(1, 0, 0)
+      }
+    }
+
+    if (this.health <= 0) {
+      this.alive = false
+      this.createDeathEffect()
     }
   }
 
@@ -329,6 +477,26 @@ export class ChaosWorm extends Enemy {
     // Skip normal visuals if dying
     if (this.isDying) return
     
+    // 🔴 Handle hit flash 🔴
+    if (this.isFlashing) {
+      this.flashTimer += deltaTime
+      if (this.flashTimer >= this.flashDuration) {
+        // Restore original colors
+        this.isFlashing = false
+        for (let i = 0; i < this.segments.length; i++) {
+          const segment = this.segments[i]
+          const material = segment.material as THREE.MeshLambertMaterial
+          if (this.originalColors[i]) {
+            material.color.copy(this.originalColors[i])
+            material.emissive.copy(this.originalColors[i]).multiplyScalar(0.4)
+          }
+        }
+      }
+    }
+    
+    // 🛡️ SAFEGUARD: Ensure container mesh never scales (prevents size growth bug)
+    this.mesh.scale.setScalar(1)
+    
     const time = Date.now() * 0.001
 
     // Update each segment with wave motion - compact spacing
@@ -348,12 +516,14 @@ export class ChaosWorm extends Enemy {
       segment.rotation.y = time * 3 + i * 0.3
       segment.rotation.z = time * 1.5 + i * 0.7
       
-      // Color shifting
-      const material = segment.material as THREE.MeshLambertMaterial
-      const hue = ((time * 0.5 + i * 0.1) % 1)
-      const color = new THREE.Color().setHSL(hue, 0.9, 0.6)
-      material.color.copy(color)
-      material.emissive.copy(color).multiplyScalar(0.4)
+      // Color shifting (skip if flashing red)
+      if (!this.isFlashing) {
+        const material = segment.material as THREE.MeshLambertMaterial
+        const hue = ((time * 0.5 + i * 0.1) % 1)
+        const color = new THREE.Color().setHSL(hue, 0.9, 0.6)
+        material.color.copy(color)
+        material.emissive.copy(color).multiplyScalar(0.4)
+      }
       
       // Scale pulsing - reduced to prevent growing too big
       const scale = 1 + Math.sin(time * 4 + i * 0.5) * 0.1

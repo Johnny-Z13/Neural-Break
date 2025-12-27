@@ -8,8 +8,9 @@ import { ENEMY_CONFIG } from '../config'
 /**
  * Base class for managing pickup entities (PowerUps, MedPacks, SpeedUps)
  * Eliminates code duplication across pickup managers
+ * 🧲 Now with magnetism support - pickups get sucked towards player!
  */
-export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive(): boolean, update(deltaTime: number): void, setEffectsSystem(effectsSystem: EffectsSystem): void }> {
+export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive(): boolean, update(deltaTime: number, playerPosition?: THREE.Vector3): void, setEffectsSystem(effectsSystem: EffectsSystem): void }> {
   protected pickups: T[] = []
   protected sceneManager: SceneManager
   protected player: Player
@@ -66,10 +67,11 @@ export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive()
       }
     }
 
-    // Update all pickups
+    // Update all pickups with player position for magnetism
+    const playerPosition = this.player.getPosition()
     for (const pickup of this.pickups) {
       if (pickup.isAlive()) {
-        pickup.update(deltaTime)
+        pickup.update(deltaTime, playerPosition)
       }
     }
 

@@ -12,6 +12,13 @@ export class PowerUp {
   private trailTimer: number = 0
   private trailInterval: number = 0.1
   private letterMesh: THREE.Mesh | null = null
+  
+  // 🧲 MAGNETISM SYSTEM 🧲
+  private static readonly MAGNET_RADIUS = 4.0        // Distance at which magnetism kicks in
+  private static readonly MAGNET_STRENGTH = 12.0     // Acceleration towards player
+  private static readonly MAX_MAGNET_SPEED = 18.0    // Max speed when being pulled
+  private velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
+  private isMagnetized: boolean = false
 
   constructor(x: number, y: number) {
     this.position = new THREE.Vector3(x, y, 0)
@@ -127,12 +134,21 @@ export class PowerUp {
     this.letterMesh = verticalBar // Reference for animation
   }
 
-  update(deltaTime: number): void {
+  update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     if (!this.alive) return
+
+    // 🧲 APPLY MAGNETISM - Pull towards player! 🧲
+    if (playerPosition) {
+      this.applyMagnetism(playerPosition, deltaTime)
+    }
 
     // 💠 DRAMATIC PULSING ANIMATION 💠
     this.pulseTime += deltaTime
-    const pulse = 0.85 + Math.sin(this.pulseTime * 4) * 0.2 // Faster, more dramatic pulse
+    // More dramatic pulse when magnetized!
+    const basePulse = this.isMagnetized ? 0.95 : 0.85
+    const pulseAmount = this.isMagnetized ? 0.15 : 0.2
+    const pulseSpeed = this.isMagnetized ? 8 : 4
+    const pulse = basePulse + Math.sin(this.pulseTime * pulseSpeed) * pulseAmount
     this.mesh.scale.setScalar(pulse)
 
     // Gentle rotation animation
@@ -194,7 +210,9 @@ export class PowerUp {
     if (!this.effectsSystem) return
 
     this.trailTimer += deltaTime
-    if (this.trailTimer >= this.trailInterval) {
+    // Faster trail when magnetized!
+    const interval = this.isMagnetized ? this.trailInterval * 0.5 : this.trailInterval
+    if (this.trailTimer >= interval) {
       // Create sparkle particles - CYAN color
       const sparkleVelocity = new THREE.Vector3(
         (Math.random() - 0.5) * 0.5,
@@ -212,6 +230,37 @@ export class PowerUp {
       this.effectsSystem.createSparkle(this.position, sparkleVelocity, sparkleColor, 0.5)
       
       this.trailTimer = 0
+    }
+  }
+
+  // 🧲 MAGNETISM - Suck pickup towards player when close! 🧲
+  private applyMagnetism(playerPosition: THREE.Vector3, deltaTime: number): void {
+    const toPlayer = playerPosition.clone().sub(this.position)
+    const distance = toPlayer.length()
+    
+    if (distance < PowerUp.MAGNET_RADIUS && distance > 0.1) {
+      this.isMagnetized = true
+      
+      // Calculate attraction strength (stronger when closer)
+      const normalizedDistance = distance / PowerUp.MAGNET_RADIUS
+      const attractionStrength = PowerUp.MAGNET_STRENGTH * (1 - normalizedDistance * 0.5)
+      
+      // Apply acceleration towards player
+      const direction = toPlayer.normalize()
+      this.velocity.add(direction.multiplyScalar(attractionStrength * deltaTime))
+      
+      // Clamp velocity
+      if (this.velocity.length() > PowerUp.MAX_MAGNET_SPEED) {
+        this.velocity.normalize().multiplyScalar(PowerUp.MAX_MAGNET_SPEED)
+      }
+      
+      // Update position
+      this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
+      this.mesh.position.copy(this.position)
+    } else {
+      this.isMagnetized = false
+      // Slow down when not magnetized
+      this.velocity.multiplyScalar(0.9)
     }
   }
 

@@ -3,15 +3,16 @@ import { AudioManager } from '../../audio/AudioManager'
 import { StarfieldManager } from '../../graphics/StarfieldManager'
 
 /**
- * 80s ARCADE-STYLE LEADERBOARD SCREEN
- * Features starfield background, pixel aesthetics, scanlines
+ * NEURAL BREAK - Leaderboard Screen
+ * 80s Arcade / Cyberpunk Aesthetic
+ * Uses unified design system CSS variables
  */
 export class LeaderboardScreen {
   static async create(
     audioManager: AudioManager | null,
     onBack: () => void
   ): Promise<HTMLElement> {
-    // Ensure starfield is running (persists from start screen)
+    // Ensure starfield is running
     StarfieldManager.getInstance().start()
 
     const leaderboardScreen = document.createElement('div')
@@ -27,16 +28,18 @@ export class LeaderboardScreen {
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-family: 'Press Start 2P', 'Courier New', monospace;
+      font-family: var(--font-family, 'Press Start 2P', monospace);
       text-align: center;
       z-index: 1000;
       overflow: hidden;
       image-rendering: pixelated;
+      padding: var(--space-md, 1rem);
+      box-sizing: border-box;
     `
 
     leaderboardScreen.innerHTML = `
       <!-- CRT MONITOR OVERLAY -->
-      <div style="
+      <div class="crt-overlay" style="
         position: fixed;
         top: 0;
         left: 0;
@@ -44,12 +47,11 @@ export class LeaderboardScreen {
         height: 100%;
         pointer-events: none;
         z-index: 9999;
-        background: 
-          radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.4) 100%);
+        background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.4) 100%);
       "></div>
       
       <!-- SCANLINES OVERLAY -->
-      <div style="
+      <div class="scanlines" style="
         position: fixed;
         top: 0;
         left: 0;
@@ -66,17 +68,19 @@ export class LeaderboardScreen {
         );
       "></div>
       
-      <div style="position: relative; z-index: 1; width: 90%; max-width: 800px;">
+      <!-- MAIN CONTENT -->
+      <div class="leaderboard-content" style="position: relative; z-index: 1; width: 95%; max-width: 900px;">
+        
         <!-- TITLE -->
-        <h1 style="
-          font-size: 2.5rem;
-          margin-bottom: 1.5rem;
-          color: #FFFF00;
+        <h1 class="leaderboard-title" style="
+          font-size: clamp(1.5rem, 4vw, 2.5rem);
+          margin-bottom: var(--space-lg, 1.5rem);
+          color: var(--color-yellow, #FFFF00);
           text-shadow: 
-            4px 4px 0 #FF6600,
-            -2px -2px 0 #FF00FF,
-            0 0 30px #FFFF00;
-          letter-spacing: 0.15em;
+            4px 4px 0 var(--color-orange, #FF6600),
+            -2px -2px 0 var(--color-magenta, #FF00FF),
+            0 0 30px var(--color-yellow, #FFFF00);
+          letter-spacing: 0.1em;
           text-transform: uppercase;
           animation: titleFlicker 0.1s infinite;
         ">
@@ -89,46 +93,46 @@ export class LeaderboardScreen {
           height: 4px;
           background: linear-gradient(90deg, 
             transparent 0%, 
-            #FF00FF 20%, 
-            #00FFFF 40%, 
-            #FFFF00 60%, 
-            #FF00FF 80%, 
+            var(--color-magenta, #FF00FF) 20%, 
+            var(--color-cyan, #00FFFF) 40%, 
+            var(--color-yellow, #FFFF00) 60%, 
+            var(--color-magenta, #FF00FF) 80%, 
             transparent 100%);
-          margin-bottom: 1.5rem;
+          margin-bottom: var(--space-lg, 1.5rem);
           box-shadow: 0 0 15px currentColor;
         "></div>
         
         <!-- SCORES TABLE -->
-        <div id="leaderboardScoresList" style="
-          background: rgba(0, 0, 0, 0.85);
-          border: 4px solid #00FFFF;
-          padding: 1rem;
+        <div id="leaderboardScoresList" class="scores-container" style="
+          background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+          border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
+          padding: var(--space-md, 1rem);
           box-shadow: 
-            0 0 30px rgba(0, 255, 255, 0.4),
-            4px 4px 0 #006666,
+            0 0 30px var(--color-cyan-glow, rgba(0, 255, 255, 0.4)),
+            var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666),
             inset 0 0 20px rgba(0, 255, 255, 0.1);
-          min-height: 300px;
+          min-height: 250px;
           max-height: 55vh;
           overflow-y: auto;
         "></div>
         
         <!-- BACK BUTTON -->
-        <button id="backButton" style="
-          margin-top: 1.5rem;
-          background: #000000;
-          border: 4px solid #FF4444;
-          color: #FF4444;
-          font-family: 'Press Start 2P', 'Courier New', monospace;
-          font-size: 1rem;
+        <button id="backButton" class="arcade-button" style="
+          margin-top: var(--space-lg, 1.5rem);
+          background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+          border: var(--border-thick, 4px) solid var(--color-red, #FF4444);
+          color: var(--color-red, #FF4444);
+          font-family: inherit;
+          font-size: clamp(0.8rem, 2vw, 1rem);
           font-weight: bold;
-          padding: 0.8rem 2rem;
+          padding: var(--space-sm, 0.8rem) var(--space-lg, 2rem);
           cursor: pointer;
           text-transform: uppercase;
           letter-spacing: 0.1em;
-          text-shadow: 0 0 10px #FF4444;
+          text-shadow: 0 0 10px var(--color-red, #FF4444);
           box-shadow: 
-            0 0 20px rgba(255, 68, 68, 0.4),
-            4px 4px 0 #662222;
+            0 0 20px var(--color-red-glow, rgba(255, 68, 68, 0.4)),
+            var(--shadow-pixel, 4px 4px 0) var(--color-red-dark, #662222);
           transition: all 0.1s step-end;
         ">
           ◀ BACK TO MENU
@@ -138,39 +142,34 @@ export class LeaderboardScreen {
       <!-- INSERT COIN TEXT -->
       <div style="
         position: fixed;
-        bottom: 1rem;
+        bottom: var(--space-md, 1rem);
         left: 50%;
         transform: translateX(-50%);
-        color: #FFFF00;
-        font-size: 0.7rem;
-        text-shadow: 0 0 10px #FFFF00;
-        letter-spacing: 0.2em;
-        animation: coinBlink 0.8s step-end infinite;
+        color: var(--color-yellow, #FFFF00);
+        font-size: clamp(0.5rem, 1.2vw, 0.7rem);
+        text-shadow: 0 0 10px var(--color-yellow, #FFFF00);
+        letter-spacing: 0.15em;
+        animation: blink 0.8s step-end infinite;
         z-index: 1;
       ">
         ▲ TOP NEURAL HACKERS ▲
       </div>
     `
 
-    // Add 80s pixel-style animations
+    // Add styles
     const style = document.createElement('style')
-    style.id = 'leaderboard-pixel-styles'
+    style.id = 'leaderboard-styles'
     style.textContent = `
       @keyframes titleFlicker {
         0%, 90%, 100% { opacity: 1; }
         95% { opacity: 0.85; }
       }
       
-      @keyframes coinBlink {
-        0%, 50% { opacity: 1; }
-        51%, 100% { opacity: 0; }
-      }
-      
       #backButton:hover {
         background: #330000 !important;
         box-shadow: 
           0 0 30px rgba(255, 68, 68, 0.6),
-          4px 4px 0 #FF4444 !important;
+          4px 4px 0 var(--color-red, #FF4444) !important;
         transform: translate(-2px, -2px);
       }
       
@@ -178,7 +177,7 @@ export class LeaderboardScreen {
         transform: translate(2px, 2px);
         box-shadow: 
           0 0 15px rgba(255, 68, 68, 0.4),
-          0 0 0 #662222 !important;
+          0 0 0 var(--color-red-dark, #662222) !important;
       }
       
       #leaderboardScoresList::-webkit-scrollbar {
@@ -187,12 +186,12 @@ export class LeaderboardScreen {
       
       #leaderboardScoresList::-webkit-scrollbar-track {
         background: rgba(0, 0, 0, 0.5);
-        border: 2px solid #006666;
+        border: 2px solid var(--color-cyan-dark, #006666);
       }
       
       #leaderboardScoresList::-webkit-scrollbar-thumb {
-        background: #00FFFF;
-        border: 2px solid #006666;
+        background: var(--color-cyan, #00FFFF);
+        border: 2px solid var(--color-cyan-dark, #006666);
       }
       
       #leaderboardScoresList::-webkit-scrollbar-thumb:hover {
@@ -207,11 +206,22 @@ export class LeaderboardScreen {
         background: rgba(0, 255, 255, 0.15) !important;
         transform: translateX(4px);
       }
+      
+      @media (max-width: 600px) {
+        .score-header,
+        .score-row {
+          grid-template-columns: 40px 1fr 50px 80px 60px !important;
+          font-size: 0.5rem !important;
+        }
+      }
     `
     document.head.appendChild(style)
 
-    // Display high scores with 80s styling
-    await LeaderboardScreen.displayHighScores('leaderboardScoresList')
+    // Display high scores - pass the container element directly since it's not in DOM yet
+    const scoresContainer = leaderboardScreen.querySelector('#leaderboardScoresList') as HTMLElement
+    if (scoresContainer) {
+      await LeaderboardScreen.displayHighScoresInElement(scoresContainer)
+    }
 
     // Add back button event listener
     const backButton = leaderboardScreen.querySelector('#backButton') as HTMLButtonElement
@@ -220,7 +230,6 @@ export class LeaderboardScreen {
     })
     backButton.addEventListener('click', () => {
       if (audioManager) audioManager.playButtonPressSound()
-      // Cleanup styles but keep starfield running
       LeaderboardScreen.cleanup()
       onBack()
     })
@@ -228,13 +237,7 @@ export class LeaderboardScreen {
     return leaderboardScreen
   }
 
-  private static async displayHighScores(containerId: string): Promise<void> {
-    const container = document.getElementById(containerId)
-    if (!container) {
-      console.warn(`❌ High score container '${containerId}' not found!`)
-      return
-    }
-
+  private static async displayHighScoresInElement(container: HTMLElement): Promise<void> {
     try {
       const highScores = await ScoreManager.getHighScores()
       
@@ -242,12 +245,12 @@ export class LeaderboardScreen {
         container.innerHTML = `
           <div style="
             text-align: center;
-            padding: 3rem;
-            color: #00FFFF;
-            text-shadow: 0 0 10px #00FFFF;
+            padding: var(--space-xl, 3rem);
+            color: var(--color-cyan, #00FFFF);
+            text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
           ">
-            <div style="font-size: 1.2rem; margin-bottom: 1rem;">NO SCORES YET!</div>
-            <div style="font-size: 0.7rem; color: #FF00FF;">
+            <div style="font-size: clamp(0.9rem, 2vw, 1.2rem); margin-bottom: var(--space-md, 1rem);">NO SCORES YET!</div>
+            <div style="font-size: clamp(0.5rem, 1.2vw, 0.7rem); color: var(--color-magenta, #FF00FF);">
               BE THE FIRST NEURAL HACKER
             </div>
           </div>
@@ -255,18 +258,18 @@ export class LeaderboardScreen {
         return
       }
 
-      // 80s Arcade style header
+      // Header
       const header = `
-        <div style="
+        <div class="score-header" style="
           display: grid;
           grid-template-columns: 50px 1fr 60px 100px 80px;
-          gap: 0.5rem;
-          padding: 0.8rem 0.5rem;
-          border-bottom: 3px solid #FFFF00;
+          gap: var(--space-sm, 0.5rem);
+          padding: var(--space-sm, 0.8rem) var(--space-xs, 0.5rem);
+          border-bottom: 3px solid var(--color-yellow, #FFFF00);
           font-weight: bold;
-          color: #FFFF00;
-          font-size: 0.7rem;
-          text-shadow: 0 0 10px #FFFF00;
+          color: var(--color-yellow, #FFFF00);
+          font-size: clamp(0.5rem, 1.2vw, 0.7rem);
+          text-shadow: 0 0 10px var(--color-yellow, #FFFF00);
           background: rgba(255, 255, 0, 0.1);
         ">
           <span>RANK</span>
@@ -277,39 +280,38 @@ export class LeaderboardScreen {
         </div>
       `
 
-      // Generate score rows with 80s styling
+      // Generate score rows
       const rows = highScores.map((entry, index) => {
-        // Rank styling
         let rankColor = '#CCCCCC'
         let rankIcon = `${index + 1}`
         let rowBg = 'transparent'
         let borderLeft = '4px solid transparent'
         
         if (index === 0) {
-          rankColor = '#FFD700'
+          rankColor = 'var(--color-gold, #FFD700)'
           rankIcon = '1ST'
           rowBg = 'rgba(255, 215, 0, 0.1)'
-          borderLeft = '4px solid #FFD700'
+          borderLeft = '4px solid var(--color-gold, #FFD700)'
         } else if (index === 1) {
-          rankColor = '#C0C0C0'
+          rankColor = 'var(--color-silver, #C0C0C0)'
           rankIcon = '2ND'
-          rowBg = 'rgba(192, 192, 192, 0.1)'
-          borderLeft = '4px solid #C0C0C0'
+          rowBg = 'rgba(192, 192, 192, 0.08)'
+          borderLeft = '4px solid var(--color-silver, #C0C0C0)'
         } else if (index === 2) {
-          rankColor = '#CD7F32'
+          rankColor = 'var(--color-bronze, #CD7F32)'
           rankIcon = '3RD'
-          rowBg = 'rgba(205, 127, 50, 0.1)'
-          borderLeft = '4px solid #CD7F32'
+          rowBg = 'rgba(205, 127, 50, 0.08)'
+          borderLeft = '4px solid var(--color-bronze, #CD7F32)'
         }
 
         return `
           <div class="score-row" style="
             display: grid;
             grid-template-columns: 50px 1fr 60px 100px 80px;
-            gap: 0.5rem;
-            padding: 0.6rem 0.5rem;
+            gap: var(--space-sm, 0.5rem);
+            padding: var(--space-sm, 0.6rem) var(--space-xs, 0.5rem);
             border-bottom: 1px solid rgba(0, 255, 255, 0.2);
-            font-size: 0.65rem;
+            font-size: clamp(0.5rem, 1.2vw, 0.65rem);
             color: ${rankColor};
             text-shadow: 0 0 8px ${rankColor};
             background: ${rowBg};
@@ -318,10 +320,10 @@ export class LeaderboardScreen {
             <span style="font-weight: bold;">${rankIcon}</span>
             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${entry.name.toUpperCase()}</span>
             <span>${entry.level}</span>
-            <span style="font-weight: bold; color: #00FF00; text-shadow: 0 0 10px #00FF00;">
+            <span style="font-weight: bold; color: var(--color-green, #00FF00); text-shadow: 0 0 10px var(--color-green, #00FF00);">
               ${ScoreManager.formatScore(entry.score)}
             </span>
-            <span style="color: #00FFFF;">${ScoreManager.formatTime(entry.survivedTime)}</span>
+            <span style="color: var(--color-cyan, #00FFFF);">${ScoreManager.formatTime(entry.survivedTime)}</span>
           </div>
         `
       }).join('')
@@ -332,9 +334,9 @@ export class LeaderboardScreen {
       container.innerHTML = `
         <div style="
           text-align: center;
-          padding: 2rem;
-          color: #FF4444;
-          text-shadow: 0 0 10px #FF4444;
+          padding: var(--space-lg, 2rem);
+          color: var(--color-red, #FF4444);
+          text-shadow: 0 0 10px var(--color-red, #FF4444);
         ">
           ERROR LOADING SCORES
         </div>
@@ -343,8 +345,7 @@ export class LeaderboardScreen {
   }
 
   static cleanup(): void {
-    // Remove leaderboard styles
-    const styleEl = document.getElementById('leaderboard-pixel-styles')
+    const styleEl = document.getElementById('leaderboard-styles')
     if (styleEl) {
       styleEl.remove()
     }

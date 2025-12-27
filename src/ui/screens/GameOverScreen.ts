@@ -3,8 +3,10 @@ import { AudioManager } from '../../audio/AudioManager'
 import { StarfieldManager } from '../../graphics/StarfieldManager'
 
 /**
- * 80s ARCADE-STYLE GAME OVER SCREEN
- * Features starfield background, pixel aesthetics, scanlines
+ * NEURAL BREAK - Game Over Screen
+ * 80s Arcade / Cyberpunk Aesthetic
+ * Uses unified design system CSS variables
+ * Features enlarged, legible stats display
  */
 export class GameOverScreen {
   static async create(
@@ -31,16 +33,18 @@ export class GameOverScreen {
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-family: 'Press Start 2P', 'Courier New', monospace;
+      font-family: var(--font-family, 'Press Start 2P', monospace);
       text-align: center;
       z-index: 1000;
       overflow-y: auto;
       image-rendering: pixelated;
+      padding: var(--space-md, 1rem);
+      box-sizing: border-box;
     `
 
     gameOverScreen.innerHTML = `
       <!-- CRT MONITOR OVERLAY -->
-      <div style="
+      <div class="crt-overlay" style="
         position: fixed;
         top: 0;
         left: 0;
@@ -48,12 +52,11 @@ export class GameOverScreen {
         height: 100%;
         pointer-events: none;
         z-index: 9999;
-        background: 
-          radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.4) 100%);
+        background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.4) 100%);
       "></div>
       
       <!-- SCANLINES OVERLAY -->
-      <div style="
+      <div class="scanlines" style="
         position: fixed;
         top: 0;
         left: 0;
@@ -71,164 +74,202 @@ export class GameOverScreen {
       "></div>
       
       <!-- MAIN CONTENT -->
-      <div style="position: relative; z-index: 1; max-width: 700px; padding: 1rem;">
+      <div class="gameover-content" style="position: relative; z-index: 1; max-width: 900px; width: 100%;">
+        
         <!-- GAME OVER TITLE -->
-        <div style="animation: gameOverPulse 1s step-end infinite;">
+        <div class="title-section" style="animation: gameOverPulse 1s step-end infinite;">
           <h1 style="
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            color: #FF0000;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: var(--space-xs, 0.3rem);
+            color: var(--color-red, #FF0000);
             text-shadow: 
               4px 4px 0 #880000,
-              -2px -2px 0 #FF6600,
-              0 0 30px #FF0000;
-            letter-spacing: 0.1em;
+              -2px -2px 0 var(--color-orange, #FF6600),
+              0 0 40px var(--color-red, #FF0000);
+            letter-spacing: 0.15em;
             text-transform: uppercase;
           ">
             GAME OVER
           </h1>
           <p style="
-            font-size: 0.8rem;
-            margin-bottom: 1.5rem;
+            font-size: clamp(0.6rem, 1.5vw, 0.9rem);
+            margin-bottom: var(--space-md, 1rem);
             color: #FF4444;
-            text-shadow: 0 0 10px #FF4444;
+            text-shadow: 0 0 15px #FF4444;
+            letter-spacing: 0.2em;
           ">
             NEURAL LINK SEVERED
           </p>
         </div>
         
         ${isNewHighScore ? `
-          <div style="
-            color: #FFFF00;
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
+          <div class="new-highscore-banner" style="
+            color: var(--color-yellow, #FFFF00);
+            font-size: clamp(1rem, 2.5vw, 1.5rem);
+            margin-bottom: var(--space-lg, 1.5rem);
             animation: newHighScore 0.5s step-end infinite;
-            text-shadow: 0 0 20px #FFFF00, 4px 4px 0 #886600;
+            text-shadow: 0 0 30px var(--color-yellow, #FFFF00), 4px 4px 0 var(--color-yellow-dark, #886600);
+            letter-spacing: 0.1em;
           ">
             ★ NEW HIGH SCORE! ★
           </div>
         ` : ''}
         
-        <!-- SCORE BOX -->
-        <div style="
-          background: rgba(0, 0, 0, 0.85);
-          border: 4px solid ${isNewHighScore ? '#FFFF00' : '#00FFFF'};
-          padding: 1.5rem;
-          margin: 1rem 0;
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- SCORE BOX - ENLARGED & REDESIGNED -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div class="score-box" style="
+          background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.95)) 0%, rgba(10, 5, 20, 0.95) 100%);
+          border: var(--border-thick, 4px) solid ${isNewHighScore ? 'var(--color-yellow, #FFFF00)' : 'var(--color-cyan, #00FFFF)'};
+          padding: var(--space-lg, 2rem) var(--space-xl, 2.5rem);
+          margin: var(--space-md, 1rem) auto;
+          max-width: 750px;
           box-shadow: 
-            0 0 30px rgba(${isNewHighScore ? '255, 255, 0' : '0, 255, 255'}, 0.4),
-            4px 4px 0 ${isNewHighScore ? '#886600' : '#006666'};
+            0 0 40px ${isNewHighScore ? 'var(--color-yellow-glow, rgba(255, 255, 0, 0.5))' : 'var(--color-cyan-glow, rgba(0, 255, 255, 0.5))'},
+            inset 0 0 60px ${isNewHighScore ? 'rgba(255, 255, 0, 0.1)' : 'rgba(0, 255, 255, 0.1)'},
+            6px 6px 0 ${isNewHighScore ? 'var(--color-yellow-dark, #886600)' : 'var(--color-cyan-dark, #006666)'};
         ">
+          <!-- FINAL SCORE HEADER -->
           <h2 style="
-            color: #00FF00;
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-            text-shadow: 0 0 15px #00FF00;
+            color: var(--color-green, #00FF00);
+            margin-bottom: var(--space-sm, 0.8rem);
+            font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+            text-shadow: 0 0 20px var(--color-green, #00FF00), 3px 3px 0 var(--color-green-dark, #006600);
+            letter-spacing: 0.15em;
           ">
             FINAL SCORE
           </h2>
-          <div style="
-            font-size: 2rem;
-            color: #FFFF00;
-            text-shadow: 0 0 20px #FFFF00, 4px 4px 0 #886600;
-            margin-bottom: 1rem;
+          
+          <!-- BIG SCORE NUMBER -->
+          <div class="final-score-value" style="
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            color: var(--color-yellow, #FFFF00);
+            text-shadow: 
+              0 0 30px var(--color-yellow, #FFFF00), 
+              0 0 60px rgba(255, 255, 0, 0.5),
+              6px 6px 0 var(--color-yellow-dark, #886600);
+            margin-bottom: var(--space-lg, 1.5rem);
+            letter-spacing: 0.05em;
           ">
             ${ScoreManager.formatScore(finalScore)}
           </div>
           
-          <!-- STATS GRID -->
-          <div style="
+          <!-- ═══════════════════════════════════════════════════════════════ -->
+          <!-- STATS GRID - LARGER & MORE LEGIBLE -->
+          <!-- ═══════════════════════════════════════════════════════════════ -->
+          <div class="stats-grid" style="
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.8rem;
-            font-size: 0.6rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-lg, 1.5rem) clamp(1rem, 4vw, 3rem);
+            font-size: clamp(0.6rem, 1.4vw, 0.9rem);
             text-align: left;
-            color: #00FFFF;
+            padding: var(--space-md, 1.5rem);
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            margin-top: var(--space-md, 1rem);
           ">
-            <div>
-              <div>TIME: <span style="color: #FFFFFF;">${ScoreManager.formatTime(stats.survivedTime)}</span></div>
-              <div>LEVEL: <span style="color: #FFFFFF;">${stats.level}</span></div>
-              <div>XP: <span style="color: #FFFFFF;">${stats.totalXP.toLocaleString()}</span></div>
-              <div>DAMAGE: <span style="color: #FF4444;">${stats.damageTaken}</span></div>
+            <!-- LEFT COLUMN - General Stats -->
+            <div class="stats-column" style="display: flex; flex-direction: column; gap: var(--space-sm, 0.8rem);">
+              ${GameOverScreen.createStatRow('TIME', ScoreManager.formatTime(stats.survivedTime), 'var(--color-cyan, #00FFFF)', 'var(--color-text, #FFFFFF)')}
+              ${GameOverScreen.createStatRow('LEVEL', `${stats.level}`, 'var(--color-cyan, #00FFFF)', 'var(--color-text, #FFFFFF)')}
+              ${GameOverScreen.createStatRow('XP', stats.totalXP.toLocaleString(), 'var(--color-cyan, #00FFFF)', 'var(--color-text, #FFFFFF)')}
+              ${GameOverScreen.createStatRow('DAMAGE', `${stats.damageTaken}`, 'var(--color-red, #FF4444)', '#FF6666')}
+              ${GameOverScreen.createStatRow('MAX COMBO', `${stats.highestCombo}x`, 'var(--color-orange, #FFAA00)', '#FFCC00')}
+              ${GameOverScreen.createStatRow('MAX MULTI', `${stats.highestMultiplier.toFixed(1)}x`, 'var(--color-magenta, #FF00FF)', '#FF66FF')}
             </div>
-            <div>
-              <div>KILLS: <span style="color: #FFFFFF;">${stats.enemiesKilled}</span></div>
-              <div style="color: #FF6633;">MITES: <span style="color: #FFFFFF;">${stats.dataMinersKilled}</span></div>
-              <div style="color: #FF8844;">DRONES: <span style="color: #FFFFFF;">${stats.scanDronesKilled}</span></div>
-              <div style="color: #FF66FF;">WORMS: <span style="color: #FFFFFF;">${stats.chaosWormsKilled}</span></div>
-              <div style="color: #AA66FF;">VOIDS: <span style="color: #FFFFFF;">${stats.voidSpheresKilled}</span></div>
-              <div style="color: #66FFFF;">CRYSTALS: <span style="color: #FFFFFF;">${stats.crystalSwarmsKilled}</span></div>
-              <div style="color: #FF0000;">BOSSES: <span style="color: #FFFFFF;">${stats.bossesKilled}</span></div>
+            
+            <!-- RIGHT COLUMN - Kill Stats -->
+            <div class="stats-column" style="display: flex; flex-direction: column; gap: var(--space-sm, 0.8rem);">
+              ${GameOverScreen.createStatRow('TOTAL KILLS', `${stats.enemiesKilled}`, 'var(--color-green, #00FF00)', 'var(--color-green, #00FF00)', true)}
+              ${GameOverScreen.createStatRow('DATA MITES', `${stats.dataMinersKilled}`, '#FF6633', '#FFAA66')}
+              ${GameOverScreen.createStatRow('SCAN DRONES', `${stats.scanDronesKilled}`, '#FF8844', '#FFBB77')}
+              ${GameOverScreen.createStatRow('CHAOS WORMS', `${stats.chaosWormsKilled}`, '#FF66FF', '#FF99FF')}
+              ${GameOverScreen.createStatRow('VOID SPHERES', `${stats.voidSpheresKilled}`, '#AA66FF', '#CC99FF')}
+              ${GameOverScreen.createStatRow('CRYSTALS', `${stats.crystalSwarmsKilled}`, '#66FFFF', '#99FFFF')}
+              ${GameOverScreen.createStatRow('FIZZERS', `${stats.fizzersKilled}`, '#00FF88', '#66FFAA')}
+              ${GameOverScreen.createStatRow('UFOS', `${stats.ufosKilled}`, '#88AAFF', '#AACCFF')}
+              ${GameOverScreen.createStatRow('BOSSES', `${stats.bossesKilled}`, 'var(--color-red, #FF0000)', '#FF4444')}
             </div>
           </div>
         </div>
         
         ${isNewHighScore ? `
-          <!-- NAME INPUT -->
-          <div style="margin: 1rem 0; display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="playerNameInput" placeholder="NAME" maxlength="10" style="
+          <!-- NAME INPUT - Larger and more visible -->
+          <div class="name-input-section" style="
+            margin: var(--space-lg, 1.5rem) 0; 
+            display: flex; 
+            gap: var(--space-md, 1rem); 
+            justify-content: center; 
+            align-items: center; 
+            flex-wrap: wrap;
+          ">
+            <input type="text" id="playerNameInput" placeholder="ENTER NAME" maxlength="10" style="
               background: #000000;
-              border: 3px solid #00FFFF;
-              color: #00FFFF;
-              font-family: 'Press Start 2P', 'Courier New', monospace;
-              font-size: 0.8rem;
-              padding: 0.6rem 1rem;
+              border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
+              color: var(--color-cyan, #00FFFF);
+              font-family: inherit;
+              font-size: clamp(0.8rem, 2vw, 1.1rem);
+              padding: var(--space-sm, 0.8rem) var(--space-md, 1.5rem);
               text-transform: uppercase;
               text-align: center;
-              width: 150px;
-              box-shadow: 0 0 15px rgba(0, 255, 255, 0.3), 3px 3px 0 #006666;
+              width: 200px;
+              box-shadow: 0 0 20px var(--color-cyan-glow, rgba(0, 255, 255, 0.4)), 4px 4px 0 var(--color-cyan-dark, #006666);
             ">
-            <button id="saveScoreButton" style="
+            <button id="saveScoreButton" class="arcade-button" style="
               background: #000000;
-              border: 3px solid #00FF00;
-              color: #00FF00;
-              font-family: 'Press Start 2P', 'Courier New', monospace;
-              font-size: 0.7rem;
-              padding: 0.6rem 1rem;
+              border: var(--border-thick, 4px) solid var(--color-green, #00FF00);
+              color: var(--color-green, #00FF00);
+              font-family: inherit;
+              font-size: clamp(0.8rem, 2vw, 1rem);
+              padding: var(--space-sm, 0.8rem) var(--space-md, 1.5rem);
               cursor: pointer;
               text-transform: uppercase;
-              text-shadow: 0 0 10px #00FF00;
-              box-shadow: 0 0 15px rgba(0, 255, 0, 0.3), 3px 3px 0 #006600;
+              text-shadow: 0 0 15px var(--color-green, #00FF00);
+              box-shadow: 0 0 20px var(--color-green-glow, rgba(0, 255, 0, 0.4)), 4px 4px 0 var(--color-green-dark, #006600);
               transition: all 0.1s step-end;
             ">SAVE</button>
           </div>
         ` : ''}
         
-        <!-- RESTART BUTTON -->
-        <div style="margin-top: 1rem;">
-          <button id="restartButton" style="
+        <!-- RESTART BUTTON - More prominent -->
+        <div style="margin-top: var(--space-lg, 1.5rem);">
+          <button id="restartButton" class="arcade-button arcade-button-primary" style="
             background: #000000;
-            border: 4px solid #FFFF00;
-            color: #FFFF00;
-            font-family: 'Press Start 2P', 'Courier New', monospace;
-            font-size: 1rem;
-            padding: 1rem 2rem;
+            border: 5px solid var(--color-yellow, #FFFF00);
+            color: var(--color-yellow, #FFFF00);
+            font-family: inherit;
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            padding: var(--space-md, 1.2rem) var(--space-xl, 2.5rem);
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            text-shadow: 0 0 15px #FFFF00;
+            letter-spacing: 0.15em;
+            text-shadow: 0 0 20px var(--color-yellow, #FFFF00);
             box-shadow: 
-              0 0 25px rgba(255, 255, 0, 0.4),
-              4px 4px 0 #886600;
+              0 0 35px var(--color-yellow-glow, rgba(255, 255, 0, 0.5)),
+              6px 6px 0 var(--color-yellow-dark, #886600);
             transition: all 0.1s step-end;
           ">
             ▶ PLAY AGAIN
           </button>
         </div>
         
-        <!-- HIGH SCORES TABLE -->
-        <div id="gameOverHighScores" style="
-          margin-top: 1.5rem;
-          padding: 1rem;
-          background: rgba(0, 0, 0, 0.8);
-          border: 3px solid #FF00FF;
-          box-shadow: 0 0 20px rgba(255, 0, 255, 0.3), 3px 3px 0 #660066;
+        <!-- HIGH SCORES TABLE - Improved visibility -->
+        <div id="gameOverHighScores" class="highscores-section" style="
+          margin-top: var(--space-xl, 2rem);
+          padding: var(--space-md, 1.5rem);
+          background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+          border: var(--border-thick, 4px) solid var(--color-magenta, #FF00FF);
+          box-shadow: 0 0 30px var(--color-magenta-glow, rgba(255, 0, 255, 0.4)), 4px 4px 0 var(--color-magenta-dark, #660066);
+          max-width: 550px;
+          margin-left: auto;
+          margin-right: auto;
         ">
           <h3 style="
-            margin-bottom: 0.8rem;
-            color: #FF00FF;
-            font-size: 0.8rem;
-            text-shadow: 0 0 10px #FF00FF;
+            margin-bottom: var(--space-md, 1rem);
+            color: var(--color-magenta, #FF00FF);
+            font-size: clamp(0.9rem, 2vw, 1.2rem);
+            text-shadow: 0 0 15px var(--color-magenta, #FF00FF);
+            letter-spacing: 0.1em;
           ">◆ TOP SCORES ◆</h3>
           <div id="gameOverHighScoresList"></div>
         </div>
@@ -237,58 +278,59 @@ export class GameOverScreen {
       <!-- CREDIT TEXT -->
       <div style="
         position: fixed;
-        bottom: 0.5rem;
+        bottom: var(--space-md, 1rem);
         left: 50%;
         transform: translateX(-50%);
         color: #666666;
-        font-size: 0.5rem;
+        font-size: clamp(0.5rem, 1vw, 0.7rem);
         z-index: 1;
+        letter-spacing: 0.1em;
       ">
         INSERT COIN TO CONTINUE
       </div>
     `
 
-    // Add 80s pixel-style animations
+    // Add styles
     const style = document.createElement('style')
-    style.id = 'gameover-pixel-styles'
+    style.id = 'gameover-styles'
     style.textContent = `
       @keyframes gameOverPulse {
         0%, 50% { opacity: 1; }
-        51%, 100% { opacity: 0.8; }
+        51%, 100% { opacity: 0.85; }
       }
       
       @keyframes newHighScore {
         0%, 50% { opacity: 1; transform: scale(1); }
-        51%, 100% { opacity: 0.8; transform: scale(1.02); }
+        51%, 100% { opacity: 0.9; transform: scale(1.03); }
       }
       
       #restartButton:hover {
         background: #333300 !important;
         box-shadow: 
-          0 0 40px rgba(255, 255, 0, 0.6),
-          4px 4px 0 #FFFF00 !important;
-        transform: translate(-2px, -2px);
+          0 0 50px rgba(255, 255, 0, 0.7),
+          6px 6px 0 var(--color-yellow, #FFFF00) !important;
+        transform: translate(-3px, -3px);
       }
       
       #restartButton:active {
-        transform: translate(2px, 2px);
+        transform: translate(3px, 3px);
         box-shadow: 
-          0 0 20px rgba(255, 255, 0, 0.4),
-          0 0 0 #886600 !important;
+          0 0 25px rgba(255, 255, 0, 0.4),
+          0 0 0 var(--color-yellow-dark, #886600) !important;
       }
       
       #saveScoreButton:hover {
         background: #003300 !important;
         box-shadow: 
-          0 0 20px rgba(0, 255, 0, 0.5),
-          3px 3px 0 #00FF00 !important;
-        transform: translate(-1px, -1px);
+          0 0 30px rgba(0, 255, 0, 0.6),
+          4px 4px 0 var(--color-green, #00FF00) !important;
+        transform: translate(-2px, -2px);
       }
       
       #playerNameInput:focus {
         outline: none;
-        border-color: #FFFF00;
-        box-shadow: 0 0 20px rgba(255, 255, 0, 0.5), 3px 3px 0 #886600;
+        border-color: var(--color-yellow, #FFFF00);
+        box-shadow: 0 0 30px rgba(255, 255, 0, 0.6), 4px 4px 0 var(--color-yellow-dark, #886600);
       }
       
       @keyframes fadeInOut {
@@ -296,6 +338,18 @@ export class GameOverScreen {
         20% { opacity: 1; transform: translateX(-50%) scale(1.1); }
         80% { opacity: 1; transform: translateX(-50%) scale(1); }
         100% { opacity: 0; transform: translateX(-50%) scale(0.8); }
+      }
+      
+      /* Responsive adjustments */
+      @media (max-width: 600px) {
+        .stats-grid {
+          grid-template-columns: 1fr !important;
+          gap: var(--space-md, 1rem) !important;
+        }
+        
+        .score-box {
+          padding: var(--space-md, 1rem) !important;
+        }
       }
     `
     document.head.appendChild(style)
@@ -337,7 +391,7 @@ export class GameOverScreen {
           if (saved) {
             saveButton.textContent = 'OK!'
             saveButton.style.background = '#003300'
-            saveButton.style.borderColor = '#00FF00'
+            saveButton.style.borderColor = 'var(--color-green, #00FF00)'
             
             await GameOverScreen.displayHighScores('gameOverHighScoresList')
             
@@ -348,13 +402,13 @@ export class GameOverScreen {
               top: 20%;
               left: 50%;
               transform: translateX(-50%);
-              font-size: 1.2rem;
-              color: #00FF00;
-              text-shadow: 0 0 20px #00FF00, 4px 4px 0 #006600;
+              font-size: clamp(1rem, 2.5vw, 1.5rem);
+              color: var(--color-green, #00FF00);
+              text-shadow: 0 0 25px var(--color-green, #00FF00), 4px 4px 0 var(--color-green-dark, #006600);
               pointer-events: none;
               z-index: 10001;
               animation: fadeInOut 2s ease-in-out;
-              font-family: 'Press Start 2P', monospace;
+              font-family: inherit;
             `
             gameOverScreen.appendChild(successMsg)
             
@@ -371,7 +425,7 @@ export class GameOverScreen {
           } else {
             saveButton.textContent = 'FAIL'
             saveButton.style.background = '#330000'
-            saveButton.style.borderColor = '#FF0000'
+            saveButton.style.borderColor = 'var(--color-red, #FF0000)'
             saveButton.disabled = false
             nameInput.disabled = false
             saveButton.style.opacity = '1'
@@ -386,7 +440,7 @@ export class GameOverScreen {
           console.error('❌ Error saving high score:', error)
           saveButton.textContent = 'ERR'
           saveButton.style.background = '#330000'
-          saveButton.style.borderColor = '#FF0000'
+          saveButton.style.borderColor = 'var(--color-red, #FF0000)'
           saveButton.disabled = false
           nameInput.disabled = false
           saveButton.style.opacity = '1'
@@ -422,6 +476,26 @@ export class GameOverScreen {
     return gameOverScreen
   }
 
+  private static createStatRow(label: string, value: string, labelColor: string, valueColor: string, highlight: boolean = false): string {
+    const borderStyle = highlight 
+      ? `border-bottom: 2px solid ${labelColor}; padding-bottom: var(--space-xs, 0.4rem);`
+      : `border-bottom: 1px solid rgba(0, 255, 255, 0.2); padding-bottom: var(--space-xs, 0.4rem);`
+    const fontWeight = highlight ? 'font-weight: bold;' : ''
+    
+    return `
+      <div style="
+        color: ${labelColor}; 
+        display: flex; 
+        justify-content: space-between; 
+        ${borderStyle}
+        ${fontWeight}
+      ">
+        <span>${label}:</span>
+        <span style="color: ${valueColor}; text-shadow: 0 0 10px ${valueColor};">${value}</span>
+      </div>
+    `
+  }
+
   private static async displayHighScores(containerId: string): Promise<void> {
     const container = document.getElementById(containerId)
     if (!container) {
@@ -436,9 +510,9 @@ export class GameOverScreen {
         container.innerHTML = `
           <div style="
             text-align: center;
-            padding: 1rem;
-            color: #FF00FF;
-            font-size: 0.6rem;
+            padding: var(--space-md, 1rem);
+            color: var(--color-magenta, #FF00FF);
+            font-size: clamp(0.6rem, 1.5vw, 0.9rem);
           ">
             NO SCORES YET
           </div>
@@ -451,35 +525,37 @@ export class GameOverScreen {
       
       container.innerHTML = topScores.map((entry, index) => {
         let rankColor = '#CCCCCC'
-        if (index === 0) rankColor = '#FFD700'
-        else if (index === 1) rankColor = '#C0C0C0'
-        else if (index === 2) rankColor = '#CD7F32'
+        let rankGlow = 'rgba(200, 200, 200, 0.3)'
+        if (index === 0) { rankColor = 'var(--color-gold, #FFD700)'; rankGlow = 'rgba(255, 215, 0, 0.5)' }
+        else if (index === 1) { rankColor = 'var(--color-silver, #C0C0C0)'; rankGlow = 'rgba(192, 192, 192, 0.4)' }
+        else if (index === 2) { rankColor = 'var(--color-bronze, #CD7F32)'; rankGlow = 'rgba(205, 127, 50, 0.4)' }
 
         return `
-          <div style="
+          <div class="highscore-row" style="
             display: grid;
-            grid-template-columns: 30px 1fr 80px;
-            gap: 0.5rem;
-            padding: 0.4rem;
-            font-size: 0.55rem;
+            grid-template-columns: 40px 1fr 100px;
+            gap: var(--space-sm, 0.8rem);
+            padding: var(--space-sm, 0.6rem) var(--space-sm, 0.8rem);
+            font-size: clamp(0.6rem, 1.4vw, 0.85rem);
             color: ${rankColor};
-            text-shadow: 0 0 5px ${rankColor};
-            border-bottom: 1px solid rgba(255, 0, 255, 0.2);
+            text-shadow: 0 0 8px ${rankGlow};
+            border-bottom: 1px solid rgba(255, 0, 255, 0.25);
+            align-items: center;
           ">
-            <span>${index + 1}.</span>
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${entry.name.toUpperCase()}</span>
-            <span style="text-align: right; color: #00FF00;">${ScoreManager.formatScore(entry.score)}</span>
+            <span style="font-weight: bold;">${index + 1}.</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left;">${entry.name.toUpperCase()}</span>
+            <span style="text-align: right; color: var(--color-green, #00FF00); text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);">${ScoreManager.formatScore(entry.score)}</span>
           </div>
         `
       }).join('')
     } catch (error) {
       console.error('❌ Error displaying high scores:', error)
-      container.innerHTML = '<div style="color: #FF4444; font-size: 0.6rem;">ERROR</div>'
+      container.innerHTML = '<div style="color: var(--color-red, #FF4444); font-size: clamp(0.6rem, 1.5vw, 0.8rem);">ERROR LOADING SCORES</div>'
     }
   }
 
   static cleanup(): void {
-    const styleEl = document.getElementById('gameover-pixel-styles')
+    const styleEl = document.getElementById('gameover-styles')
     if (styleEl) {
       styleEl.remove()
     }

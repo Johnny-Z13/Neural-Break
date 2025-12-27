@@ -74,10 +74,10 @@ export class AudioVisualReactiveSystem {
     // Blend with current target color
     this.targetBackgroundColor.add(colorShift)
     
-    // Clamp color values to valid range
-    this.targetBackgroundColor.r = Math.min(0.3, Math.max(0, this.targetBackgroundColor.r))
-    this.targetBackgroundColor.g = Math.min(0.3, Math.max(0, this.targetBackgroundColor.g))
-    this.targetBackgroundColor.b = Math.min(0.3, Math.max(0, this.targetBackgroundColor.b))
+    // Clamp color values to dark tones (max ~12% brightness to keep backgrounds dark)
+    this.targetBackgroundColor.r = Math.min(0.12, Math.max(0, this.targetBackgroundColor.r))
+    this.targetBackgroundColor.g = Math.min(0.12, Math.max(0, this.targetBackgroundColor.g))
+    this.targetBackgroundColor.b = Math.min(0.12, Math.max(0, this.targetBackgroundColor.b))
     
     // Boost gameplay intensity
     this.gameplayIntensity = Math.min(1.0, this.gameplayIntensity + this.intensityBoostPerKill * intensity)
