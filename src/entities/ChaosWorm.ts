@@ -35,10 +35,10 @@ export class ChaosWorm extends Enemy {
     // 🔥 MASSIVE HEALTH - NEEDS LOTS OF BULLETS! 🔥
     this.health = 150
     this.maxHealth = 150
-    this.speed = 1.5 // Slightly slower because bigger
-    this.damage = 35 // DEVASTATING collision damage!
+    this.speed = 2.0 // Fast worm
+    this.damage = 25 // Collision damage
     this.xpValue = 35 // Big reward
-    this.radius = 3.0 // 3x bigger hitbox (was 1.0)
+    this.radius = 0.6 // Hitbox matches head segment size
   }
   
   setAudioManager(audioManager: AudioManager): void {
@@ -56,9 +56,9 @@ export class ChaosWorm extends Enemy {
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
 
-    // 🎮 ASTEROIDS-STYLE SEGMENTED BODY - 3X BIGGER! 🎮
+    // 🎮 ASTEROIDS-STYLE SEGMENTED BODY 🎮
     for (let i = 0; i < this.segmentCount; i++) {
-      const segmentSize = 1.8 - (i * 0.12) // 3x bigger tapering segments!
+      const segmentSize = 0.45 - (i * 0.03) // Compact tapering segments
       const geometry = new THREE.OctahedronGeometry(segmentSize, 2)
       
       // Rainbow shifting colors based on segment position
@@ -99,8 +99,8 @@ export class ChaosWorm extends Enemy {
       aura.rotation.x = Math.PI / 2
       segment.add(aura)
       
-      // 🗡️ MASSIVE SPIKES - 3x bigger! 🗡️
-      const spikeGeometry = new THREE.ConeGeometry(0.225, 1.35, 6) // 3x
+      // 🗡️ SPIKES 🗡️
+      const spikeGeometry = new THREE.ConeGeometry(0.056, 0.34, 6) // Compact
       const spikeMaterial = new THREE.MeshBasicMaterial({
         color: 0xFFFFFF,
         transparent: true,
@@ -167,7 +167,7 @@ export class ChaosWorm extends Enemy {
     this.particleGeometry.setAttribute('color', new THREE.BufferAttribute(this.particleColors, 3))
 
     const particleMaterial = new THREE.PointsMaterial({
-      size: 0.6, // 3x bigger particles
+      size: 0.15, // Compact particles
       vertexColors: true,
       transparent: true,
       opacity: 0.85,
@@ -192,7 +192,7 @@ export class ChaosWorm extends Enemy {
     // Add sinusoidal movement for worm-like motion
     this.waveOffset += deltaTime * 4
     const perpendicular = new THREE.Vector3(-direction.y, direction.x, 0)
-    const waveAmount = Math.sin(this.waveOffset) * 3 // Bigger wave
+    const waveAmount = Math.sin(this.waveOffset) * 0.75 // Wave motion
     
     this.velocity = direction.multiplyScalar(this.speed)
       .add(perpendicular.multiplyScalar(waveAmount))
@@ -331,16 +331,16 @@ export class ChaosWorm extends Enemy {
     
     const time = Date.now() * 0.001
 
-    // Update each segment with wave motion - 3x BIGGER spacing
+    // Update each segment with wave motion - compact spacing
     for (let i = 0; i < this.segments.length; i++) {
       const segment = this.segments[i]
       const offset = i * 0.6
-      const wave = Math.sin(time * 3 + offset) * 1.2 // Bigger wave
+      const wave = Math.sin(time * 3 + offset) * 0.3 // Wave motion
       
       segment.position.set(
-        -i * 2.4 + wave, // 3x bigger spacing
-        Math.sin(time * 2 + offset) * 0.8,
-        Math.cos(time * 4 + offset) * 0.4
+        -i * 0.6 + wave, // Compact spacing
+        Math.sin(time * 2 + offset) * 0.2,
+        Math.cos(time * 4 + offset) * 0.1
       )
       
       // Crazy rotation
@@ -355,8 +355,8 @@ export class ChaosWorm extends Enemy {
       material.color.copy(color)
       material.emissive.copy(color).multiplyScalar(0.4)
       
-      // Scale pulsing
-      const scale = 1 + Math.sin(time * 4 + i * 0.5) * 0.25
+      // Scale pulsing - reduced to prevent growing too big
+      const scale = 1 + Math.sin(time * 4 + i * 0.5) * 0.1
       segment.scale.setScalar(scale)
       
       // Update spikes animation
