@@ -392,9 +392,10 @@ export class Player {
       }
     }
     
-    // Audio feedback for dash
+    // Audio feedback for dash - play both thrust and dash sounds!
     if (this.audioManager) {
-      this.audioManager.playDashSound()
+      this.audioManager.playThrustSound() // 🚀 Powerful jet engine burst!
+      this.audioManager.playDashSound()   // Swoosh overlay
     }
     
     // DRAMATIC visual effect for dash - Blue-white overdrive flash!
@@ -671,15 +672,39 @@ export class Player {
   takeDamage(damage: number): void {
     this.health = Math.max(0, this.health - damage)
     
-    // Visual feedback for taking damage - RED flash on metallic hull
+    // 🔴 DRAMATIC RED FLASH - Make it really obvious when hit! 🔴
     const material = this.mesh.material as THREE.MeshLambertMaterial
-    material.emissive.setHex(0xFF2200) // Red-orange damage flash
-    material.color.setHex(0xFF6666)    // Hull goes reddish
+    const originalScale = this.mesh.scale.clone()
+    
+    // BRIGHT RED FLASH!
+    material.emissive.setHex(0xFF0000) // Pure red glow
+    material.color.setHex(0xFF0000)    // Hull goes full red
+    material.opacity = 1.0             // Full opacity
+    
+    // Scale up for impact effect
+    this.mesh.scale.multiplyScalar(1.3)
+    
+    // Flash sequence: Red → White → Red → Normal
+    setTimeout(() => {
+      material.emissive.setHex(0xFFFFFF) // White flash
+      material.color.setHex(0xFFAAAA)    // Light red
+    }, 50)
+    
+    setTimeout(() => {
+      material.emissive.setHex(0xFF0000) // Back to red
+      material.color.setHex(0xFF4444)    
+      this.mesh.scale.copy(originalScale) // Reset scale
+    }, 100)
+    
+    setTimeout(() => {
+      material.emissive.setHex(0xFF6666) // Fading red
+      material.color.setHex(0xFF8888)    
+    }, 150)
     
     setTimeout(() => {
       material.emissive.setHex(0x334455) // Back to metallic glow
       material.color.setHex(0xB8C4D0)   // Back to silver
-    }, 100)
+    }, 200)
   }
 
   // 💚 HEAL METHOD - Restore health from med packs! 💚

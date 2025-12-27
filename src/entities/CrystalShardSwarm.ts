@@ -33,6 +33,12 @@ export class CrystalShardSwarm extends Enemy {
   // 💎 AMBIENT CRYSTAL HUM 💎
   private humTimer: number = 0
   private humInterval: number = 1.5
+  
+  // 🔴 HIT FLASH STATE 🔴
+  private isFlashing: boolean = false
+  private flashTimer: number = 0
+  private flashDuration: number = 0.15 // 150ms flash
+  private originalShardColors: THREE.Color[] = []
 
   constructor(x: number, y: number) {
     super(x, y)
@@ -44,6 +50,7 @@ export class CrystalShardSwarm extends Enemy {
     this.xpValue = 45 // Big reward
     this.radius = 4.5 // Hitbox matches orbit radius
     this.orbitSpeed = Math.random() * 1.5 + 0.8
+    this.trailInterval = 0.1 // Slower trail for performance (parent default is 0.05)
   }
   
   setSceneManager(sceneManager: any): void {
@@ -328,11 +335,81 @@ export class CrystalShardSwarm extends Enemy {
     }
   }
 
+  // 🔴 OVERRIDE TAKE DAMAGE - Flash red, don't scale container! 🔴
+  takeDamage(damage: number): void {
+    this.health -= damage
+    
+    // Flash all shards and core RED
+    if (!this.isFlashing) {
+      this.isFlashing = true
+      this.flashTimer = 0
+      
+      // Store original colors and set to RED
+      this.originalShardColors = []
+      for (const shard of this.shards) {
+        const material = shard.material as THREE.MeshLambertMaterial
+        this.originalShardColors.push(material.color.clone())
+        
+        // Set to bright RED
+        material.color.setRGB(1, 0, 0)
+        material.emissive.setRGB(1, 0, 0)
+      }
+      
+      // Flash core red too
+      const core = this.mesh.children[0] as THREE.Mesh
+      if (core) {
+        const coreMaterial = core.material as THREE.MeshBasicMaterial
+        coreMaterial.color.setRGB(1, 0, 0)
+      }
+      
+      // Flash lightning red
+      for (const lightning of this.lightningEffects) {
+        const lightningMaterial = lightning.material as THREE.LineBasicMaterial
+        lightningMaterial.color.setRGB(1, 0, 0)
+      }
+    }
+
+    if (this.health <= 0) {
+      this.alive = false
+      this.createDeathEffect()
+    }
+  }
+
   protected updateVisuals(deltaTime: number): void {
     const time = Date.now() * 0.001
     
     // 🛡️ SAFEGUARD: Ensure container mesh never scales (prevents size growth bug)
     this.mesh.scale.setScalar(1)
+    
+    // 🔴 Handle hit flash 🔴
+    if (this.isFlashing) {
+      this.flashTimer += deltaTime
+      if (this.flashTimer >= this.flashDuration) {
+        // Restore original colors
+        this.isFlashing = false
+        for (let i = 0; i < this.shards.length; i++) {
+          const shard = this.shards[i]
+          const material = shard.material as THREE.MeshLambertMaterial
+          if (this.originalShardColors[i]) {
+            material.color.copy(this.originalShardColors[i])
+            material.emissive.copy(this.originalShardColors[i]).multiplyScalar(0.5)
+          }
+        }
+        
+        // Restore core color
+        const core = this.mesh.children[0] as THREE.Mesh
+        if (core) {
+          const coreMaterial = core.material as THREE.MeshBasicMaterial
+          coreMaterial.color.setHex(0x00FFFF)
+        }
+        
+        // Restore lightning color (will be updated by animation anyway)
+        for (const lightning of this.lightningEffects) {
+          const lightningMaterial = lightning.material as THREE.LineBasicMaterial
+          lightningMaterial.color.setHex(0x00FFFF)
+        }
+      }
+    }
 
     // Orbit shards around center
     for (let i = 0; i < this.shards.length; i++) {
@@ -353,12 +430,14 @@ export class CrystalShardSwarm extends Enemy {
       shard.rotation.z = angle + Math.PI / 2 + time * 4
       shard.rotation.x = time * 2.5 + i
       
-      // Color shifting
-      const material = shard.material as THREE.MeshLambertMaterial
-      const hue = (time * 0.25 + i * 0.08) % 1
-      const color = new THREE.Color().setHSL(hue, 1.0, 0.7)
-      material.color.copy(color)
-      material.emissive.copy(color).multiplyScalar(0.5)
+      // Color shifting (skip if flashing red)
+      if (!this.isFlashing) {
+        const material = shard.material as THREE.MeshLambertMaterial
+        const hue = (time * 0.25 + i * 0.08) % 1
+        const color = new THREE.Color().setHSL(hue, 1.0, 0.7)
+        material.color.copy(color)
+        material.emissive.copy(color).multiplyScalar(0.5)
+      }
       
       // Scale pulsing - minimal to prevent growth
       const scale = 1 + Math.sin(time * 6 + i) * 0.1
@@ -393,9 +472,11 @@ export class CrystalShardSwarm extends Enemy {
       // 💫 FLICKERING LIGHTNING - More intense! 💫
       material.opacity = 0.5 + Math.sin(time * 25 + i * 2) * 0.5
       
-      // 🌈 COLOR SHIFTING - Rainbow effect! 🌈
-      const hue = (time * 0.6 + i * 0.08) % 1
-      material.color.setHSL(hue, 1.0, 0.7)
+      // 🌈 COLOR SHIFTING - Rainbow effect! (skip if flashing red) 🌈
+      if (!this.isFlashing) {
+        const hue = (time * 0.6 + i * 0.08) % 1
+        material.color.setHSL(hue, 1.0, 0.7)
+      }
     }
     
     // ✨ ANIMATE SHARD DETAILS ✨
@@ -426,13 +507,15 @@ export class CrystalShardSwarm extends Enemy {
       }
     }
     
-    // Animate core
+    // Animate core (skip color update if flashing red)
     const core = this.mesh.children[0] as THREE.Mesh
     if (core) {
       core.rotation.x = time * 2
       core.rotation.y = time * 1.5
       const coreMaterial = core.material as THREE.MeshBasicMaterial
-      coreMaterial.opacity = 0.4 + Math.sin(time * 8) * 0.3
+      if (!this.isFlashing) {
+        coreMaterial.opacity = 0.4 + Math.sin(time * 8) * 0.3
+      }
       // Minimal core scaling to prevent growth
       const coreScale = 1 + Math.sin(time * 6) * 0.05
       core.scale.setScalar(coreScale)

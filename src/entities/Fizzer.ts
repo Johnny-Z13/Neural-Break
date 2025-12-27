@@ -301,6 +301,19 @@ export class Fizzer extends Enemy {
     }
   }
 
+  // 🧹 CLEANUP PROJECTILES ON DEATH 🧹
+  destroy(): void {
+    // Remove all projectiles from scene
+    for (const projectile of this.projectiles) {
+      if (this.sceneManager) {
+        this.sceneManager.removeFromScene(projectile.getMesh())
+      }
+    }
+    this.projectiles = []
+    
+    super.destroy()
+  }
+
   protected updateVisuals(deltaTime: number): void {
     const time = Date.now() * 0.001
     

@@ -473,6 +473,19 @@ export class ChaosWorm extends Enemy {
     }
   }
 
+  // 🧹 CLEANUP DEATH PROJECTILES WHEN WORM IS REMOVED 🧹
+  destroy(): void {
+    // Remove all death projectiles from scene
+    for (const projectile of this.deathProjectiles) {
+      if (this.sceneManager) {
+        this.sceneManager.removeFromScene(projectile.getMesh())
+      }
+    }
+    this.deathProjectiles = []
+    
+    super.destroy()
+  }
+
   protected updateVisuals(deltaTime: number): void {
     // Skip normal visuals if dying
     if (this.isDying) return

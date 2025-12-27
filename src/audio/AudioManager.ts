@@ -634,6 +634,92 @@ export class AudioManager {
   }
 
   /**
+   * 🚀 Thrust Sound - Powerful jet engine burst
+   */
+  playThrustSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Deep rumbling engine noise
+      const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate)
+      const noiseData = noiseBuffer.getChannelData(0)
+      
+      for (let i = 0; i < noiseData.length; i++) {
+        // Create rumbling texture with layered frequencies
+        const t = i / ctx.sampleRate
+        const rumble = Math.sin(t * 80 * Math.PI * 2) * 0.3 +
+                       Math.sin(t * 120 * Math.PI * 2) * 0.2 +
+                       (Math.random() * 2 - 1) * 0.5
+        const env = Math.pow(Math.sin(Math.PI * i / noiseData.length), 0.5) // Punchy envelope
+        noiseData[i] = rumble * env
+      }
+      
+      const noise = ctx.createBufferSource()
+      noise.buffer = noiseBuffer
+      
+      // Low-pass filter for deep rumble
+      const lowpass = ctx.createBiquadFilter()
+      lowpass.type = 'lowpass'
+      lowpass.frequency.setValueAtTime(400, now)
+      lowpass.frequency.exponentialRampToValueAtTime(800, now + 0.1)
+      lowpass.frequency.exponentialRampToValueAtTime(300, now + 0.35)
+      lowpass.Q.value = 3
+      
+      // Gain envelope - punchy attack
+      const noiseGain = ctx.createGain()
+      noiseGain.gain.setValueAtTime(0, now)
+      noiseGain.gain.linearRampToValueAtTime(0.6, now + 0.02) // Fast attack
+      noiseGain.gain.setValueAtTime(0.5, now + 0.1)
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4)
+      
+      // Deep oscillator for engine tone
+      const osc1 = ctx.createOscillator()
+      osc1.type = 'sawtooth'
+      osc1.frequency.setValueAtTime(60, now)
+      osc1.frequency.exponentialRampToValueAtTime(100, now + 0.05)
+      osc1.frequency.exponentialRampToValueAtTime(50, now + 0.35)
+      
+      const osc1Gain = ctx.createGain()
+      osc1Gain.gain.setValueAtTime(0, now)
+      osc1Gain.gain.linearRampToValueAtTime(0.4, now + 0.02)
+      osc1Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
+      
+      // Higher harmonic for jet whistle
+      const osc2 = ctx.createOscillator()
+      osc2.type = 'sine'
+      osc2.frequency.setValueAtTime(300, now)
+      osc2.frequency.exponentialRampToValueAtTime(600, now + 0.08)
+      osc2.frequency.exponentialRampToValueAtTime(200, now + 0.3)
+      
+      const osc2Gain = ctx.createGain()
+      osc2Gain.gain.setValueAtTime(0, now)
+      osc2Gain.gain.linearRampToValueAtTime(0.15, now + 0.03)
+      osc2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
+      
+      // Connect noise path
+      noise.connect(lowpass)
+      lowpass.connect(noiseGain)
+      noiseGain.connect(this.sfxGainNode!)
+      
+      // Connect oscillator paths
+      osc1.connect(osc1Gain)
+      osc1Gain.connect(this.sfxGainNode!)
+      
+      osc2.connect(osc2Gain)
+      osc2Gain.connect(this.sfxGainNode!)
+      
+      // Start and stop
+      noise.start(now)
+      noise.stop(now + 0.4)
+      osc1.start(now)
+      osc1.stop(now + 0.35)
+      osc2.start(now)
+      osc2.stop(now + 0.3)
+    })
+  }
+
+  /**
    * 🔥 Combo Sound - Intensity scales with combo
    */
   playComboSound(combo: number): void {

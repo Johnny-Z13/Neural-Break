@@ -455,6 +455,8 @@ export class EnemyManager {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]
       if (!enemy.isAlive()) {
+        // 🧹 CLEANUP: Call destroy to clean up projectiles before removing! 🧹
+        enemy.destroy()
         this.sceneManager.removeFromScene(enemy.getMesh())
         this.enemies.splice(i, 1)
       }
@@ -478,8 +480,9 @@ export class EnemyManager {
   }
 
   cleanup(): void {
-    // Remove all enemies from scene and clear array
+    // 🧹 CLEANUP: Call destroy to clean up all projectiles before removing! 🧹
     for (const enemy of this.enemies) {
+      enemy.destroy()
       this.sceneManager.removeFromScene(enemy.getMesh())
     }
     this.enemies = []
