@@ -4,7 +4,7 @@ import { EffectsSystem } from '../graphics/EffectsSystem'
 export class Shield {
   private mesh: THREE.Mesh
   private position: THREE.Vector3
-  private radius: number = 0.4
+  private radius: number = 0.5 // Slightly larger collision radius for easier pickup
   private alive: boolean = true
   private effectsSystem: EffectsSystem | null = null
   private pulseTime: number = 0
@@ -162,11 +162,13 @@ export class Shield {
 
     // ✨ ANIMATE PARTICLES - Orbiting around pickup! ✨
     const children = this.mesh.children
-    for (let i = 4; i < children.length - 1; i++) { // Skip glow, rings, and letter group
+    // Particles start after: glow, outer ring, inner ring, letter group (4 elements)
+    const particleStartIndex = 4
+    for (let i = particleStartIndex; i < children.length; i++) {
       const child = children[i]
       if (child instanceof THREE.Mesh) {
-        const particleIndex = i - 4
-        const angle = ((particleIndex) / 8) * Math.PI * 2 + this.pulseTime * 2
+        const particleIndex = i - particleStartIndex
+        const angle = (particleIndex / 8) * Math.PI * 2 + this.pulseTime * 2
         const radius = 0.55 + Math.sin(this.pulseTime * 3 + particleIndex) * 0.1
         child.position.set(
           Math.cos(angle) * radius,

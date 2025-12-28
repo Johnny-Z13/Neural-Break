@@ -2748,6 +2748,54 @@ export class AudioManager {
     })
   }
 
+  playOverheatSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // High-pitched warning alarm
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      
+      osc.frequency.setValueAtTime(880, now)
+      osc.frequency.linearRampToValueAtTime(440, now + 0.3)
+      osc.type = 'square'
+      
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(0.3, now + 0.05)
+      gain.gain.linearRampToValueAtTime(0, now + 0.3)
+      
+      osc.connect(gain)
+      gain.connect(this.sfxGainNode!)
+      
+      osc.start(now)
+      osc.stop(now + 0.3)
+      
+      // Secondary power-down hiss
+      const noise = ctx.createOscillator() // Simple sawtooth fallback for hiss
+      const noiseGain = ctx.createGain()
+      const noiseFilter = ctx.createBiquadFilter()
+      
+      noise.type = 'sawtooth'
+      noise.frequency.setValueAtTime(400, now)
+      noise.frequency.exponentialRampToValueAtTime(40, now + 0.5)
+      
+      noiseFilter.type = 'lowpass'
+      noiseFilter.frequency.setValueAtTime(2000, now)
+      noiseFilter.frequency.exponentialRampToValueAtTime(100, now + 0.5)
+      
+      noiseGain.gain.setValueAtTime(0.2, now)
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+      
+      noise.connect(noiseFilter)
+      noiseFilter.connect(noiseGain)
+      noiseGain.connect(this.sfxGainNode!)
+      
+      noise.start(now)
+      noise.stop(now + 0.5)
+    })
+  }
+
   playUFOLaserSound(): void {
     this.queueSound(() => {
       const ctx = this.audioContext!

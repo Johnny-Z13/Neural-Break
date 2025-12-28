@@ -23,6 +23,9 @@ export class UIManager {
   private powerUpLevelElement: HTMLElement
   private weaponTypeElement: HTMLElement
   private weaponTypeValueElement: HTMLElement
+  private heatHUDElement: HTMLElement
+  private heatBarFill: HTMLElement
+  private heatBarContainer: HTMLElement
   private healthPulseAnimation: number | null = null
 
   initialize(): void {
@@ -42,12 +45,16 @@ export class UIManager {
     this.powerUpLevelElement = document.getElementById('powerUpLevel')!
     this.weaponTypeElement = document.getElementById('weaponType')!
     this.weaponTypeValueElement = document.getElementById('weaponTypeValue')!
+    this.heatHUDElement = document.getElementById('heatHUD')!
+    this.heatBarFill = document.getElementById('heatBarFill')!
+    this.heatBarContainer = document.getElementById('heatBarContainer')!
 
     if (!this.healthBarFill || !this.healthBarText || !this.healthBarContainer || 
         !this.timerElement || !this.gameLevelElement || !this.levelElement || 
         !this.xpElement || !this.xpNextElement || !this.scoreElement || 
         !this.comboElement || !this.comboCountElement || !this.powerUpLevelElement ||
-        !this.weaponTypeElement || !this.weaponTypeValueElement) {
+        !this.weaponTypeElement || !this.weaponTypeValueElement ||
+        !this.heatHUDElement || !this.heatBarFill || !this.heatBarContainer) {
       console.error('❌ Critical UI elements not found! Game may not function properly.')
       throw new Error('Required UI elements are missing from the DOM')
     }
@@ -250,6 +257,38 @@ export class UIManager {
       }
       this.weaponTypeValueElement.style.color = colors[weaponType.toLowerCase()] || '#FFAA00'
     }
+  }
+
+  // 🔥 HEAT BAR UPDATE 🔥
+  updateHeat(heat: number, isOverheated: boolean): void {
+    if (!this.heatBarFill || !this.heatHUDElement) return
+
+    // Update fill width
+    this.heatBarFill.style.width = `${heat}%`
+
+    // Update colors based on heat level
+    if (isOverheated) {
+      this.heatHUDElement.classList.add('overheated')
+    } else {
+      this.heatHUDElement.classList.remove('overheated')
+      
+      if (heat > 75) {
+        this.heatBarFill.style.background = '#FF6600' // Orange
+      } else if (heat > 40) {
+        this.heatBarFill.style.background = '#FFFF00' // Yellow
+      } else {
+        this.heatBarFill.style.background = '#00FF00' // Green
+      }
+    }
+  }
+
+  showOverheatedNotification(): void {
+    const notification = this.createNotification(
+      '🔥 WEAPONS OVERHEATED! 🔥',
+      'notification-damage' // Re-use damage style for red/warning
+    )
+    notification.style.color = '#FF0000'
+    this.showAndRemove(notification, 1500)
   }
   
   showWeaponTypeChangeNotification(weaponType: string): void {

@@ -27,6 +27,14 @@ export class WeaponSystem {
   private lastFiringDirection: THREE.Vector3 = new THREE.Vector3(0, 1, 0) // Default up (matches player initial facing)
   private effectsSystem: EffectsSystem | null = null
   
+  // 🔥 HEAT SYSTEM 🔥
+  private heat: number = 0 // 0-100
+  private isOverheated: boolean = false
+  private coolingRate: number = 25 // Heat points per second
+  private heatPerShot: number = 2.5 // Base heat per bullet fired
+  private overheatThreshold: number = 100
+  private heatChangeCallback: ((heat: number, isOverheated: boolean) => void) | null = null
+  
   // 🎯 WEAPON TYPE SYSTEM 🎯
   private currentWeaponType: WeaponType = WeaponType.BULLETS
   private weaponTypeChangeCallback: ((weaponType: WeaponType) => void) | null = null
@@ -41,8 +49,30 @@ export class WeaponSystem {
     // Update fire timer
     this.fireTimer += deltaTime
 
+    // 🔥 Update heat logic 🔥
+    const isFiringInput = inputManager.isFiring()
+    
+    if (isFiringInput && !this.isOverheated) {
+      // Heat is handled in fireInDirection for each shot
+    } else {
+      // Cool down when not firing or when overheated
+      const coolingMultiplier = this.isOverheated ? 1.2 : 1.0 // Cool slightly faster when overheated to get back in action
+      this.heat = Math.max(0, this.heat - this.coolingRate * coolingMultiplier * deltaTime)
+      
+      // Reset overheated state once cooled down completely
+      if (this.isOverheated && this.heat <= 0) {
+        this.isOverheated = false
+        console.log('❄️ Weapons cooled down!')
+      }
+    }
+
+    // Notify UI of heat changes
+    if (this.heatChangeCallback) {
+      this.heatChangeCallback(this.heat, this.isOverheated)
+    }
+
     // ASTEROIDS-style firing - fire in movement direction or last movement direction
-    if (inputManager.isFiring() && this.fireTimer >= this.fireRate) {
+    if (isFiringInput && this.fireTimer >= this.fireRate && !this.isOverheated) {
       this.fireInDirection(inputManager)
       this.fireTimer = 0
     }
@@ -146,6 +176,22 @@ export class WeaponSystem {
 
     // 🔥 Visual feedback for firing - NOW WITH POWER SCALING! 🔥
     this.createMuzzleFlash(playerPos, firingDirection, powerUpLevel)
+
+    // 🔥 Add heat! More bullets = more heat 🔥
+    const heatGain = this.heatPerShot * bulletCount
+    this.heat += heatGain
+    
+    if (this.heat >= this.overheatThreshold) {
+      this.heat = this.overheatThreshold
+      this.isOverheated = true
+      
+      // Audio feedback for overheating
+      if (this.audioManager) {
+        this.audioManager.playOverheatSound?.()
+      }
+      
+      console.log('🔥 WEAPONS OVERHEATED!')
+    }
   }
 
   private createMuzzleFlash(position: THREE.Vector3, direction: THREE.Vector3, powerLevel: number = 0): void {
@@ -260,6 +306,19 @@ export class WeaponSystem {
   // 🎯 WEAPON TYPE METHODS 🎯
   getCurrentWeaponType(): WeaponType {
     return this.currentWeaponType
+  }
+
+  // 🎯 HEAT SYSTEM METHODS 🎯
+  getHeat(): number {
+    return this.heat
+  }
+
+  getOverheated(): boolean {
+    return this.isOverheated
+  }
+
+  setHeatChangeCallback(callback: (heat: number, isOverheated: boolean) => void): void {
+    this.heatChangeCallback = callback
   }
   
   setWeaponType(weaponType: WeaponType): void {

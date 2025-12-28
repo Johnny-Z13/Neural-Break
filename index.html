@@ -298,6 +298,51 @@
         right: var(--space-md);
         text-align: center;
       }
+
+      /* ─────────────────────────────────────────────────────────────────
+         HEAT BAR - Above Weapon Type
+         ───────────────────────────────────────────────────────────────── */
+      #heatHUD {
+        bottom: calc(var(--space-md) + 65px);
+        right: var(--space-md);
+        min-width: 150px;
+      }
+
+      #heatHUD .hud-label {
+        font-size: var(--font-xs);
+        margin-bottom: var(--space-xs);
+        color: var(--color-orange);
+      }
+
+      #heatBarContainer {
+        width: clamp(120px, 15vw, 180px);
+        height: clamp(12px, 2vh, 18px);
+        border: var(--border-thin) solid var(--color-orange);
+        background: rgba(0, 0, 0, 0.7);
+        position: relative;
+        overflow: hidden;
+      }
+
+      #heatBarFill {
+        width: 0%;
+        height: 100%;
+        background: var(--color-green);
+        transition: width 0.1s ease, background 0.3s ease;
+      }
+
+      .overheated #heatBarContainer {
+        border-color: var(--color-red);
+        animation: healthPulse 0.3s ease-in-out infinite;
+      }
+
+      .overheated #heatBarFill {
+        background: var(--color-red) !important;
+      }
+
+      .overheated .hud-label {
+        color: var(--color-red) !important;
+        animation: blink 0.3s step-end infinite;
+      }
       
       #weaponType .hud-label {
         font-size: var(--font-xs);
@@ -616,6 +661,14 @@
           Game Level: <span id="gameLevel">1</span>/10 | Player Level: <span id="currentLevel">1</span> | XP: <span id="xp">0</span>/<span id="xpNext">15</span>
         </div>
         
+        <!-- HEAT BAR - Bottom Right (above weapon type) -->
+        <div id="heatHUD" class="hud-element">
+          <div class="hud-label">WEAPON HEAT</div>
+          <div id="heatBarContainer">
+            <div id="heatBarFill"></div>
+          </div>
+        </div>
+
         <!-- WEAPON TYPE - Bottom Right -->
         <div id="weaponType" class="hud-element">
           <div class="hud-label">WEAPON</div>

@@ -279,6 +279,22 @@ export class Game {
     this.weaponSystem.setWeaponTypeChangeCallback((weaponType: WeaponType) => {
       this.uiManager.updateWeaponType(weaponType)
     })
+
+    // 🔥 SET UP HEAT SYSTEM CALLBACK 🔥
+    let lastOverheatState = false
+    this.weaponSystem.setHeatChangeCallback((heat, isOverheated) => {
+      this.uiManager.updateHeat(heat, isOverheated)
+      
+      if (isOverheated) {
+        // Show notification only once when overheating begins
+        if (!lastOverheatState) {
+          this.uiManager.showOverheatedNotification()
+        }
+        // Multiplier decays faster while overheated
+        this.multiplierTimer = Math.max(0, this.multiplierTimer - 0.5)
+      }
+      lastOverheatState = isOverheated
+    })
     
     // Initialize weapon type display
     this.uiManager.updateWeaponType(this.weaponSystem.getCurrentWeaponType())
@@ -863,7 +879,11 @@ export class Game {
             
             // JUICY screen shake when enemy dies!
             this.sceneManager.addScreenShake(0.3, 0.1)
-            this.enemyManager.removeEnemy(enemy)
+            
+            // 🛡️ DO NOT call removeEnemy here! 🛡️
+            // The EnemyManager handles removal based on the alive flag.
+            // This allows enemies with death animations (ChaosWorm, Boss) 
+            // to play their animations before being removed from the scene.
           }
           break
         }

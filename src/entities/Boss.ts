@@ -7,7 +7,7 @@ import { AudioManager } from '../audio/AudioManager'
 
 export class Boss extends Enemy {
   private fireTimer: number = 0
-  private fireRate: number = 0.4 // Fire every 0.4 seconds - FASTER!
+  private fireRate: number = 0.6 // REBALANCED - Fire every 0.6 seconds (was 0.4)
   private projectileSpeed: number = 10 // Faster projectiles
   private projectileDamage: number = 15 // More damage
   private projectiles: EnemyProjectile[] = []
@@ -32,8 +32,8 @@ export class Boss extends Enemy {
 
   constructor(x: number, y: number) {
     super(x, y)
-    this.health = 300 // MASSIVE HP - HARD TO KILL!
-    this.maxHealth = 300
+    this.health = 250 // REBALANCED - Still high but more manageable
+    this.maxHealth = 250
     this.speed = 0.4 // Slow but menacing
     this.damage = 40 // High collision damage
     this.xpValue = 100 // BIG XP reward!
@@ -245,19 +245,26 @@ export class Boss extends Enemy {
     this.fireTimer += deltaTime
     this.phaseTimer += deltaTime
     
-    // Change attack phase every 4 seconds (faster!)
-    if (this.phaseTimer >= 4.0) {
-      this.attackPhase = (this.attackPhase + 1) % 3
+    // Change attack phase logic
+    const phaseDuration = this.attackPhase === 3 ? 2.0 : 4.0 // 2 seconds for pause, 4 for others
+    
+    if (this.phaseTimer >= phaseDuration) {
+      this.attackPhase = (this.attackPhase + 1) % 4 // 0=normal, 1=rapid, 2=spread, 3=pause
       this.phaseTimer = 0
       
       // 🔥 Play phase change sound! 🔥
       if (this.audioManager) {
         this.audioManager.playBossPhaseChangeSound()
       }
+      
+      if (this.attackPhase === 3 && this.effectsSystem) {
+        // Visual indicator for pause start
+        this.effectsSystem.addDistortionWave(this.position, 2.0)
+      }
     }
     
-    // Fire based on phase
-    if (this.fireTimer >= this.fireRate) {
+    // Fire based on phase (skip firing in phase 3)
+    if (this.attackPhase !== 3 && this.fireTimer >= this.fireRate) {
       this.fireAtPlayer(player)
       this.fireTimer = 0
     }
@@ -594,22 +601,29 @@ export class Boss extends Enemy {
     this.colorPhase += deltaTime * 0.5 // Color throb speed
     
     // 🌈 COLOR THROBBING - Rainbow pulse! 🌈
-    const throbHue = (Math.sin(this.colorPhase) * 0.5 + 0.5) * 0.15 // Red to orange range
+    const throbHue = this.attackPhase === 3 
+      ? (Math.sin(this.colorPhase * 2) * 0.1 + 0.5) // Cyan/Blue pulse during pause
+      : (Math.sin(this.colorPhase) * 0.5 + 0.5) * 0.15 // Red to orange range normally
+    
     const throbColor = new THREE.Color().setHSL(throbHue, 1.0, 0.4)
     const coreMaterial = this.coreMesh.material as THREE.MeshLambertMaterial
     coreMaterial.color.copy(throbColor)
-    coreMaterial.emissive.copy(throbColor).multiplyScalar(0.6)
+    coreMaterial.emissive.copy(throbColor).multiplyScalar(this.attackPhase === 3 ? 0.8 : 0.6)
     
     // 🌪️ ROTATE CORE - Menacing spin! 🌪️
-    this.coreMesh.rotation.x += deltaTime * 1.5
-    this.coreMesh.rotation.y += deltaTime * 2
-    this.coreMesh.rotation.z += deltaTime * 1
+    const spinSpeed = this.attackPhase === 3 ? 0.5 : 1.5 // Slower during pause
+    this.coreMesh.rotation.x += deltaTime * spinSpeed
+    this.coreMesh.rotation.y += deltaTime * (spinSpeed * 1.3)
+    this.coreMesh.rotation.z += deltaTime * (spinSpeed * 0.7)
     
     // 🔥 ANIMATE INNER CORE - Pulsing fire! 🔥
     const innerCore = this.coreMesh.children[1] as THREE.Mesh
     if (innerCore) {
       const innerMaterial = innerCore.material as THREE.MeshBasicMaterial
-      const fireHue = (Math.sin(time * 3) * 0.5 + 0.5) * 0.1 // Red to yellow
+      const fireHue = this.attackPhase === 3
+        ? (Math.sin(time * 5) * 0.1 + 0.5) // Cyan inner
+        : (Math.sin(time * 3) * 0.5 + 0.5) * 0.1 // Red to yellow
+      
       innerMaterial.color.setHSL(fireHue, 1.0, 0.5)
       innerMaterial.opacity = 0.4 + Math.sin(time * 5) * 0.3
       innerCore.scale.setScalar(1 + Math.sin(time * 4) * 0.2)
@@ -660,18 +674,25 @@ export class Boss extends Enemy {
       const tip = turret.children[0] as THREE.Mesh
       if (tip) {
         const tipMaterial = tip.material as THREE.MeshBasicMaterial
-        const tipHue = (time * 0.5 + i * 0.1) % 1 * 0.15
+        const tipHue = this.attackPhase === 3
+          ? (time * 0.2 + i * 0.1) % 1 * 0.1 + 0.5 // Dim blue during pause
+          : (time * 0.5 + i * 0.1) % 1 * 0.15 // Normal red/orange
+        
         tipMaterial.color.setHSL(tipHue, 1.0, 0.6)
-        tipMaterial.opacity = 0.8 + Math.sin(time * 8 + i) * 0.2
-        tip.scale.setScalar(1 + Math.sin(time * 10 + i) * 0.2)
+        tipMaterial.opacity = this.attackPhase === 3 
+          ? 0.3 + Math.sin(time * 3 + i) * 0.1 // Dimmer and slower pulse
+          : 0.8 + Math.sin(time * 8 + i) * 0.2
+        
+        const tipScale = this.attackPhase === 3 ? 0.8 : 1.0
+        tip.scale.setScalar(tipScale * (1 + Math.sin(time * (this.attackPhase === 3 ? 4 : 10) + i) * 0.2))
       }
       
       // Glow ring
       const glowRing = turret.children[1] as THREE.Mesh
       if (glowRing) {
         const glowMaterial = glowRing.material as THREE.MeshBasicMaterial
-        glowMaterial.opacity = 0.5 + Math.sin(time * 6 + i) * 0.3
-        glowRing.rotation.z = time * 3
+        glowMaterial.opacity = this.attackPhase === 3 ? 0.1 : 0.5 + Math.sin(time * 6 + i) * 0.3
+        glowRing.rotation.z = time * (this.attackPhase === 3 ? 1 : 3)
       }
     }
     
@@ -700,6 +721,31 @@ export class Boss extends Enemy {
           }
         }
       }
+    }
+  }
+
+  // 🔴 OVERRIDE TAKE DAMAGE - Don't set alive=false immediately! 🔴
+  takeDamage(damage: number): void {
+    this.health -= damage
+    
+    // JUICY visual feedback - flash red and scale up
+    const material = this.coreMesh.material as THREE.MeshLambertMaterial
+    const originalColor = material.color.clone()
+    const originalScale = this.coreMesh.scale.clone()
+    
+    material.color.setRGB(1, 0, 0)
+    material.emissive.setRGB(1, 0, 0)
+    this.coreMesh.scale.multiplyScalar(1.2)
+    
+    setTimeout(() => {
+      if (this.coreMesh) {
+        material.color.copy(originalColor)
+        this.coreMesh.scale.copy(originalScale)
+      }
+    }, 100)
+
+    if (this.health <= 0) {
+      this.createDeathEffect()
     }
   }
 

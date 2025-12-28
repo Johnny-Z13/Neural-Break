@@ -30,6 +30,7 @@ export class ChaosWorm extends Enemy {
   private deathTimer: number = 0
   private deathDuration: number = 2.0 // 2 second death sequence
   private explodedSegments: Set<number> = new Set()
+  private segmentVelocities: THREE.Vector3[] = []
   
   // 💥 DEATH BULLETS - RUN AWAY! 💥
   private deathProjectiles: EnemyProjectile[] = []
@@ -200,6 +201,9 @@ export class ChaosWorm extends Enemy {
 
     this.particleSystem = new THREE.Points(this.particleGeometry, particleMaterial)
     this.mesh.add(this.particleSystem)
+
+    // Initialize segment velocities for death animation
+    this.segmentVelocities = new Array(this.segmentCount).fill(null).map(() => new THREE.Vector3())
   }
 
   updateAI(deltaTime: number, player: Player): void {
@@ -245,12 +249,32 @@ export class ChaosWorm extends Enemy {
     // 💥 UPDATE DEATH PROJECTILES 💥
     this.updateDeathProjectiles(deltaTime)
     
-    // Remaining segments shake violently
+    // 🦴 ANIMATE BREAKING SEGMENTS 🦴
     const time = Date.now() * 0.001
     for (let i = 0; i < this.segments.length; i++) {
-      if (!this.explodedSegments.has(i)) {
-        const segment = this.segments[i]
-        const shake = (1 - progress) * 0.5 + 0.1
+      const segment = this.segments[i]
+      
+      if (this.explodedSegments.has(i)) {
+        // Exploded segments fly off
+        const velocity = this.segmentVelocities[i]
+        segment.position.add(velocity.clone().multiplyScalar(deltaTime))
+        segment.rotation.x += deltaTime * 5
+        segment.rotation.y += deltaTime * 7
+        
+        // Fade out
+        const material = segment.material as THREE.MeshLambertMaterial
+        material.opacity = Math.max(0, material.opacity - deltaTime * 0.8)
+        
+        // Children (spikes etc) also fade
+        segment.children.forEach(child => {
+          if (child instanceof THREE.Mesh) {
+            const childMat = child.material as THREE.MeshBasicMaterial
+            childMat.opacity = Math.max(0, childMat.opacity - deltaTime * 1.2)
+          }
+        })
+      } else {
+        // Remaining segments shake violently
+        const shake = (progress) * 0.8 + 0.1
         segment.position.x += (Math.random() - 0.5) * shake
         segment.position.y += (Math.random() - 0.5) * shake
         
@@ -316,8 +340,17 @@ export class ChaosWorm extends Enemy {
     // 💥 SPAWN DEATH BULLETS - GET AWAY FROM THE WORM! 💥
     this.spawnDeathBullets(worldPos, index)
     
-    // Hide the segment
-    segment.visible = false
+    // 🦴 SET BREAK VELOCITY - Segment flies off! 🦴
+    const angle = Math.random() * Math.PI * 2
+    const speed = 5 + Math.random() * 10
+    this.segmentVelocities[index].set(
+      Math.cos(angle) * speed,
+      Math.sin(angle) * speed,
+      (Math.random() - 0.5) * 5
+    )
+    
+    // DO NOT hide the segment immediately, let it fly off in updateDeathAnimation
+    // segment.visible = false
   }
   
   // 💥 DEATH BULLETS - Radial spray from each exploding segment! 💥
@@ -452,7 +485,6 @@ export class ChaosWorm extends Enemy {
     }
 
     if (this.health <= 0) {
-      this.alive = false
       this.createDeathEffect()
     }
   }

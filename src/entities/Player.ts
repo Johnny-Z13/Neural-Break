@@ -831,6 +831,8 @@ export class Player {
   
   // 🛡️ COLLECT SHIELD PICKUP 🛡️
   collectShield(): boolean {
+    // Always return true so the pickup is removed from the world
+    // but only activate if we don't already have one
     if (!this.hasShield) {
       this.activateShield()
       
@@ -843,10 +845,9 @@ export class Player {
         material.emissive.setHex(0x334455) // Back to metallic glow
         material.color.setHex(0xB8C4D0)   // Back to silver
       }, 300)
-      
-      return true // Successfully collected
     }
-    return false // Already has shield
+    
+    return true // Successfully collected (pickup will be removed)
   }
   
   // 🛡️ CHECK IF PLAYER HAS SHIELD 🛡️
@@ -984,11 +985,9 @@ export class Player {
         material.emissive.setHex(0x334455) // Back to metallic glow
         material.color.setHex(0xB8C4D0)   // Back to silver
       }, 300)
-      
-      return true // Successfully collected
-    } else {
-      return false // Already at max
     }
+    
+    return true // Always return true so pickup is removed from world
   }
 
   getPowerUpLevel(): number {
@@ -1027,11 +1026,9 @@ export class Player {
         material.emissive.setHex(0x334455) // Back to metallic glow
         material.color.setHex(0xB8C4D0)   // Back to silver
       }, 300)
-      
-      return true // Successfully collected
-    } else {
-      return false // Already at max
     }
+    
+    return true // Always return true so pickup is removed from world
   }
   
   private updateSpeed(): void {
