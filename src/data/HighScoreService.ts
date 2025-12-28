@@ -174,7 +174,7 @@ export class LocalStorageHighScoreService implements IHighScoreService {
       score: Math.floor(Math.max(0, entry.score)),
       survivedTime: Math.max(0, entry.survivedTime),
       level: Math.max(1, Math.floor(entry.level)),
-      date: entry.date || new Date().toLocaleDateString()
+      date: entry.date || '12/27/2025'
     }
   }
 

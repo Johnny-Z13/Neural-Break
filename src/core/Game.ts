@@ -14,6 +14,7 @@ import { LevelManager } from './LevelManager'
 import { PowerUpManager } from './PowerUpManager'
 import { MedPackManager } from './MedPackManager'
 import { SpeedUpManager } from './SpeedUpManager'
+import { ShieldManager } from './ShieldManager'
 import { DEBUG_MODE } from '../config'
 
 export class Game {
@@ -25,6 +26,7 @@ export class Game {
   private powerUpManager: PowerUpManager
   private medPackManager: MedPackManager
   private speedUpManager: SpeedUpManager
+  private shieldManager: ShieldManager
   private uiManager: UIManager
   private gameTimer: GameTimer
   private levelManager: LevelManager
@@ -80,6 +82,7 @@ export class Game {
     this.powerUpManager = new PowerUpManager()
     this.medPackManager = new MedPackManager()
     this.speedUpManager = new SpeedUpManager()
+    this.shieldManager = new ShieldManager()
     
     // Timer will be initialized per-level
     this.gameTimer = new GameTimer(30) // Placeholder, will be updated per level
@@ -305,9 +308,16 @@ export class Game {
     this.speedUpManager.setLevelManager(this.levelManager)
     this.speedUpManager.setEffectsSystem(effectsSystem)
     
-    // Reset player power-up level and speed level
+    // Reset shield manager
+    this.shieldManager = new ShieldManager()
+    this.shieldManager.initialize(this.sceneManager, this.player)
+    this.shieldManager.setLevelManager(this.levelManager)
+    this.shieldManager.setEffectsSystem(effectsSystem)
+    
+    // Reset player power-up level, speed level, and shield
     this.player.resetPowerUpLevel()
     this.player.resetSpeedUpLevel()
+    this.player.resetShield()
     
     // Initialize level-based timer
     this.initializeLevelTimer()
@@ -370,6 +380,11 @@ export class Game {
     // Clean up all speed-ups
     if (this.speedUpManager?.cleanup) {
       this.speedUpManager.cleanup()
+    }
+    
+    // Clean up all shields
+    if (this.shieldManager?.cleanup) {
+      this.shieldManager.cleanup()
     }
     
     // Clean up all projectiles using proper cleanup method
@@ -502,6 +517,8 @@ export class Game {
         this.medPackManager.resetForNewLevel()
         // Reset speed-up manager for new level
         this.speedUpManager.resetForNewLevel()
+        // Reset shield manager for new level
+        this.shieldManager.resetForNewLevel()
         this.initializeLevelTimer()
       } else if (this.levelManager.isGameComplete()) {
         // All levels completed - victory!
@@ -567,6 +584,11 @@ export class Game {
     // Update speed-ups
     if (this.speedUpManager) {
       this.speedUpManager.update(deltaTime)
+    }
+    
+    // Update shields
+    if (this.shieldManager) {
+      this.shieldManager.update(deltaTime)
     }
     
     // Update weapons
@@ -958,6 +980,35 @@ export class Game {
         
         // 💚 Audio feedback - Healing sound! 💚
         this.audioManager.playMedPackCollectSound()
+      }
+    }
+    
+    // 🛡️ Check player-shield collisions 🛡️
+    const shields = this.shieldManager.getShields()
+    for (const shield of shields) {
+      if (shield.isAlive() && this.player.isCollidingWith(shield)) {
+        // Collect shield (only if player doesn't already have one)
+        const wasCollected = this.player.collectShield()
+        
+        if (wasCollected) {
+          // Remove the pickup visually
+          shield.collect()
+          this.shieldManager.removeShield(shield)
+          
+          // Visual feedback
+          this.sceneManager.addScreenShake(0.2, 0.1)
+          
+          // 🛡️ Audio feedback - Shield activation sound! 🛡️
+          // Audio method can be added to AudioManager later
+          // this.audioManager.playShieldCollectSound()
+          
+          // Show notification (UI method can be added later)
+          // this.uiManager.showShieldCollected()
+          
+          if (DEBUG_MODE) {
+            console.log('🛡️ Shield collected! Force field active! 🛡️')
+          }
+        }
       }
     }
   }

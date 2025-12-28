@@ -104,15 +104,15 @@ export class LeaderboardScreen {
         
         <!-- SCORES TABLE -->
         <div id="leaderboardScoresList" class="scores-container" style="
-          background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+          background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.9)) 0%, rgba(0, 10, 20, 0.9) 100%);
           border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
-          padding: var(--space-md, 1rem);
+          padding: var(--space-sm, 0.8rem) var(--space-md, 1.2rem);
           box-shadow: 
-            0 0 30px var(--color-cyan-glow, rgba(0, 255, 255, 0.4)),
+            0 0 28px var(--color-cyan-glow, rgba(0, 255, 255, 0.35)),
             var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666),
-            inset 0 0 20px rgba(0, 255, 255, 0.1);
-          min-height: 250px;
-          max-height: 55vh;
+            inset 0 0 25px rgba(0, 255, 255, 0.08);
+          min-height: 280px;
+          max-height: 58vh;
           overflow-y: auto;
         "></div>
         
@@ -203,8 +203,10 @@ export class LeaderboardScreen {
       }
       
       .score-row:hover {
-        background: rgba(0, 255, 255, 0.15) !important;
-        transform: translateX(4px);
+        background: rgba(0, 255, 255, 0.12) !important;
+        transform: translateX(3px);
+        box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.2);
+        border-left-width: 5px !important;
       }
       
       @media (max-width: 600px) {
@@ -263,14 +265,15 @@ export class LeaderboardScreen {
         <div class="score-header" style="
           display: grid;
           grid-template-columns: 50px 1fr 60px 100px 80px;
-          gap: var(--space-sm, 0.5rem);
-          padding: var(--space-sm, 0.8rem) var(--space-xs, 0.5rem);
-          border-bottom: 3px solid var(--color-yellow, #FFFF00);
+          gap: var(--space-sm, 0.6rem);
+          padding: var(--space-sm, 0.9rem) var(--space-xs, 0.6rem);
+          border-bottom: 2.5px solid var(--color-yellow, #FFFF00);
           font-weight: bold;
           color: var(--color-yellow, #FFFF00);
-          font-size: clamp(0.5rem, 1.2vw, 0.7rem);
-          text-shadow: 0 0 10px var(--color-yellow, #FFFF00);
-          background: rgba(255, 255, 0, 0.1);
+          font-size: clamp(0.55rem, 1.3vw, 0.75rem);
+          text-shadow: 0 0 12px var(--color-yellow, #FFFF00), 1px 1px 0 var(--color-yellow-dark, #886600);
+          background: linear-gradient(180deg, rgba(255, 255, 0, 0.12) 0%, rgba(255, 255, 0, 0.06) 100%);
+          letter-spacing: 0.05em;
         ">
           <span>RANK</span>
           <span>NAME</span>
@@ -308,22 +311,23 @@ export class LeaderboardScreen {
           <div class="score-row" style="
             display: grid;
             grid-template-columns: 50px 1fr 60px 100px 80px;
-            gap: var(--space-sm, 0.5rem);
-            padding: var(--space-sm, 0.6rem) var(--space-xs, 0.5rem);
-            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
-            font-size: clamp(0.5rem, 1.2vw, 0.65rem);
+            gap: var(--space-sm, 0.6rem);
+            padding: var(--space-sm, 0.7rem) var(--space-xs, 0.6rem);
+            border-bottom: 1px solid rgba(0, 255, 255, 0.18);
+            font-size: clamp(0.55rem, 1.3vw, 0.7rem);
             color: ${rankColor};
-            text-shadow: 0 0 8px ${rankColor};
+            text-shadow: 0 0 10px ${rankColor}88, 0 0 4px ${rankColor}44;
             background: ${rowBg};
             border-left: ${borderLeft};
+            transition: all 0.15s ease;
           ">
-            <span style="font-weight: bold;">${rankIcon}</span>
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${entry.name.toUpperCase()}</span>
-            <span>${entry.level}</span>
-            <span style="font-weight: bold; color: var(--color-green, #00FF00); text-shadow: 0 0 10px var(--color-green, #00FF00);">
+            <span style="font-weight: bold; text-shadow: 0 0 8px ${rankColor};">${rankIcon}</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 0 6px ${rankColor}66;">${entry.name.toUpperCase()}</span>
+            <span style="text-shadow: 0 0 6px ${rankColor}66;">${entry.level}</span>
+            <span style="font-weight: bold; color: var(--color-green, #00FF00); text-shadow: 0 0 12px var(--color-green, #00FF00), 0 0 6px rgba(0, 255, 0, 0.5);">
               ${ScoreManager.formatScore(entry.score)}
             </span>
-            <span style="color: var(--color-cyan, #00FFFF);">${ScoreManager.formatTime(entry.survivedTime)}</span>
+            <span style="color: var(--color-cyan, #00FFFF); text-shadow: 0 0 8px var(--color-cyan, #00FFFF);">${ScoreManager.formatTime(entry.survivedTime)}</span>
           </div>
         `
       }).join('')

@@ -365,6 +365,9 @@ export class AudioManager {
         case 'UFO':
           this.playUFODeathInternal(ctx, now)
           break
+        case 'Boss':
+          this.playBossDeathInternal(ctx, now)
+          break
         default:
           this.playGenericDeathInternal(ctx, now)
       }
@@ -2887,6 +2890,115 @@ export class AudioManager {
       debris.start(now + delay)
       debris.stop(now + delay + 0.2)
     }
+  }
+
+  private playBossDeathInternal(ctx: AudioContext, now: number): void {
+    // 💀 EPIC BOSS DEATH - Massive explosion with dramatic finale! 💀
+    
+    // Main explosion - deep and powerful
+    const explosion = ctx.createOscillator()
+    const expGain = ctx.createGain()
+    const expFilter = ctx.createBiquadFilter()
+    
+    explosion.frequency.setValueAtTime(80, now)
+    explosion.frequency.exponentialRampToValueAtTime(20, now + 0.8)
+    explosion.type = 'sawtooth'
+    
+    expFilter.type = 'lowpass'
+    expFilter.frequency.setValueAtTime(400, now)
+    expFilter.frequency.exponentialRampToValueAtTime(50, now + 0.8)
+    
+    expGain.gain.setValueAtTime(0, now)
+    expGain.gain.linearRampToValueAtTime(0.6, now + 0.05)
+    expGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0)
+    
+    explosion.connect(expFilter)
+    expFilter.connect(expGain)
+    expGain.connect(this.sfxGainNode!)
+    
+    explosion.start(now)
+    explosion.stop(now + 1.05)
+    
+    // Secondary explosion burst
+    const burst = ctx.createOscillator()
+    const burstGain = ctx.createGain()
+    
+    burst.frequency.setValueAtTime(150, now + 0.3)
+    burst.frequency.exponentialRampToValueAtTime(40, now + 0.7)
+    burst.type = 'square'
+    
+    burstGain.gain.setValueAtTime(0, now + 0.3)
+    burstGain.gain.linearRampToValueAtTime(0.4, now + 0.32)
+    burstGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
+    
+    burst.connect(burstGain)
+    burstGain.connect(this.sfxGainNode!)
+    
+    burst.start(now + 0.3)
+    burst.stop(now + 0.85)
+    
+    // Dramatic descending tone (boss power failing)
+    const failTone = ctx.createOscillator()
+    const failGain = ctx.createGain()
+    const failFilter = ctx.createBiquadFilter()
+    
+    failTone.frequency.setValueAtTime(400, now)
+    failTone.frequency.exponentialRampToValueAtTime(60, now + 1.2)
+    failTone.type = 'triangle'
+    
+    failFilter.type = 'lowpass'
+    failFilter.frequency.setValueAtTime(600, now)
+    failFilter.frequency.exponentialRampToValueAtTime(100, now + 1.2)
+    
+    failGain.gain.setValueAtTime(0, now)
+    failGain.gain.linearRampToValueAtTime(0.3, now + 0.1)
+    failGain.gain.exponentialRampToValueAtTime(0.001, now + 1.3)
+    
+    failTone.connect(failFilter)
+    failFilter.connect(failGain)
+    failGain.connect(this.sfxGainNode!)
+    
+    failTone.start(now)
+    failTone.stop(now + 1.35)
+    
+    // Metallic debris clatter
+    for (let i = 0; i < 6; i++) {
+      const debris = ctx.createOscillator()
+      const debrisGain = ctx.createGain()
+      const delay = 0.2 + i * 0.12
+      
+      debris.frequency.setValueAtTime(600 + Math.random() * 300, now + delay)
+      debris.frequency.exponentialRampToValueAtTime(100 + Math.random() * 100, now + delay + 0.3)
+      debris.type = 'square'
+      
+      debrisGain.gain.setValueAtTime(0, now + delay)
+      debrisGain.gain.linearRampToValueAtTime(0.2, now + delay + 0.01)
+      debrisGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.35)
+      
+      debris.connect(debrisGain)
+      debrisGain.connect(this.sfxGainNode!)
+      
+      debris.start(now + delay)
+      debris.stop(now + delay + 0.4)
+    }
+    
+    // Final power-down whoosh
+    const whoosh = ctx.createOscillator()
+    const whooshGain = ctx.createGain()
+    
+    whoosh.frequency.setValueAtTime(200, now + 0.8)
+    whoosh.frequency.exponentialRampToValueAtTime(30, now + 1.5)
+    whoosh.type = 'sawtooth'
+    
+    whooshGain.gain.setValueAtTime(0, now + 0.8)
+    whooshGain.gain.linearRampToValueAtTime(0.25, now + 0.85)
+    whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 1.6)
+    
+    whoosh.connect(whooshGain)
+    whooshGain.connect(this.sfxGainNode!)
+    
+    whoosh.start(now + 0.8)
+    whoosh.stop(now + 1.65)
   }
 
   // ============================================

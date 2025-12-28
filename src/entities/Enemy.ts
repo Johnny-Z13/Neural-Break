@@ -92,26 +92,117 @@ export abstract class Enemy {
       
       switch (enemyType) {
         case 'DataMite':
+          // 🔥 DATA MITE - Quick orange pop with energy burst! 🔥
           deathColor = new THREE.Color(1, 0.3, 0)
-          this.effectsSystem.createExplosion(this.position, 0.8, deathColor)
+          this.effectsSystem.createExplosion(this.position, 1.2, deathColor)
+          // Add extra sparkles for small enemy
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * 2,
+              Math.sin(angle) * 2,
+              (Math.random() - 0.5) * 1
+            )
+            this.effectsSystem.createSparkle(this.position, velocity, deathColor, 0.4)
+          }
           break
         case 'ScanDrone':
+          // 📡 SCAN DRONE - Electric discharge with grid collapse! 📡
           deathColor = new THREE.Color().setHSL(0.1, 0.9, 0.7)
           this.effectsSystem.createElectricDeath(this.position, enemyType)
+          this.effectsSystem.createExplosion(this.position, 1.5, deathColor)
+          // Add cyan energy burst
+          for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * 3,
+              Math.sin(angle) * 3,
+              (Math.random() - 0.5) * 1.5
+            )
+            const cyanColor = new THREE.Color().setHSL(0.5, 1.0, 0.6)
+            this.effectsSystem.createSparkle(this.position, velocity, cyanColor, 0.5)
+          }
           break
         case 'ChaosWorm':
+          // 🐛 CHAOS WORM - Handled by custom death sequence 🐛
           deathColor = new THREE.Color().setHSL(Math.random(), 0.9, 0.7)
           this.effectsSystem.createExplosion(this.position, 2.0, deathColor)
           break
         case 'VoidSphere':
+          // 🌀 VOID SPHERE - Massive void collapse with distortion! 🌀
           deathColor = new THREE.Color(0.5, 0, 1)
-          this.effectsSystem.createExplosion(this.position, 2.5, deathColor)
-          this.effectsSystem.addDistortionWave(this.position, 1.5)
+          this.effectsSystem.createExplosion(this.position, 3.0, deathColor)
+          this.effectsSystem.addDistortionWave(this.position, 2.5)
+          // Add purple void particles
+          for (let i = 0; i < 20; i++) {
+            const angle = (i / 20) * Math.PI * 2
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * (2 + Math.random() * 3),
+              Math.sin(angle) * (2 + Math.random() * 3),
+              (Math.random() - 0.5) * 2
+            )
+            const purpleColor = new THREE.Color(0.7, 0, 1)
+            this.effectsSystem.createSparkle(this.position, velocity, purpleColor, 0.6)
+          }
           break
         case 'CrystalShardSwarm':
+          // 💎 CRYSTAL SWARM - Shattering crystals with lightning burst! 💎
           deathColor = new THREE.Color(0, 1, 1)
           this.effectsSystem.createElectricDeath(this.position, enemyType)
+          this.effectsSystem.createExplosion(this.position, 2.2, deathColor)
+          // Add rainbow crystal shards
+          for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * (3 + Math.random() * 2),
+              Math.sin(angle) * (3 + Math.random() * 2),
+              (Math.random() - 0.5) * 2
+            )
+            const hue = (i / 16) % 1
+            const crystalColor = new THREE.Color().setHSL(hue, 1.0, 0.7)
+            this.effectsSystem.createSparkle(this.position, velocity, crystalColor, 0.7)
+          }
+          break
+        case 'Fizzer':
+          // ⚡ FIZZER - Electric zap explosion with erratic sparks! ⚡
+          deathColor = new THREE.Color().setHSL(0.5, 1.0, 0.6)
+          this.effectsSystem.createElectricDeath(this.position, enemyType)
           this.effectsSystem.createExplosion(this.position, 1.8, deathColor)
+          // Add erratic electric sparks
+          for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2
+            const speed = 2 + Math.random() * 4
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * speed,
+              Math.sin(angle) * speed,
+              (Math.random() - 0.5) * 2
+            )
+            const electricColor = new THREE.Color().setHSL(0.5 + Math.random() * 0.1, 1.0, 0.7)
+            this.effectsSystem.createSparkle(this.position, velocity, electricColor, 0.5)
+          }
+          break
+        case 'UFO':
+          // 🛸 UFO - Alien craft explosion with tractor beam collapse! 🛸
+          deathColor = new THREE.Color().setHSL(0.6, 0.8, 0.5)
+          this.effectsSystem.createExplosion(this.position, 2.5, deathColor)
+          // Add cyan/blue alien energy particles
+          for (let i = 0; i < 18; i++) {
+            const angle = (i / 18) * Math.PI * 2
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * (2.5 + Math.random() * 2.5),
+              Math.sin(angle) * (2.5 + Math.random() * 2.5),
+              (Math.random() - 0.5) * 2
+            )
+            const alienColor = new THREE.Color().setHSL(0.55 + Math.random() * 0.1, 1.0, 0.6)
+            this.effectsSystem.createSparkle(this.position, velocity, alienColor, 0.6)
+          }
+          // Add tractor beam collapse effect
+          this.effectsSystem.addDistortionWave(this.position, 1.8)
+          break
+        case 'Boss':
+          // 💀 BOSS - Handled by custom death animation 💀
+          deathColor = new THREE.Color(1, 0, 0)
+          this.effectsSystem.createExplosion(this.position, 4.0, deathColor)
           break
         default:
           deathColor = new THREE.Color().setHSL(0.0, 0.8, 0.6)

@@ -103,7 +103,7 @@ export class ScoreManager {
       score: 12345,
       survivedTime: 180, // 3 minutes
       level: 5,
-      date: new Date().toLocaleDateString()
+      date: '12/27/2025'
     }
     const saved = await this.saveHighScore(testEntry)
     console.log('🧪 Test high score added:', testEntry, saved ? '✅' : '❌')

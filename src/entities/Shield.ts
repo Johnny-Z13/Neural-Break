@@ -1,14 +1,14 @@
 import * as THREE from 'three'
 import { EffectsSystem } from '../graphics/EffectsSystem'
 
-export class PowerUp {
+export class Shield {
   private mesh: THREE.Mesh
   private position: THREE.Vector3
   private radius: number = 0.4
   private alive: boolean = true
   private effectsSystem: EffectsSystem | null = null
   private pulseTime: number = 0
-  private rotationSpeed: number = 2.0
+  private rotationSpeed: number = 2.5
   private trailTimer: number = 0
   private trailInterval: number = 0.1
   private letterMesh: THREE.Mesh | null = null
@@ -26,7 +26,7 @@ export class PowerUp {
   }
 
   private createMesh(): void {
-    // 🔷 POWER-UP - Cyan/Blue theme with 'P' letter! 🔷
+    // 🛡️ SHIELD - GREEN theme with 'S' letter! 🛡️
     // Create base container
     const containerGeometry = new THREE.CircleGeometry(0.1, 8)
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
@@ -70,10 +70,10 @@ export class PowerUp {
     const innerRing = new THREE.Mesh(innerRingGeometry, innerRingMaterial)
     this.mesh.add(innerRing)
     
-    // ✨ 'P' LETTER - WEAPON POWER! ✨
-    this.createLetterP()
+    // ✨ 'S' LETTER - SHIELD! ✨
+    this.createLetterS()
     
-    // 💫 ENERGY PARTICLES - Floating cyan particles! 💫
+    // 💫 ENERGY PARTICLES - Floating green particles! 💫
     for (let i = 0; i < 8; i++) {
       const particleGeometry = new THREE.CircleGeometry(0.04, 6)
       const particleMaterial = new THREE.MeshBasicMaterial({
@@ -93,8 +93,8 @@ export class PowerUp {
     }
   }
 
-  private createLetterP(): void {
-    // Create 'P' shape using box geometries
+  private createLetterS(): void {
+    // Create 'S' shape using curved segments
     const letterColor = 0xFFFFFF // White letter for contrast
     const letterMaterial = new THREE.MeshBasicMaterial({
       color: letterColor,
@@ -106,32 +106,38 @@ export class PowerUp {
     // Create a group for the letter
     const letterGroup = new THREE.Group()
     
-    // Vertical bar of P
-    const verticalGeometry = new THREE.BoxGeometry(0.08, 0.4, 0.01)
-    const verticalBar = new THREE.Mesh(verticalGeometry, letterMaterial.clone())
-    verticalBar.position.set(-0.06, -0.02, 0.02)
-    letterGroup.add(verticalBar)
+    // Top curve of S
+    const topCurveGeometry = new THREE.BoxGeometry(0.2, 0.08, 0.01)
+    const topCurve = new THREE.Mesh(topCurveGeometry, letterMaterial.clone())
+    topCurve.position.set(0, 0.14, 0.02)
+    letterGroup.add(topCurve)
     
-    // Top horizontal bar of P
-    const topBarGeometry = new THREE.BoxGeometry(0.18, 0.08, 0.01)
-    const topBar = new THREE.Mesh(topBarGeometry, letterMaterial.clone())
-    topBar.position.set(0.03, 0.14, 0.02)
-    letterGroup.add(topBar)
+    // Top-left vertical
+    const topLeftGeometry = new THREE.BoxGeometry(0.08, 0.14, 0.01)
+    const topLeft = new THREE.Mesh(topLeftGeometry, letterMaterial.clone())
+    topLeft.position.set(-0.08, 0.07, 0.02)
+    letterGroup.add(topLeft)
     
-    // Middle horizontal bar of P
-    const midBarGeometry = new THREE.BoxGeometry(0.18, 0.08, 0.01)
-    const midBar = new THREE.Mesh(midBarGeometry, letterMaterial.clone())
-    midBar.position.set(0.03, 0.0, 0.02)
-    letterGroup.add(midBar)
+    // Middle bar of S
+    const middleBarGeometry = new THREE.BoxGeometry(0.2, 0.08, 0.01)
+    const middleBar = new THREE.Mesh(middleBarGeometry, letterMaterial.clone())
+    middleBar.position.set(0, 0.0, 0.02)
+    letterGroup.add(middleBar)
     
-    // Right curved part of P (simplified as vertical bar)
-    const rightBarGeometry = new THREE.BoxGeometry(0.08, 0.22, 0.01)
-    const rightBar = new THREE.Mesh(rightBarGeometry, letterMaterial.clone())
-    rightBar.position.set(0.12, 0.07, 0.02)
-    letterGroup.add(rightBar)
+    // Bottom-right vertical
+    const bottomRightGeometry = new THREE.BoxGeometry(0.08, 0.14, 0.01)
+    const bottomRight = new THREE.Mesh(bottomRightGeometry, letterMaterial.clone())
+    bottomRight.position.set(0.08, -0.07, 0.02)
+    letterGroup.add(bottomRight)
+    
+    // Bottom curve of S
+    const bottomCurveGeometry = new THREE.BoxGeometry(0.2, 0.08, 0.01)
+    const bottomCurve = new THREE.Mesh(bottomCurveGeometry, letterMaterial.clone())
+    bottomCurve.position.set(0, -0.14, 0.02)
+    letterGroup.add(bottomCurve)
     
     this.mesh.add(letterGroup)
-    this.letterMesh = verticalBar // Reference for animation
+    this.letterMesh = topCurve // Reference for animation
   }
 
   update(deltaTime: number, playerPosition?: THREE.Vector3): void {
@@ -142,7 +148,7 @@ export class PowerUp {
       this.applyMagnetism(playerPosition, deltaTime)
     }
 
-    // 💠 DRAMATIC PULSING ANIMATION 💠
+    // 💚 DRAMATIC PULSING ANIMATION 💚
     this.pulseTime += deltaTime
     // More dramatic pulse when magnetized!
     const basePulse = this.isMagnetized ? 0.95 : 0.85
@@ -213,14 +219,14 @@ export class PowerUp {
     // Faster trail when magnetized!
     const interval = this.isMagnetized ? this.trailInterval * 0.5 : this.trailInterval
     if (this.trailTimer >= interval) {
-      // Create sparkle particles - CYAN color
+      // Create sparkle particles - GREEN color
       const sparkleVelocity = new THREE.Vector3(
         (Math.random() - 0.5) * 0.5,
         (Math.random() - 0.5) * 0.5,
         (Math.random() - 0.5) * 0.3
       )
       
-      // Green sparkles for weapon power-up
+      // Green sparkles for shield pickup
       const sparkleColor = new THREE.Color().setHSL(
         0.33 + Math.sin(this.pulseTime * 2) * 0.05, // Green hue range
         1.0,
@@ -238,20 +244,20 @@ export class PowerUp {
     const toPlayer = playerPosition.clone().sub(this.position)
     const distance = toPlayer.length()
     
-    if (distance < PowerUp.MAGNET_RADIUS && distance > 0.1) {
+    if (distance < Shield.MAGNET_RADIUS && distance > 0.1) {
       this.isMagnetized = true
       
       // Calculate attraction strength (stronger when closer)
-      const normalizedDistance = distance / PowerUp.MAGNET_RADIUS
-      const attractionStrength = PowerUp.MAGNET_STRENGTH * (1 - normalizedDistance * 0.5)
+      const normalizedDistance = distance / Shield.MAGNET_RADIUS
+      const attractionStrength = Shield.MAGNET_STRENGTH * (1 - normalizedDistance * 0.5)
       
       // Apply acceleration towards player
       const direction = toPlayer.normalize()
       this.velocity.add(direction.multiplyScalar(attractionStrength * deltaTime))
       
       // Clamp velocity
-      if (this.velocity.length() > PowerUp.MAX_MAGNET_SPEED) {
-        this.velocity.normalize().multiplyScalar(PowerUp.MAX_MAGNET_SPEED)
+      if (this.velocity.length() > Shield.MAX_MAGNET_SPEED) {
+        this.velocity.normalize().multiplyScalar(Shield.MAX_MAGNET_SPEED)
       }
       
       // Update position
@@ -267,13 +273,13 @@ export class PowerUp {
   collect(): void {
     this.alive = false
     
-    // Create collection effect - CYAN EXPLOSION!
+    // Create collection effect - GREEN EXPLOSION!
     if (this.effectsSystem) {
       // Green explosion effect
       this.effectsSystem.createExplosion(this.position, 1.5, new THREE.Color().setHSL(0.33, 1.0, 0.6))
       
-      // Electric burst with cyan tint
-      this.effectsSystem.createElectricDeath(this.position, 'PowerUp')
+      // Electric burst with green tint
+      this.effectsSystem.createElectricDeath(this.position, 'Shield')
     }
   }
 
@@ -308,3 +314,4 @@ export class PowerUp {
     this.effectsSystem = effectsSystem
   }
 }
+

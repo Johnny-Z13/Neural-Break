@@ -34,5 +34,12 @@ export const ENEMY_CONFIG = {
     SPAWN_INTERVAL_MIN: 15, // seconds
     SPAWN_INTERVAL_MAX: 25, // seconds
   },
+  
+  // Shield spawn settings
+  SHIELD: {
+    SPAWNS_PER_LEVEL: 2,
+    SPAWN_INTERVAL_MIN: 20, // seconds
+    SPAWN_INTERVAL_MAX: 30, // seconds
+  },
 } as const
 

@@ -19,6 +19,8 @@ export class Player {
   private xpToNext: number = 15
   private powerUpLevel: number = 0 // Power-up level (0-10)
   private speedUpLevel: number = 0 // Speed-up level (0-10) - each level = 5% faster
+  private hasShield: boolean = false // 🛡️ SHIELD STATE - Off by default, on when collected
+  private shieldMesh: THREE.Mesh | null = null // 🛡️ FORCE FIELD VISUAL
   private isDashing: boolean = false
   private isInvulnerable: boolean = false // Invulnerability during dash
   private audioManager: AudioManager | null = null
@@ -270,6 +272,41 @@ export class Player {
 
     // Add particle trail effect
     this.createParticleTrail()
+    
+    // 🛡️ CREATE SHIELD FORCE FIELD (hidden by default) 🛡️
+    this.createShieldForceField()
+  }
+  
+  private createShieldForceField(): void {
+    // Create circular force field ring around player
+    const shieldGeometry = new THREE.RingGeometry(0.8, 1.0, 32)
+    const shieldMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00FF00, // GREEN force field
+      transparent: true,
+      opacity: 0.0, // Hidden by default
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending
+    })
+    this.shieldMesh = new THREE.Mesh(shieldGeometry, shieldMaterial)
+    this.shieldMesh.rotation.x = Math.PI / 2 // Horizontal ring
+    this.shieldMesh.position.z = 0.1
+    this.shieldMesh.visible = false
+    this.mesh.add(this.shieldMesh)
+    
+    // Add inner glow ring
+    const innerShieldGeometry = new THREE.RingGeometry(0.7, 0.85, 32)
+    const innerShieldMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00FFFF, // Cyan inner glow
+      transparent: true,
+      opacity: 0.0,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending
+    })
+    const innerShield = new THREE.Mesh(innerShieldGeometry, innerShieldMaterial)
+    innerShield.rotation.x = Math.PI / 2
+    innerShield.position.z = 0.11
+    innerShield.visible = false
+    this.mesh.add(innerShield)
   }
 
   private createParticleTrail(): void {
@@ -583,6 +620,28 @@ export class Player {
         cockpitMat.color.setHex(0x44AAFF)
       }
     }
+    
+    // 🛡️ ANIMATE SHIELD FORCE FIELD 🛡️
+    if (this.hasShield && this.shieldMesh) {
+      const time = Date.now() * 0.001
+      const shieldMaterial = this.shieldMesh.material as THREE.MeshBasicMaterial
+      
+      // Pulsing opacity
+      shieldMaterial.opacity = 0.5 + Math.sin(time * 4) * 0.2
+      
+      // Rotating shield ring
+      this.shieldMesh.rotation.z += deltaTime * 2
+      
+      // Inner glow animation (inner shield is at index 12)
+      if (this.mesh.children.length > 12) {
+        const innerShield = this.mesh.children[12] as THREE.Mesh
+        if (innerShield && innerShield.geometry instanceof THREE.RingGeometry) {
+          const innerMaterial = innerShield.material as THREE.MeshBasicMaterial
+          innerMaterial.opacity = 0.3 + Math.sin(time * 6) * 0.2
+          innerShield.rotation.z -= deltaTime * 3 // Counter-rotate
+        }
+      }
+    }
   }
 
   private updateJetVFX(deltaTime: number): void {
@@ -670,6 +729,30 @@ export class Player {
   }
 
   takeDamage(damage: number): void {
+    // 🛡️ SHIELD ABSORBS FIRST HIT! 🛡️
+    if (this.hasShield) {
+      // Shield absorbs the hit and disappears
+      this.hasShield = false
+      this.deactivateShield()
+      
+      // Visual feedback - shield shatter effect
+      if (this.effectsSystem) {
+        this.effectsSystem.createExplosion(
+          this.position,
+          1.5,
+          new THREE.Color().setHSL(0.33, 1.0, 0.6) // Green explosion
+        )
+      }
+      
+      // Audio feedback (shield break sound can be added to AudioManager later)
+      // if (this.audioManager) {
+      //   this.audioManager.playShieldBreakSound()
+      // }
+      
+      return // Shield absorbed the damage!
+    }
+    
+    // Normal damage when no shield
     this.health = Math.max(0, this.health - damage)
     
     // 🔴 DRAMATIC RED FLASH - Make it really obvious when hit! 🔴
@@ -705,6 +788,70 @@ export class Player {
       material.emissive.setHex(0x334455) // Back to metallic glow
       material.color.setHex(0xB8C4D0)   // Back to silver
     }, 200)
+  }
+  
+  // 🛡️ ACTIVATE SHIELD - Show force field! 🛡️
+  private activateShield(): void {
+    this.hasShield = true
+    if (this.shieldMesh) {
+      this.shieldMesh.visible = true
+      const material = this.shieldMesh.material as THREE.MeshBasicMaterial
+      material.opacity = 0.6
+    }
+    // Activate inner glow too (shield is added after particle trail, so index 11)
+    // Inner shield is at index 12
+    if (this.mesh.children.length > 12) {
+      const innerShield = this.mesh.children[12] as THREE.Mesh
+      if (innerShield && innerShield.geometry instanceof THREE.RingGeometry) {
+        innerShield.visible = true
+        const innerMaterial = innerShield.material as THREE.MeshBasicMaterial
+        innerMaterial.opacity = 0.4
+      }
+    }
+  }
+  
+  // 🛡️ DEACTIVATE SHIELD - Hide force field! 🛡️
+  private deactivateShield(): void {
+    this.hasShield = false
+    if (this.shieldMesh) {
+      this.shieldMesh.visible = false
+      const material = this.shieldMesh.material as THREE.MeshBasicMaterial
+      material.opacity = 0.0
+    }
+    // Deactivate inner glow too
+    if (this.mesh.children.length > 12) {
+      const innerShield = this.mesh.children[12] as THREE.Mesh
+      if (innerShield && innerShield.geometry instanceof THREE.RingGeometry) {
+        innerShield.visible = false
+        const innerMaterial = innerShield.material as THREE.MeshBasicMaterial
+        innerMaterial.opacity = 0.0
+      }
+    }
+  }
+  
+  // 🛡️ COLLECT SHIELD PICKUP 🛡️
+  collectShield(): boolean {
+    if (!this.hasShield) {
+      this.activateShield()
+      
+      // Visual feedback - GREEN flash
+      const material = this.mesh.material as THREE.MeshLambertMaterial
+      material.emissive.setHex(0x00FF00) // Green shield glow
+      material.color.setHex(0x88FF88)   // Hull tints green
+      
+      setTimeout(() => {
+        material.emissive.setHex(0x334455) // Back to metallic glow
+        material.color.setHex(0xB8C4D0)   // Back to silver
+      }, 300)
+      
+      return true // Successfully collected
+    }
+    return false // Already has shield
+  }
+  
+  // 🛡️ CHECK IF PLAYER HAS SHIELD 🛡️
+  hasActiveShield(): boolean {
+    return this.hasShield
   }
 
   // 💚 HEAL METHOD - Restore health from med packs! 💚
@@ -909,6 +1056,12 @@ export class Player {
   resetSpeedUpLevel(): void {
     this.speedUpLevel = 0
     this.updateSpeed()
+  }
+  
+  // 🛡️ RESET SHIELD 🛡️
+  resetShield(): void {
+    this.hasShield = false
+    this.deactivateShield()
   }
 
   isInvulnerableNow(): boolean {

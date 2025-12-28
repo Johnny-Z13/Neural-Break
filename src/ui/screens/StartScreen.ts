@@ -179,36 +179,37 @@ export class StartScreen {
         </div>
         
         <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- ENEMY DATABASE - ENLARGED WITH ENEMY VISUALS -->
+        <!-- ENEMY DATABASE - REFINED COMPACT LAYOUT -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <div class="threat-database" style="
-          background: var(--color-bg-panel, rgba(0, 0, 0, 0.9));
+          background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.95)) 0%, rgba(20, 0, 10, 0.95) 100%);
           border: var(--border-thick, 4px) solid var(--color-red, #FF0000);
-          padding: var(--space-lg, 1.5rem);
-          max-width: 900px;
-          margin: 0 auto;
+          padding: var(--space-md, 1.2rem) var(--space-lg, 1.5rem);
+          max-width: 850px;
+          margin: var(--space-md, 1rem) auto 0;
           box-shadow: 
-            0 0 40px rgba(255, 0, 0, 0.4),
-            inset 0 0 30px rgba(255, 0, 0, 0.1),
-            var(--shadow-pixel, 6px 6px 0) #660000;
+            0 0 35px rgba(255, 0, 0, 0.35),
+            inset 0 0 25px rgba(255, 0, 0, 0.08),
+            var(--shadow-pixel, 5px 5px 0) #660000;
         ">
           <h3 style="
-            font-size: clamp(1rem, 2vw, 1.4rem);
-            margin-bottom: var(--space-lg, 1.5rem);
+            font-size: clamp(0.85rem, 1.8vw, 1.2rem);
+            margin-bottom: var(--space-md, 1rem);
             color: var(--color-red, #FF0000);
             text-shadow: 
-              3px 3px 0 #880000, 
-              0 0 20px var(--color-red, #FF0000),
-              0 0 40px rgba(255, 0, 0, 0.5);
-            letter-spacing: 0.2em;
+              2px 2px 0 #880000, 
+              0 0 15px var(--color-red, #FF0000),
+              0 0 30px rgba(255, 0, 0, 0.4);
+            letter-spacing: 0.15em;
             text-transform: uppercase;
-            animation: dangerPulse 1s ease-in-out infinite;
+            animation: dangerPulse 1.2s ease-in-out infinite;
+            text-align: center;
           ">⚠ THREAT DATABASE ⚠</h3>
           
           <div class="enemy-grid" style="
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: var(--space-md, 1rem);
+            gap: var(--space-sm, 0.7rem);
           ">
             ${StartScreen.createEnemyCard('DATA MITE', 'datamite', '#FF4400', 100)}
             ${StartScreen.createEnemyCard('SCAN DRONE', 'scandrone', '#FF8800', 250)}
@@ -225,20 +226,21 @@ export class StartScreen {
       <!-- CONTROLS LEGEND -->
       <div class="controls-legend" style="
         position: fixed;
-        bottom: var(--space-md, 1rem);
+        bottom: var(--space-sm, 0.75rem);
         left: 50%;
         transform: translateX(-50%);
         display: flex;
-        gap: var(--space-lg, 1.5rem);
-        padding: var(--space-sm, 0.5rem) var(--space-md, 1rem);
-        background: var(--color-bg-panel, rgba(0, 0, 0, 0.9));
-        border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
+        gap: var(--space-md, 1.2rem);
+        padding: var(--space-xs, 0.4rem) var(--space-md, 1rem);
+        background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.95)) 0%, rgba(0, 10, 20, 0.95) 100%);
+        border: var(--border-medium, 3px) solid var(--color-cyan, #00FFFF);
         box-shadow: 
-          0 0 20px var(--color-cyan-glow, rgba(0, 255, 255, 0.3)),
-          var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666);
+          0 0 18px var(--color-cyan-glow, rgba(0, 255, 255, 0.25)),
+          var(--shadow-pixel, 3px 3px 0) var(--color-cyan-dark, #006666);
         z-index: 1;
         flex-wrap: wrap;
         justify-content: center;
+        border-radius: 2px;
       ">
         <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.2rem;">
           <div style="display: flex; gap: 2px;">
@@ -398,17 +400,22 @@ export class StartScreen {
       }
       
       .enemy-card {
-        transition: all 0.2s ease;
+        transition: all 0.15s ease;
         cursor: default;
       }
       
       .enemy-card:hover {
-        transform: translateY(-5px) scale(1.02);
+        transform: translateY(-3px) scale(1.03);
         z-index: 10;
+        box-shadow: 
+          0 0 25px currentColor,
+          inset 0 0 20px currentColor,
+          4px 4px 0 currentColor !important;
       }
       
       .enemy-card:hover .enemy-visual {
-        animation-duration: 0.5s;
+        animation-duration: 0.4s;
+        filter: brightness(1.2);
       }
       
       @media (max-width: 1024px) {
@@ -493,26 +500,27 @@ export class StartScreen {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: var(--space-sm, 0.5rem);
-        padding: var(--space-md, 1rem);
-        background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(20,10,30,0.9) 100%);
-        border: 3px solid ${color};
-        border-radius: 4px;
+        gap: var(--space-xs, 0.4rem);
+        padding: var(--space-sm, 0.7rem) var(--space-xs, 0.5rem);
+        background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(15,5,25,0.9) 100%);
+        border: 2.5px solid ${color};
+        border-radius: 3px;
         box-shadow: 
-          0 0 20px ${color}66,
-          inset 0 0 15px ${color}22,
-          3px 3px 0 ${color}44;
+          0 0 15px ${color}55,
+          inset 0 0 12px ${color}18,
+          2px 2px 0 ${color}33;
         ${cardAnimation}
       ">
         <!-- ENEMY VISUAL -->
         <div class="enemy-visual" style="
-          width: clamp(50px, 8vw, 70px);
-          height: clamp(50px, 8vw, 70px);
+          width: clamp(42px, 7vw, 60px);
+          height: clamp(42px, 7vw, 60px);
           display: flex;
           align-items: center;
           justify-content: center;
           position: relative;
-          animation: enemyFloat 2s ease-in-out infinite;
+          animation: enemyFloat 2.2s ease-in-out infinite;
+          filter: drop-shadow(0 0 8px ${color}88);
         ">
           ${enemyVisual}
         </div>
@@ -520,19 +528,22 @@ export class StartScreen {
         <!-- ENEMY NAME -->
         <div style="
           color: ${color};
-          font-size: clamp(0.55rem, 1.2vw, 0.75rem);
+          font-size: clamp(0.5rem, 1.1vw, 0.7rem);
           font-weight: bold;
           text-transform: uppercase;
-          text-shadow: 0 0 10px ${color}, 2px 2px 0 ${color}44;
-          letter-spacing: 0.1em;
+          text-shadow: 0 0 8px ${color}, 1px 1px 0 ${color}44;
+          letter-spacing: 0.08em;
+          line-height: 1.2;
+          text-align: center;
         ">${name}</div>
         
         <!-- POINTS VALUE -->
         <div style="
           color: var(--color-yellow, #FFFF00);
-          font-size: clamp(0.5rem, 1vw, 0.65rem);
-          text-shadow: 0 0 8px var(--color-yellow, #FFFF00);
-        ">${points.toLocaleString()} PTS</div>
+          font-size: clamp(0.45rem, 0.95vw, 0.6rem);
+          text-shadow: 0 0 6px var(--color-yellow, #FFFF00);
+          font-weight: bold;
+        ">${points.toLocaleString()}</div>
       </div>
     `
   }

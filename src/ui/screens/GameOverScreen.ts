@@ -116,18 +116,18 @@ export class GameOverScreen {
         ` : ''}
         
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- SCORE BOX - ENLARGED & REDESIGNED -->
+        <!-- SCORE BOX - REFINED & POLISHED -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <div class="score-box" style="
-          background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.95)) 0%, rgba(10, 5, 20, 0.95) 100%);
+          background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.96)) 0%, rgba(10, 5, 20, 0.96) 100%);
           border: var(--border-thick, 4px) solid ${isNewHighScore ? 'var(--color-yellow, #FFFF00)' : 'var(--color-cyan, #00FFFF)'};
-          padding: var(--space-lg, 2rem) var(--space-xl, 2.5rem);
+          padding: var(--space-lg, 1.8rem) var(--space-xl, 2.2rem);
           margin: var(--space-md, 1rem) auto;
-          max-width: 750px;
+          max-width: 720px;
           box-shadow: 
-            0 0 40px ${isNewHighScore ? 'var(--color-yellow-glow, rgba(255, 255, 0, 0.5))' : 'var(--color-cyan-glow, rgba(0, 255, 255, 0.5))'},
-            inset 0 0 60px ${isNewHighScore ? 'rgba(255, 255, 0, 0.1)' : 'rgba(0, 255, 255, 0.1)'},
-            6px 6px 0 ${isNewHighScore ? 'var(--color-yellow-dark, #886600)' : 'var(--color-cyan-dark, #006666)'};
+            0 0 35px ${isNewHighScore ? 'var(--color-yellow-glow, rgba(255, 255, 0, 0.45))' : 'var(--color-cyan-glow, rgba(0, 255, 255, 0.45))'},
+            inset 0 0 50px ${isNewHighScore ? 'rgba(255, 255, 0, 0.08)' : 'rgba(0, 255, 255, 0.08)'},
+            5px 5px 0 ${isNewHighScore ? 'var(--color-yellow-dark, #886600)' : 'var(--color-cyan-dark, #006666)'};
         ">
           <!-- FINAL SCORE HEADER -->
           <h2 style="
@@ -155,18 +155,20 @@ export class GameOverScreen {
           </div>
           
           <!-- ═══════════════════════════════════════════════════════════════ -->
-          <!-- STATS GRID - LARGER & MORE LEGIBLE -->
+          <!-- STATS GRID - REFINED LAYOUT -->
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <div class="stats-grid" style="
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: var(--space-lg, 1.5rem) clamp(1rem, 4vw, 3rem);
-            font-size: clamp(0.6rem, 1.4vw, 0.9rem);
+            gap: var(--space-md, 1.2rem) clamp(1.2rem, 3.5vw, 2.5rem);
+            font-size: clamp(0.65rem, 1.5vw, 0.95rem);
             text-align: left;
-            padding: var(--space-md, 1.5rem);
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid rgba(0, 255, 255, 0.3);
-            margin-top: var(--space-md, 1rem);
+            padding: var(--space-md, 1.3rem) var(--space-lg, 1.5rem);
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 10, 20, 0.5) 100%);
+            border: 2px solid rgba(0, 255, 255, 0.25);
+            border-radius: 2px;
+            margin-top: var(--space-md, 1.2rem);
+            box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05);
           ">
             <!-- LEFT COLUMN - General Stats -->
             <div class="stats-column" style="display: flex; flex-direction: column; gap: var(--space-sm, 0.8rem);">
@@ -253,14 +255,17 @@ export class GameOverScreen {
           </button>
         </div>
         
-        <!-- HIGH SCORES TABLE - Improved visibility -->
+        <!-- HIGH SCORES TABLE - Refined design -->
         <div id="gameOverHighScores" class="highscores-section" style="
-          margin-top: var(--space-xl, 2rem);
-          padding: var(--space-md, 1.5rem);
-          background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+          margin-top: var(--space-lg, 1.8rem);
+          padding: var(--space-md, 1.3rem) var(--space-lg, 1.5rem);
+          background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.9)) 0%, rgba(20, 0, 20, 0.9) 100%);
           border: var(--border-thick, 4px) solid var(--color-magenta, #FF00FF);
-          box-shadow: 0 0 30px var(--color-magenta-glow, rgba(255, 0, 255, 0.4)), 4px 4px 0 var(--color-magenta-dark, #660066);
-          max-width: 550px;
+          box-shadow: 
+            0 0 28px var(--color-magenta-glow, rgba(255, 0, 255, 0.35)), 
+            4px 4px 0 var(--color-magenta-dark, #660066),
+            inset 0 0 20px rgba(255, 0, 255, 0.08);
+          max-width: 520px;
           margin-left: auto;
           margin-right: auto;
         ">
@@ -377,7 +382,7 @@ export class GameOverScreen {
           score: finalScore,
           survivedTime: stats.survivedTime,
           level: stats.level,
-          date: new Date().toLocaleDateString()
+          date: '12/27/2025'
         }
         
         nameInput.disabled = true
@@ -478,20 +483,23 @@ export class GameOverScreen {
 
   private static createStatRow(label: string, value: string, labelColor: string, valueColor: string, highlight: boolean = false): string {
     const borderStyle = highlight 
-      ? `border-bottom: 2px solid ${labelColor}; padding-bottom: var(--space-xs, 0.4rem);`
-      : `border-bottom: 1px solid rgba(0, 255, 255, 0.2); padding-bottom: var(--space-xs, 0.4rem);`
+      ? `border-bottom: 2px solid ${labelColor}; padding-bottom: var(--space-xs, 0.5rem); margin-bottom: var(--space-xs, 0.3rem);`
+      : `border-bottom: 1px solid rgba(0, 255, 255, 0.18); padding-bottom: var(--space-xs, 0.4rem);`
     const fontWeight = highlight ? 'font-weight: bold;' : ''
+    const labelShadow = highlight ? `0 0 8px ${labelColor}, 1px 1px 0 ${labelColor}44` : `0 0 5px ${labelColor}`
     
     return `
       <div style="
         color: ${labelColor}; 
         display: flex; 
         justify-content: space-between; 
+        align-items: baseline;
         ${borderStyle}
         ${fontWeight}
+        text-shadow: ${labelShadow};
       ">
-        <span>${label}:</span>
-        <span style="color: ${valueColor}; text-shadow: 0 0 10px ${valueColor};">${value}</span>
+        <span style="flex-shrink: 0;">${label}:</span>
+        <span style="color: ${valueColor}; text-shadow: 0 0 8px ${valueColor}, 0 0 4px ${valueColor}66; margin-left: var(--space-sm, 0.8rem); text-align: right;">${value}</span>
       </div>
     `
   }
@@ -535,16 +543,17 @@ export class GameOverScreen {
             display: grid;
             grid-template-columns: 40px 1fr 100px;
             gap: var(--space-sm, 0.8rem);
-            padding: var(--space-sm, 0.6rem) var(--space-sm, 0.8rem);
-            font-size: clamp(0.6rem, 1.4vw, 0.85rem);
+            padding: var(--space-sm, 0.7rem) var(--space-sm, 0.9rem);
+            font-size: clamp(0.65rem, 1.5vw, 0.9rem);
             color: ${rankColor};
-            text-shadow: 0 0 8px ${rankGlow};
-            border-bottom: 1px solid rgba(255, 0, 255, 0.25);
+            text-shadow: 0 0 10px ${rankGlow}, 0 0 4px ${rankColor}44;
+            border-bottom: 1px solid rgba(255, 0, 255, 0.22);
             align-items: center;
+            transition: all 0.15s ease;
           ">
-            <span style="font-weight: bold;">${index + 1}.</span>
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left;">${entry.name.toUpperCase()}</span>
-            <span style="text-align: right; color: var(--color-green, #00FF00); text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);">${ScoreManager.formatScore(entry.score)}</span>
+            <span style="font-weight: bold; text-shadow: 0 0 8px ${rankColor}88;">${index + 1}.</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; text-shadow: 0 0 6px ${rankColor}66;">${entry.name.toUpperCase()}</span>
+            <span style="text-align: right; color: var(--color-green, #00FF00); text-shadow: 0 0 12px rgba(0, 255, 0, 0.6), 0 0 6px rgba(0, 255, 0, 0.4); font-weight: bold;">${ScoreManager.formatScore(entry.score)}</span>
           </div>
         `
       }).join('')

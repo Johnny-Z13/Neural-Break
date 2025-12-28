@@ -32,10 +32,10 @@ export class SpeedUp {
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
-    // 🟡 YELLOW GLOWING BASE 🟡
+    // 💚 GREEN GLOWING BASE 💚
     const glowGeometry = new THREE.CircleGeometry(0.45, 32)
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFFFF00, // YELLOW glow
+      color: 0x00FF00, // GREEN glow
       transparent: true,
       opacity: 0.6,
       blending: THREE.AdditiveBlending,
@@ -45,10 +45,10 @@ export class SpeedUp {
     glow.position.z = -0.01
     this.mesh.add(glow)
     
-    // 🟠 OUTER GLOW RING - Orange tinted 🟠
+    // 💫 OUTER GLOW RING 💫
     const outerRingGeometry = new THREE.RingGeometry(0.5, 0.65, 32)
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFFAA00, // ORANGE
+      color: 0x00FF00, // GREEN
       transparent: true,
       opacity: 0.8,
       blending: THREE.AdditiveBlending,
@@ -57,10 +57,10 @@ export class SpeedUp {
     const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial)
     this.mesh.add(outerRing)
     
-    // 🟡 INNER RING 🟡
+    // 🟢 INNER RING 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.35, 0.42, 32)
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFFFF00, // Yellow
+      color: 0x00FF00, // Green
       transparent: true,
       opacity: 0.9,
       blending: THREE.AdditiveBlending,
@@ -79,7 +79,7 @@ export class SpeedUp {
     for (let i = 0; i < 10; i++) {
       const particleGeometry = new THREE.CircleGeometry(0.035, 6)
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFFFF00, // YELLOW particles
+        color: 0x00FF00, // GREEN particles
         transparent: true,
         opacity: 0.9,
         blending: THREE.AdditiveBlending
@@ -143,7 +143,7 @@ export class SpeedUp {
 
   private createSpeedLines(): void {
     // Create motion blur lines to emphasize speed
-    const lineColor = 0xFFAA00 // Orange speed lines
+    const lineColor = 0x00FF00 // Green speed lines
     const lineMaterial = new THREE.MeshBasicMaterial({
       color: lineColor,
       transparent: true,
@@ -260,9 +260,9 @@ export class SpeedUp {
         (Math.random() - 0.5) * 0.4
       )
       
-      // Yellow/orange sparkles for speed-up
+      // Green sparkles for speed-up
       const sparkleColor = new THREE.Color().setHSL(
-        0.12 + Math.sin(this.pulseTime * 3) * 0.05, // Yellow-orange hue range
+        0.33 + Math.sin(this.pulseTime * 3) * 0.05, // Green hue range
         1.0,
         0.7
       )
@@ -309,8 +309,8 @@ export class SpeedUp {
     
     // Create collection effect - YELLOW EXPLOSION!
     if (this.effectsSystem) {
-      // Yellow explosion effect
-      this.effectsSystem.createExplosion(this.position, 1.5, new THREE.Color().setHSL(0.15, 1.0, 0.6))
+      // Green explosion effect
+      this.effectsSystem.createExplosion(this.position, 1.5, new THREE.Color().setHSL(0.33, 1.0, 0.6))
       
       // Electric burst with yellow tint
       this.effectsSystem.createElectricDeath(this.position, 'SpeedUp')

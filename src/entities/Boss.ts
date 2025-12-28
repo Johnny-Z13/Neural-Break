@@ -712,9 +712,9 @@ export class Boss extends Enemy {
     // Keep alive during death animation
     this.alive = true
     
-    // Play death start sound
+    // 🎵 Play epic Boss death sound! 🎵
     if (this.audioManager) {
-      this.audioManager.playBossPhaseChangeSound() // Dramatic sound
+      this.audioManager.playEnemyDeathSound('Boss')
     }
   }
 }
