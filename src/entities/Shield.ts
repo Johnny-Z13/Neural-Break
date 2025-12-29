@@ -4,13 +4,13 @@ import { EffectsSystem } from '../graphics/EffectsSystem'
 export class Shield {
   private mesh: THREE.Mesh
   private position: THREE.Vector3
-  private radius: number = 0.5 // Slightly larger collision radius for easier pickup
+  private radius: number = 0.625 // Increased by 25% from 0.5
   private alive: boolean = true
   private effectsSystem: EffectsSystem | null = null
   private pulseTime: number = 0
-  private rotationSpeed: number = 2.5
+  private rotationSpeed: number = 3.5 // Faster for "fizz"
   private trailTimer: number = 0
-  private trailInterval: number = 0.1
+  private trailInterval: number = 0.07 // Faster for "fizz"
   private letterMesh: THREE.Mesh | null = null
   
   // 🧲 MAGNETISM SYSTEM 🧲
@@ -28,13 +28,13 @@ export class Shield {
   private createMesh(): void {
     // 🛡️ SHIELD - GREEN theme with 'S' letter! 🛡️
     // Create base container
-    const containerGeometry = new THREE.CircleGeometry(0.1, 8)
+    const containerGeometry = new THREE.CircleGeometry(0.125, 8) // Scaled up
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
     // 💚 GREEN GLOWING BASE 💚
-    const glowGeometry = new THREE.CircleGeometry(0.45, 32)
+    const glowGeometry = new THREE.CircleGeometry(0.56, 32) // Scaled up
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN glow
       transparent: true,
@@ -47,7 +47,7 @@ export class Shield {
     this.mesh.add(glow)
     
     // 💫 OUTER GLOW RING 💫
-    const outerRingGeometry = new THREE.RingGeometry(0.5, 0.65, 32)
+    const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32) // Scaled up
     const outerRingMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN
       transparent: true,
@@ -59,7 +59,7 @@ export class Shield {
     this.mesh.add(outerRing)
     
     // 🟢 INNER RING 🟢
-    const innerRingGeometry = new THREE.RingGeometry(0.35, 0.42, 32)
+    const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32) // Scaled up
     const innerRingMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // Green
       transparent: true,
@@ -73,9 +73,9 @@ export class Shield {
     // ✨ 'S' LETTER - SHIELD! ✨
     this.createLetterS()
     
-    // 💫 ENERGY PARTICLES - Floating green particles! 💫
-    for (let i = 0; i < 8; i++) {
-      const particleGeometry = new THREE.CircleGeometry(0.04, 6)
+    // 💫 ENERGY PARTICLES - Now 12 particles for more "fizz"! 💫
+    for (let i = 0; i < 12; i++) {
+      const particleGeometry = new THREE.CircleGeometry(0.05, 6) // Scaled up
       const particleMaterial = new THREE.MeshBasicMaterial({
         color: 0x00FF00, // GREEN particles
         transparent: true,
@@ -83,10 +83,10 @@ export class Shield {
         blending: THREE.AdditiveBlending
       })
       const particle = new THREE.Mesh(particleGeometry, particleMaterial)
-      const angle = (i / 8) * Math.PI * 2
+      const angle = (i / 12) * Math.PI * 2
       particle.position.set(
-        Math.cos(angle) * 0.55,
-        Math.sin(angle) * 0.55,
+        Math.cos(angle) * 0.7, // Scaled up
+        Math.sin(angle) * 0.7,
         0
       )
       this.mesh.add(particle)
@@ -103,8 +103,9 @@ export class Shield {
       blending: THREE.AdditiveBlending
     })
     
-    // Create a group for the letter
+    // Create a group for the letter - SCALED UP
     const letterGroup = new THREE.Group()
+    letterGroup.scale.setScalar(1.25)
     
     // Top curve of S
     const topCurveGeometry = new THREE.BoxGeometry(0.2, 0.08, 0.01)
@@ -153,30 +154,30 @@ export class Shield {
     // More dramatic pulse when magnetized!
     const basePulse = this.isMagnetized ? 0.95 : 0.85
     const pulseAmount = this.isMagnetized ? 0.15 : 0.2
-    const pulseSpeed = this.isMagnetized ? 8 : 4
+    const pulseSpeed = this.isMagnetized ? 12 : 6 // Faster for "fizz"
     const pulse = basePulse + Math.sin(this.pulseTime * pulseSpeed) * pulseAmount
     this.mesh.scale.setScalar(pulse)
 
     // Gentle rotation animation
-    this.mesh.rotation.z += deltaTime * this.rotationSpeed * 0.3
+    this.mesh.rotation.z += deltaTime * this.rotationSpeed
 
-    // ✨ ANIMATE PARTICLES - Orbiting around pickup! ✨
+    // ✨ ANIMATE PARTICLES - Orbiting around pickup with more speed! ✨
     const children = this.mesh.children
-    // Particles start after: glow, outer ring, inner ring, letter group (4 elements)
+    const particleCount = 12
     const particleStartIndex = 4
-    for (let i = particleStartIndex; i < children.length; i++) {
+    for (let i = particleStartIndex; i < particleStartIndex + particleCount; i++) {
       const child = children[i]
       if (child instanceof THREE.Mesh) {
         const particleIndex = i - particleStartIndex
-        const angle = (particleIndex / 8) * Math.PI * 2 + this.pulseTime * 2
-        const radius = 0.55 + Math.sin(this.pulseTime * 3 + particleIndex) * 0.1
+        const angle = (particleIndex / particleCount) * Math.PI * 2 + this.pulseTime * 4 // Faster "fizz"
+        const radius = 0.7 + Math.sin(this.pulseTime * 5 + particleIndex) * 0.15 // Scaled up
         child.position.set(
           Math.cos(angle) * radius,
           Math.sin(angle) * radius,
           0
         )
         const particleMaterial = child.material as THREE.MeshBasicMaterial
-        particleMaterial.opacity = 0.7 + Math.sin(this.pulseTime * 5 + particleIndex) * 0.3
+        particleMaterial.opacity = 0.7 + Math.sin(this.pulseTime * 7 + particleIndex) * 0.3
       }
     }
 

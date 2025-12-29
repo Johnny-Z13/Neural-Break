@@ -31,7 +31,7 @@ export class WeaponSystem {
   private heat: number = 0 // 0-100
   private isOverheated: boolean = false
   private coolingRate: number = 25 // Heat points per second
-  private heatPerShot: number = 2.5 // Base heat per bullet fired
+  private heatPerShot: number = 1.8 // Reduced from 2.5 for slower heat build-up
   private overheatThreshold: number = 100
   private heatChangeCallback: ((heat: number, isOverheated: boolean) => void) | null = null
   

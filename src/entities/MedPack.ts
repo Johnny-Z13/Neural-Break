@@ -4,11 +4,11 @@ import { EffectsSystem } from '../graphics/EffectsSystem'
 export class MedPack {
   private mesh: THREE.Mesh
   private position: THREE.Vector3
-  private radius: number = 0.4
+  private radius: number = 0.5 // Increased by 25% from 0.4
   private alive: boolean = true
   private effectsSystem: EffectsSystem | null = null
   private pulseTime: number = 0
-  private rotationSpeed: number = 1.5
+  private rotationSpeed: number = 2.5 // Faster for "fizz"
   private healthRestore: number = 25 // Restore 25 health
   private crossMesh: THREE.Mesh
   private glowMesh: THREE.Mesh
@@ -28,13 +28,13 @@ export class MedPack {
   private createMesh(): void {
     // 💚 HEALTH PACK - GREEN CROSS ON GREEN GLOW! 💚
     // Create base container
-    const containerGeometry = new THREE.SphereGeometry(0.1, 4, 4)
+    const containerGeometry = new THREE.SphereGeometry(0.125, 4, 4) // Scaled up
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
     // 💚 GREEN GLOWING BASE - Health pickup! 💚
-    const glowGeometry = new THREE.SphereGeometry(0.4, 16, 16)
+    const glowGeometry = new THREE.SphereGeometry(0.5, 16, 16) // Scaled up from 0.4
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN glow
       transparent: true,
@@ -46,7 +46,7 @@ export class MedPack {
     this.mesh.add(this.glowMesh)
     
     // 💫 ADDITIONAL GREEN AURA - Extra glow layer! 💫
-    const outerGlowGeometry = new THREE.SphereGeometry(0.5, 16, 16)
+    const outerGlowGeometry = new THREE.SphereGeometry(0.625, 16, 16) // Scaled up from 0.5
     const outerGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00,
       transparent: true,
@@ -59,7 +59,7 @@ export class MedPack {
     
     // ✨ MAIN CROSS - BRIGHT GREEN medical cross! ✨
     // Vertical bar - GREEN!
-    const verticalGeometry = new THREE.BoxGeometry(0.12, 0.45, 0.05)
+    const verticalGeometry = new THREE.BoxGeometry(0.15, 0.56, 0.06) // Scaled up
     const verticalMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN cross
       transparent: true,
@@ -70,7 +70,7 @@ export class MedPack {
     this.mesh.add(verticalBar)
     
     // Horizontal bar - GREEN!
-    const horizontalGeometry = new THREE.BoxGeometry(0.45, 0.12, 0.05)
+    const horizontalGeometry = new THREE.BoxGeometry(0.56, 0.15, 0.06) // Scaled up
     const horizontalMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN cross
       transparent: true,
@@ -81,7 +81,7 @@ export class MedPack {
     this.mesh.add(horizontalBar)
     
     // 💚 WHITE INNER CROSS - Bright center highlight! 💚
-    const innerVerticalGeometry = new THREE.BoxGeometry(0.06, 0.35, 0.06)
+    const innerVerticalGeometry = new THREE.BoxGeometry(0.075, 0.44, 0.075) // Scaled up
     const innerMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFFFFF, // White inner
       transparent: true,
@@ -92,13 +92,13 @@ export class MedPack {
     innerVertical.position.z = 0.01
     this.mesh.add(innerVertical)
     
-    const innerHorizontalGeometry = new THREE.BoxGeometry(0.35, 0.06, 0.06)
+    const innerHorizontalGeometry = new THREE.BoxGeometry(0.44, 0.075, 0.075) // Scaled up
     const innerHorizontal = new THREE.Mesh(innerHorizontalGeometry, innerMaterial.clone())
     innerHorizontal.position.z = 0.01
     this.mesh.add(innerHorizontal)
     
     // 💚 GREEN WIREFRAME OUTLINE 💚
-    const wireframeGeometry = new THREE.SphereGeometry(0.4, 12, 12)
+    const wireframeGeometry = new THREE.SphereGeometry(0.5, 12, 12) // Scaled up
     const wireframeMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN wireframe
       wireframe: true,
@@ -112,9 +112,9 @@ export class MedPack {
     // Store cross mesh reference for animation
     this.crossMesh = verticalBar
     
-    // 💫 ENERGY PARTICLES - Floating green particles! 💫
-    for (let i = 0; i < 6; i++) {
-      const particleGeometry = new THREE.SphereGeometry(0.03, 6, 6)
+    // 💫 ENERGY PARTICLES - 10 particles for more "fizz"! 💫
+    for (let i = 0; i < 10; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.04, 6, 6) // Scaled up
       const particleMaterial = new THREE.MeshBasicMaterial({
         color: 0x00FF00, // GREEN particles
         transparent: true,
@@ -122,10 +122,10 @@ export class MedPack {
         blending: THREE.AdditiveBlending
       })
       const particle = new THREE.Mesh(particleGeometry, particleMaterial)
-      const angle = (i / 6) * Math.PI * 2
+      const angle = (i / 10) * Math.PI * 2
       particle.position.set(
-        Math.cos(angle) * 0.5,
-        Math.sin(angle) * 0.5,
+        Math.cos(angle) * 0.625, // Scaled up
+        Math.sin(angle) * 0.625,
         0
       )
       this.mesh.add(particle)
@@ -145,19 +145,19 @@ export class MedPack {
     // More dramatic pulse when magnetized!
     const basePulse = this.isMagnetized ? 0.95 : 0.85
     const pulseAmount = this.isMagnetized ? 0.15 : 0.2
-    const pulseSpeed = this.isMagnetized ? 6 : 3
+    const pulseSpeed = this.isMagnetized ? 10 : 5 // Faster for "fizz"
     const pulse = basePulse + Math.sin(this.pulseTime * pulseSpeed) * pulseAmount
     this.mesh.scale.setScalar(pulse)
 
     // 🌪️ GENTLE ROTATION (faster when magnetized) 🌪️
-    const rotSpeed = this.isMagnetized ? this.rotationSpeed * 2 : this.rotationSpeed * 0.5
+    const rotSpeed = this.isMagnetized ? this.rotationSpeed * 3 : this.rotationSpeed
     this.mesh.rotation.z += deltaTime * rotSpeed
 
     // 💚 ANIMATE GREEN GLOW - Pulsing green aura! 💚
     if (this.glowMesh) {
       const glowMaterial = this.glowMesh.material as THREE.MeshBasicMaterial
-      glowMaterial.opacity = 0.4 + Math.sin(this.pulseTime * 4) * 0.3
-      this.glowMesh.scale.setScalar(1 + Math.sin(this.pulseTime * 5) * 0.2)
+      glowMaterial.opacity = 0.4 + Math.sin(this.pulseTime * 6) * 0.3 // Faster for "fizz"
+      this.glowMesh.scale.setScalar(1 + Math.sin(this.pulseTime * 7) * 0.2)
       glowMaterial.color.setHex(0x00FF00) // Ensure it stays green
     }
     
@@ -167,8 +167,8 @@ export class MedPack {
       if (outerGlow && outerGlow !== this.glowMesh) {
         const outerGlowMaterial = outerGlow.material as THREE.MeshBasicMaterial
         if (outerGlowMaterial.color.getHex() === 0x00FF00) {
-          outerGlowMaterial.opacity = 0.2 + Math.sin(this.pulseTime * 3) * 0.2
-          outerGlow.scale.setScalar(1 + Math.sin(this.pulseTime * 4) * 0.3)
+          outerGlowMaterial.opacity = 0.2 + Math.sin(this.pulseTime * 4) * 0.2
+          outerGlow.scale.setScalar(1 + Math.sin(this.pulseTime * 5) * 0.3)
         }
       }
     }
@@ -178,30 +178,32 @@ export class MedPack {
     if (this.mesh.children[2]) {
       const verticalBar = this.mesh.children[2] as THREE.Mesh
       const vertMaterial = verticalBar.material as THREE.MeshBasicMaterial
-      vertMaterial.opacity = 0.8 + Math.sin(this.pulseTime * 5) * 0.2
+      vertMaterial.opacity = 0.8 + Math.sin(this.pulseTime * 7) * 0.2
     }
     // Horizontal bar (index 3)
     if (this.mesh.children[3]) {
       const horizontalBar = this.mesh.children[3] as THREE.Mesh
       const horizMaterial = horizontalBar.material as THREE.MeshBasicMaterial
-      horizMaterial.opacity = 0.8 + Math.sin(this.pulseTime * 5 + 0.5) * 0.2
+      horizMaterial.opacity = 0.8 + Math.sin(this.pulseTime * 7 + 0.5) * 0.2
     }
     
     // ✨ ANIMATE PARTICLES - Orbiting particles (faster when magnetized)! ✨
-    const orbitSpeed = this.isMagnetized ? 4 : 2
-    for (let i = 8; i < this.mesh.children.length; i++) {
+    const orbitSpeed = this.isMagnetized ? 6 : 3 // Faster for "fizz"
+    const particleStartIndex = 8
+    const particleCount = 10
+    for (let i = particleStartIndex; i < particleStartIndex + particleCount; i++) {
       const child = this.mesh.children[i]
       if (child instanceof THREE.Mesh) {
-        const particleIndex = i - 8
-        const angle = (particleIndex / 6) * Math.PI * 2 + this.pulseTime * orbitSpeed
-        const radius = 0.5 + Math.sin(this.pulseTime * 3 + particleIndex) * 0.1
+        const particleIndex = i - particleStartIndex
+        const angle = (particleIndex / particleCount) * Math.PI * 2 + this.pulseTime * orbitSpeed
+        const radius = 0.625 + Math.sin(this.pulseTime * 5 + particleIndex) * 0.12 // Scaled up
         child.position.set(
           Math.cos(angle) * radius,
           Math.sin(angle) * radius,
-          Math.sin(this.pulseTime * 4 + particleIndex) * 0.1
+          Math.sin(this.pulseTime * 6 + particleIndex) * 0.1
         )
         const particleMaterial = child.material as THREE.MeshBasicMaterial
-        particleMaterial.opacity = 0.6 + Math.sin(this.pulseTime * 6 + particleIndex) * 0.3
+        particleMaterial.opacity = 0.6 + Math.sin(this.pulseTime * 8 + particleIndex) * 0.3
       }
     }
   }

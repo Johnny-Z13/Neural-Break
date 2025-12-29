@@ -318,30 +318,30 @@ export class UIManager {
     const totalPoints = points * multiplier
     notification.textContent = `+${totalPoints.toLocaleString()}${multiplierText}`
     
-    // Color and size based on multiplier level
+    // Color and size based on multiplier level - Reduced by 25%
     let color = '#00FF00'
-    let fontSize = 'clamp(0.8rem, 2vw, 1.2rem)'
+    let fontSize = 'clamp(0.6rem, 1.5vw, 0.9rem)'
     let glowIntensity = 10
     
     if (multiplier >= 10) {
       color = '#FF00FF'
-      fontSize = 'clamp(1.4rem, 3vw, 2rem)'
+      fontSize = 'clamp(1.05rem, 2.25vw, 1.5rem)'
       glowIntensity = 30
     } else if (multiplier >= 7) {
       color = '#FFD700'
-      fontSize = 'clamp(1.2rem, 2.5vw, 1.8rem)'
+      fontSize = 'clamp(0.9rem, 1.875vw, 1.35rem)'
       glowIntensity = 25
     } else if (multiplier >= 5) {
       color = '#FF6600'
-      fontSize = 'clamp(1.1rem, 2.3vw, 1.6rem)'
+      fontSize = 'clamp(0.825rem, 1.725vw, 1.2rem)'
       glowIntensity = 20
     } else if (multiplier >= 3) {
       color = '#FFFF00'
-      fontSize = 'clamp(1rem, 2vw, 1.4rem)'
+      fontSize = 'clamp(0.75rem, 1.5vw, 1.05rem)'
       glowIntensity = 15
     } else if (multiplier >= 2) {
       color = '#00FFFF'
-      fontSize = 'clamp(0.9rem, 2vw, 1.3rem)'
+      fontSize = 'clamp(0.675rem, 1.5vw, 0.975rem)'
       glowIntensity = 12
     }
     
@@ -372,23 +372,23 @@ export class UIManager {
     
     let text = `x${multiplier} MULTIPLIER!`
     let color = '#00FFFF'
-    let fontSize = 'clamp(1.2rem, 3vw, 1.8rem)'
+    let fontSize = 'clamp(0.9rem, 2.25vw, 1.35rem)' // Reduced 25%
     
     if (multiplier >= 10) {
       color = '#FF00FF'
-      fontSize = 'clamp(2rem, 4vw, 3rem)'
+      fontSize = 'clamp(1.5rem, 3vw, 2.25rem)'
       text = `x${multiplier} INSANE!!!`
     } else if (multiplier >= 7) {
       color = '#FFD700'
-      fontSize = 'clamp(1.8rem, 3.5vw, 2.5rem)'
+      fontSize = 'clamp(1.35rem, 2.625vw, 1.875rem)'
       text = `x${multiplier} INCREDIBLE!`
     } else if (multiplier >= 5) {
       color = '#FF6600'
-      fontSize = 'clamp(1.5rem, 3vw, 2.2rem)'
+      fontSize = 'clamp(1.125rem, 2.25vw, 1.65rem)'
       text = `x${multiplier} AMAZING!`
     } else if (multiplier >= 3) {
       color = '#FFFF00'
-      fontSize = 'clamp(1.3rem, 2.8vw, 2rem)'
+      fontSize = 'clamp(0.975rem, 2.1vw, 1.5rem)'
       text = `x${multiplier} GREAT!`
     }
     
@@ -418,6 +418,22 @@ export class UIManager {
     notification.style.top = '25%'
     
     this.showAndRemove(notification, 1500)
+  }
+
+  // 👁️ HUD VISIBILITY CONTROL 👁️
+  setHUDVisibility(visible: boolean): void {
+    const hudElements = document.querySelectorAll('.hud-element')
+    hudElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        el.style.display = visible ? 'block' : 'none'
+      }
+    })
+    
+    // Also handle combo specifically since it might be hidden by logic
+    const combo = document.getElementById('combo')
+    if (combo && !visible) {
+      combo.style.display = 'none'
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════

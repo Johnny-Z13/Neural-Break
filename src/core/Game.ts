@@ -141,6 +141,9 @@ export class Game {
         loadingElement.style.display = 'none'
       }
       
+      // Initial HUD state: hidden until game starts
+      this.uiManager.setHUDVisibility(false)
+      
       // Start the game loop immediately so the scene renders
       // (even if game state is START_SCREEN, we still need to render)
       if (DEBUG_MODE) console.log('🚀 Starting game loop...')
@@ -198,6 +201,10 @@ export class Game {
     // Reset game state - CRITICAL: Must be PLAYING for updates to work!
     this.gameState = GameStateType.PLAYING
     if (DEBUG_MODE) console.log('✅ Game state set to PLAYING:', this.gameState)
+    
+    // Show HUD when game starts
+    this.uiManager.setHUDVisibility(true)
+    
     this.gameStats = this.createEmptyStats()
     this.combo = 0
     this.comboTimer = 0
@@ -1153,6 +1160,9 @@ export class Game {
     this.updateGameStats()
     
     if (DEBUG_MODE) console.log('Game Over! Final Stats:', this.gameStats)
+    
+    // Hide HUD on game over
+    this.uiManager.setHUDVisibility(false)
     
     // Show game over screen with stats
     GameScreens.showGameOverScreen(this.gameStats, () => this.showStartScreen()).catch(err => {

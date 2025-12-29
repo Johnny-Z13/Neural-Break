@@ -522,7 +522,7 @@
       
       .notification-level-up {
         top: 40%;
-        font-size: var(--font-xl);
+        font-size: clamp(1.125rem, 2.25vw, 1.5rem); /* Reduced 25% from var(--font-xl) */
         color: var(--color-green);
         text-shadow: 
           var(--shadow-glow-lg) var(--color-green-glow),
@@ -532,7 +532,7 @@
       
       .notification-damage {
         top: 25%;
-        font-size: var(--font-lg);
+        font-size: clamp(0.75rem, 1.5vw, 1.05rem); /* Reduced 25% from var(--font-lg) */
         color: var(--color-red);
         text-shadow: 
           var(--shadow-glow-md) var(--color-red-glow),
@@ -542,7 +542,7 @@
       
       .notification-powerup {
         top: 35%;
-        font-size: var(--font-lg);
+        font-size: clamp(0.75rem, 1.5vw, 1.05rem); /* Reduced 25% from var(--font-lg) */
         color: var(--color-cyan);
         text-shadow: 
           var(--shadow-glow-lg) var(--color-cyan-glow),
@@ -552,7 +552,7 @@
       
       .notification-weapon {
         top: 45%;
-        font-size: var(--font-xl);
+        font-size: clamp(1.125rem, 2.25vw, 1.5rem); /* Reduced 25% from var(--font-xl) */
         text-shadow: var(--shadow-glow-lg) currentColor;
         animation: notification-pop 0.5s ease-out, notification-fade-out 0.5s ease-in 1.5s forwards;
       }
@@ -565,7 +565,7 @@
       
       .notification-multiplier-lost {
         top: 50%;
-        font-size: var(--font-lg);
+        font-size: clamp(0.75rem, 1.5vw, 1.05rem); /* Reduced 25% from var(--font-lg) */
         color: var(--color-red);
         text-shadow: var(--shadow-glow-md) var(--color-red-glow);
         animation: multiplier-lost 1s ease-out forwards;

@@ -279,20 +279,6 @@ export class GameOverScreen {
           <div id="gameOverHighScoresList"></div>
         </div>
       </div>
-      
-      <!-- CREDIT TEXT -->
-      <div style="
-        position: fixed;
-        bottom: var(--space-md, 1rem);
-        left: 50%;
-        transform: translateX(-50%);
-        color: #666666;
-        font-size: clamp(0.5rem, 1vw, 0.7rem);
-        z-index: 1;
-        letter-spacing: 0.1em;
-      ">
-        INSERT COIN TO CONTINUE
-      </div>
     `
 
     // Add styles

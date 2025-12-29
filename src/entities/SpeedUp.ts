@@ -4,13 +4,13 @@ import { EffectsSystem } from '../graphics/EffectsSystem'
 export class SpeedUp {
   private mesh: THREE.Mesh
   private position: THREE.Vector3
-  private radius: number = 0.4
+  private radius: number = 0.5 // Increased by 25% from 0.4
   private alive: boolean = true
   private effectsSystem: EffectsSystem | null = null
   private pulseTime: number = 0
-  private rotationSpeed: number = 3.0 // Faster rotation for speed pickup!
+  private rotationSpeed: number = 4.0 // Even faster for "fizz"
   private trailTimer: number = 0
-  private trailInterval: number = 0.08
+  private trailInterval: number = 0.06 // Faster for "fizz"
   
   // 🧲 MAGNETISM SYSTEM 🧲
   private static readonly MAGNET_RADIUS = 4.0        // Distance at which magnetism kicks in
@@ -25,15 +25,15 @@ export class SpeedUp {
   }
 
   private createMesh(): void {
-    // ⚡ SPEED-UP - Yellow/Orange theme with 'S' letter! ⚡
+    // ⚡ SPEED-UP - Now GREEN theme with 'S' letter! ⚡
     // Create base container
-    const containerGeometry = new THREE.CircleGeometry(0.1, 8)
+    const containerGeometry = new THREE.CircleGeometry(0.125, 8)
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
     // 💚 GREEN GLOWING BASE 💚
-    const glowGeometry = new THREE.CircleGeometry(0.45, 32)
+    const glowGeometry = new THREE.CircleGeometry(0.56, 32)
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN glow
       transparent: true,
@@ -46,7 +46,7 @@ export class SpeedUp {
     this.mesh.add(glow)
     
     // 💫 OUTER GLOW RING 💫
-    const outerRingGeometry = new THREE.RingGeometry(0.5, 0.65, 32)
+    const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32)
     const outerRingMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN
       transparent: true,
@@ -58,7 +58,7 @@ export class SpeedUp {
     this.mesh.add(outerRing)
     
     // 🟢 INNER RING 🟢
-    const innerRingGeometry = new THREE.RingGeometry(0.35, 0.42, 32)
+    const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32)
     const innerRingMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // Green
       transparent: true,
@@ -72,12 +72,12 @@ export class SpeedUp {
     // ✨ 'S' LETTER - SPEED! ✨
     this.createLetterS()
     
-    // ⚡ SPEED LINES - Motion blur effect! ⚡
+    // ⚡ SPEED LINES - Now GREEN! ⚡
     this.createSpeedLines()
     
-    // 💫 ENERGY PARTICLES - Fast-moving yellow particles! 💫
-    for (let i = 0; i < 10; i++) {
-      const particleGeometry = new THREE.CircleGeometry(0.035, 6)
+    // 💫 ENERGY PARTICLES - 15 particles for intense "fizz"! 💫
+    for (let i = 0; i < 15; i++) {
+      const particleGeometry = new THREE.CircleGeometry(0.045, 6)
       const particleMaterial = new THREE.MeshBasicMaterial({
         color: 0x00FF00, // GREEN particles
         transparent: true,
@@ -85,10 +85,10 @@ export class SpeedUp {
         blending: THREE.AdditiveBlending
       })
       const particle = new THREE.Mesh(particleGeometry, particleMaterial)
-      const angle = (i / 10) * Math.PI * 2
+      const angle = (i / 15) * Math.PI * 2
       particle.position.set(
-        Math.cos(angle) * 0.55,
-        Math.sin(angle) * 0.55,
+        Math.cos(angle) * 0.7,
+        Math.sin(angle) * 0.7,
         0
       )
       this.mesh.add(particle)
@@ -105,8 +105,9 @@ export class SpeedUp {
       blending: THREE.AdditiveBlending
     })
     
-    // Create a group for the letter
+    // Create a group for the letter - SCALED UP
     const letterGroup = new THREE.Group()
+    letterGroup.scale.setScalar(1.25)
     
     // Top curve of S
     const topCurveGeometry = new THREE.BoxGeometry(0.2, 0.08, 0.01)
@@ -143,7 +144,7 @@ export class SpeedUp {
 
   private createSpeedLines(): void {
     // Create motion blur lines to emphasize speed
-    const lineColor = 0x00FF00 // Green speed lines
+    const lineColor = 0x00FF00 // GREEN speed lines
     const lineMaterial = new THREE.MeshBasicMaterial({
       color: lineColor,
       transparent: true,
@@ -151,15 +152,15 @@ export class SpeedUp {
       blending: THREE.AdditiveBlending
     })
     
-    // Create 3 speed lines trailing behind
+    // Create 3 speed lines trailing behind - SCALED UP
     for (let i = 0; i < 3; i++) {
-      const lineGeometry = new THREE.BoxGeometry(0.3 - i * 0.05, 0.02, 0.01)
+      const lineGeometry = new THREE.BoxGeometry(0.375 - i * 0.06, 0.025, 0.01)
       const line = new THREE.Mesh(lineGeometry, lineMaterial.clone())
-      line.position.set(-0.35 - i * 0.15, 0.2 - i * 0.15, 0.01)
+      line.position.set(-0.45 - i * 0.2, 0.25 - i * 0.2, 0.01)
       this.mesh.add(line)
       
       const line2 = new THREE.Mesh(lineGeometry.clone(), lineMaterial.clone())
-      line2.position.set(-0.35 - i * 0.15, -0.2 + i * 0.15, 0.01)
+      line2.position.set(-0.45 - i * 0.2, -0.25 + i * 0.2, 0.01)
       this.mesh.add(line2)
     }
   }
@@ -175,31 +176,31 @@ export class SpeedUp {
     // ⚡ FAST PULSING ANIMATION - Speedy! ⚡
     this.pulseTime += deltaTime
     // Even faster pulse when magnetized!
-    const pulseSpeed = this.isMagnetized ? 10 : 6
+    const pulseSpeed = this.isMagnetized ? 15 : 10 // Very fast "fizz"
     const pulse = 0.8 + Math.sin(this.pulseTime * pulseSpeed) * 0.25
     this.mesh.scale.setScalar(pulse)
 
     // ⚡ FAST ROTATION - Speed effect (even faster when magnetized)! ⚡
-    const rotSpeed = this.isMagnetized ? this.rotationSpeed * 2 : this.rotationSpeed
+    const rotSpeed = this.isMagnetized ? this.rotationSpeed * 2.5 : this.rotationSpeed
     this.mesh.rotation.z += deltaTime * rotSpeed
 
     // ✨ ANIMATE PARTICLES - Fast orbiting! ✨
     const children = this.mesh.children
-    // Particles start after: glow, outer ring, inner ring, letter group (5 elements), speed lines (6)
+    const particleCount = 15
     const particleStartIndex = 4 + 6 // Letter group + speed lines
-    for (let i = particleStartIndex; i < children.length; i++) {
+    for (let i = particleStartIndex; i < particleStartIndex + particleCount; i++) {
       const child = children[i]
       if (child instanceof THREE.Mesh) {
         const particleIndex = i - particleStartIndex
-        const angle = (particleIndex / 10) * Math.PI * 2 + this.pulseTime * 4 // Faster orbit
-        const radius = 0.55 + Math.sin(this.pulseTime * 5 + particleIndex) * 0.12
+        const angle = (particleIndex / particleCount) * Math.PI * 2 + this.pulseTime * 6 // Rapid "fizz"
+        const radius = 0.7 + Math.sin(this.pulseTime * 8 + particleIndex) * 0.15 // Scaled up
         child.position.set(
           Math.cos(angle) * radius,
           Math.sin(angle) * radius,
           0
         )
         const particleMaterial = child.material as THREE.MeshBasicMaterial
-        particleMaterial.opacity = 0.6 + Math.sin(this.pulseTime * 8 + particleIndex) * 0.4
+        particleMaterial.opacity = 0.6 + Math.sin(this.pulseTime * 10 + particleIndex) * 0.4
       }
     }
 
