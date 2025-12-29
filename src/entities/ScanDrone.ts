@@ -19,6 +19,11 @@ export class ScanDrone extends Enemy {
   // 📡 Scan sound timer
   private scanSoundTimer: number = 0
   private scanSoundInterval: number = 2.0
+  
+  // 🔷 MOVEMENT VARIATION - Prevent perfect alignment 🔷
+  private movementOffset: number = Math.random() * Math.PI * 2 // Random starting phase
+  private swayAmount: number = 0.2 // Amount of perpendicular sway (less than DataMite)
+  private swaySpeed: number = 2.0 // Speed of sway oscillation
 
   constructor(x: number, y: number) {
     super(x, y)
@@ -292,9 +297,20 @@ export class ScanDrone extends Enemy {
     }
 
     if (this.alertState) {
-      // Chase player when alerted
-      const direction = playerPos.clone().sub(this.position).normalize()
-      this.velocity = direction.multiplyScalar(this.speed * 2)
+      // Chase player when alerted with slight sway
+      const toPlayer = playerPos.clone().sub(this.position)
+      const direction = toPlayer.normalize()
+      
+      // Add perpendicular sway to prevent perfect alignment
+      this.movementOffset += deltaTime * this.swaySpeed
+      const perpendicular = new THREE.Vector3(-direction.y, direction.x, 0)
+      const sway = Math.sin(this.movementOffset) * this.swayAmount
+      
+      // Combine forward movement with perpendicular sway
+      this.velocity = direction.clone()
+        .add(perpendicular.multiplyScalar(sway))
+        .normalize()
+        .multiplyScalar(this.speed * 2)
       
       // Increase scan beam intensity
       const beamMaterial = this.scanBeamMesh.material as THREE.MeshBasicMaterial
@@ -325,8 +341,18 @@ export class ScanDrone extends Enemy {
         )
       }
       
-      const direction = this.patrolTarget.clone().sub(this.position).normalize()
-      this.velocity = direction.multiplyScalar(this.speed)
+      const toPatrol = this.patrolTarget.clone().sub(this.position)
+      const direction = toPatrol.normalize()
+      
+      // Add slight sway even during patrol
+      this.movementOffset += deltaTime * this.swaySpeed * 0.5
+      const perpendicular = new THREE.Vector3(-direction.y, direction.x, 0)
+      const sway = Math.sin(this.movementOffset) * this.swayAmount * 0.5
+      
+      this.velocity = direction.clone()
+        .add(perpendicular.multiplyScalar(sway))
+        .normalize()
+        .multiplyScalar(this.speed)
     }
     
     // Update projectiles

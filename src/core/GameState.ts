@@ -29,6 +29,7 @@ export interface HighScoreEntry {
   survivedTime: number
   level: number
   date: string
+  location: string // Country code (e.g., "UK", "USA", "POL")
 }
 
 import { HighScoreServiceFactory, LocalStorageHighScoreService } from '../data/HighScoreService'
@@ -96,6 +97,17 @@ export class ScoreManager {
     return score.toLocaleString()
   }
 
+  /**
+   * Format date as MM/DD/YY
+   */
+  static formatDate(date?: Date): string {
+    const d = date || new Date()
+    const month = (d.getMonth() + 1).toString().padStart(2, '0')
+    const day = d.getDate().toString().padStart(2, '0')
+    const year = d.getFullYear().toString().slice(-2)
+    return `${month}/${day}/${year}`
+  }
+
   // Debug method to test high score system
   static async addTestScore(): Promise<void> {
     const testEntry: HighScoreEntry = {
@@ -103,7 +115,8 @@ export class ScoreManager {
       score: 12345,
       survivedTime: 180, // 3 minutes
       level: 5,
-      date: '12/27/2025'
+      date: '12/29/25',
+      location: 'UK'
     }
     const saved = await this.saveHighScore(testEntry)
     console.log('🧪 Test high score added:', testEntry, saved ? '✅' : '❌')

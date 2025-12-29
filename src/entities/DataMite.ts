@@ -3,6 +3,11 @@ import { Enemy } from './Enemy'
 import { Player } from './Player'
 
 export class DataMite extends Enemy {
+  // 🔷 MOVEMENT VARIATION - Prevent perfect alignment 🔷
+  private movementOffset: number = Math.random() * Math.PI * 2 // Random starting phase
+  private swayAmount: number = 0.3 // Amount of perpendicular sway
+  private swaySpeed: number = 3.0 // Speed of sway oscillation
+  
   constructor(x: number, y: number) {
     super(x, y)
     this.health = 1
@@ -100,11 +105,21 @@ export class DataMite extends Enemy {
   }
 
   updateAI(deltaTime: number, player: Player): void {
-    // Simple pathfinding toward player
+    // Simple pathfinding toward player with slight sway
     const playerPos = player.getPosition()
-    const direction = playerPos.sub(this.position).normalize()
+    const toPlayer = playerPos.clone().sub(this.position)
+    const direction = toPlayer.normalize()
     
-    this.velocity = direction.multiplyScalar(this.speed)
+    // Add perpendicular sway to prevent perfect alignment
+    this.movementOffset += deltaTime * this.swaySpeed
+    const perpendicular = new THREE.Vector3(-direction.y, direction.x, 0)
+    const sway = Math.sin(this.movementOffset) * this.swayAmount
+    
+    // Combine forward movement with perpendicular sway
+    this.velocity = direction.clone()
+      .add(perpendicular.multiplyScalar(sway))
+      .normalize()
+      .multiplyScalar(this.speed)
   }
 
   protected updateVisuals(deltaTime: number): void {

@@ -26,7 +26,7 @@ export class StartScreen {
       background: transparent;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
+      justify-content: center;
       align-items: center;
       font-family: var(--font-family, 'Press Start 2P', monospace);
       text-align: center;
@@ -35,8 +35,6 @@ export class StartScreen {
       pointer-events: auto;
       image-rendering: pixelated;
       padding: var(--space-md, 1rem);
-      padding-top: clamp(1rem, 3vh, 2rem);
-      padding-bottom: 100px;
       box-sizing: border-box;
     `
 
@@ -72,7 +70,7 @@ export class StartScreen {
       "></div>
       
       <!-- MAIN CONTENT -->
-      <div class="start-content" style="position: relative; z-index: 1; max-width: 950px; width: 100%;">
+      <div class="start-content" style="position: relative; z-index: 1; max-width: 950px; width: 100%; display: flex; flex-direction: column; align-items: center;">
         
         <!-- MAIN TITLE -->
         <div class="title-container" style="margin-bottom: var(--space-md, 1rem);">
@@ -109,19 +107,50 @@ export class StartScreen {
           "></div>
         </div>
         
-        <!-- SUBTITLE -->
-        <p class="subtitle" style="
-          font-size: clamp(0.6rem, 1.5vw, 1rem);
-          margin-bottom: var(--space-md, 1rem);
-          color: var(--color-magenta, #FF00FF);
-          letter-spacing: 0.3em;
-          text-transform: uppercase;
-          text-shadow: 2px 2px 0 var(--color-cyan, #00FFFF), 0 0 20px var(--color-magenta, #FF00FF);
-          animation: subtitlePulse 3s ease-in-out infinite;
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- ENEMY DATABASE - REFINED COMPACT LAYOUT -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <div class="threat-database" style="
+          background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.95)) 0%, rgba(20, 0, 10, 0.95) 100%);
+          border: var(--border-thick, 4px) solid var(--color-red, #FF0000);
+          padding: var(--space-md, 1.2rem) var(--space-lg, 1.5rem);
+          max-width: 850px;
+          margin: 0 auto var(--space-md, 1rem);
+          box-shadow: 
+            0 0 35px rgba(255, 0, 0, 0.35),
+            inset 0 0 25px rgba(255, 0, 0, 0.08),
+            var(--shadow-pixel, 5px 5px 0) #660000;
         ">
-          ESCAPE THE DIGITAL REALM
-        </p>
-        
+          <h3 style="
+            font-size: clamp(0.85rem, 1.8vw, 1.2rem);
+            margin-bottom: var(--space-md, 1rem);
+            color: var(--color-red, #FF0000);
+            text-shadow: 
+              2px 2px 0 #880000, 
+              0 0 15px var(--color-red, #FF0000),
+              0 0 30px rgba(255, 0, 0, 0.4);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            animation: dangerPulse 1.2s ease-in-out infinite;
+            text-align: center;
+          ">⚠ THREAT DATABASE ⚠</h3>
+          
+          <div class="enemy-grid" style="
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-sm, 0.7rem);
+          ">
+            ${StartScreen.createEnemyCard('DATA MITE', 'datamite', '#FF4400', 100)}
+            ${StartScreen.createEnemyCard('SCAN DRONE', 'scandrone', '#FF8800', 250)}
+            ${StartScreen.createEnemyCard('CHAOS WORM', 'chaosworm', '#FF00FF', 500)}
+            ${StartScreen.createEnemyCard('CRYSTAL SWARM', 'crystalswarm', '#00FFFF', 750)}
+            ${StartScreen.createEnemyCard('VOID SPHERE', 'voidsphere', '#AA00FF', 1000)}
+            ${StartScreen.createEnemyCard('FIZZER', 'fizzer', '#00FF88', 200)}
+            ${StartScreen.createEnemyCard('UFO', 'ufo', '#88AAFF', 1500)}
+            ${StartScreen.createEnemyCard('BOSS', 'boss', '#FF0000', 5000, true)}
+          </div>
+        </div>
+
         <!-- INSERT COIN / PRESS START -->
         <div class="press-start" style="
           font-size: clamp(0.9rem, 2.5vw, 1.5rem);
@@ -135,7 +164,7 @@ export class StartScreen {
         </div>
         
         <!-- BUTTONS -->
-        <div class="button-container" style="display: flex; flex-direction: column; gap: var(--space-sm, 0.8rem); align-items: center; margin-bottom: var(--space-lg, 1.5rem);">
+        <div class="button-container" style="display: flex; flex-direction: column; gap: var(--space-sm, 0.8rem); align-items: center; margin-bottom: var(--space-md, 1rem);">
           <button id="startButton" class="arcade-button arcade-button-primary" style="
             background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
             border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
@@ -176,50 +205,6 @@ export class StartScreen {
           ">
             ◆ HIGH SCORES ◆
           </button>
-        </div>
-        
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- ENEMY DATABASE - REFINED COMPACT LAYOUT -->
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <div class="threat-database" style="
-          background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.95)) 0%, rgba(20, 0, 10, 0.95) 100%);
-          border: var(--border-thick, 4px) solid var(--color-red, #FF0000);
-          padding: var(--space-md, 1.2rem) var(--space-lg, 1.5rem);
-          max-width: 850px;
-          margin: var(--space-md, 1rem) auto 0;
-          box-shadow: 
-            0 0 35px rgba(255, 0, 0, 0.35),
-            inset 0 0 25px rgba(255, 0, 0, 0.08),
-            var(--shadow-pixel, 5px 5px 0) #660000;
-        ">
-          <h3 style="
-            font-size: clamp(0.85rem, 1.8vw, 1.2rem);
-            margin-bottom: var(--space-md, 1rem);
-            color: var(--color-red, #FF0000);
-            text-shadow: 
-              2px 2px 0 #880000, 
-              0 0 15px var(--color-red, #FF0000),
-              0 0 30px rgba(255, 0, 0, 0.4);
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            animation: dangerPulse 1.2s ease-in-out infinite;
-            text-align: center;
-          ">⚠ THREAT DATABASE ⚠</h3>
-          
-          <div class="enemy-grid" style="
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: var(--space-sm, 0.7rem);
-          ">
-            ${StartScreen.createEnemyCard('DATA MITE', 'datamite', '#FF4400', 100)}
-            ${StartScreen.createEnemyCard('SCAN DRONE', 'scandrone', '#FF8800', 250)}
-            ${StartScreen.createEnemyCard('CHAOS WORM', 'chaosworm', '#FF00FF', 500)}
-            ${StartScreen.createEnemyCard('CRYSTAL SWARM', 'crystalswarm', '#00FFFF', 750)}
-            ${StartScreen.createEnemyCard('VOID SPHERE', 'voidsphere', '#AA00FF', 1000)}
-            ${StartScreen.createEnemyCard('FIZZER', 'fizzer', '#00FF88', 200)}
-            ${StartScreen.createEnemyCard('UFO', 'ufo', '#88AAFF', 1500)}
-            ${StartScreen.createEnemyCard('BOSS', 'boss', '#FF0000', 5000, true)}
-          </div>
         </div>
       </div>
       

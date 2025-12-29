@@ -363,12 +363,19 @@ export class GameOverScreen {
       
       const saveScore = async () => {
         const playerName = nameInput.value.trim() || 'ANON'
+        
+        // Get location and format date
+        const { LocationService } = await import('../../utils/LocationService')
+        const location = await LocationService.getLocation()
+        const date = ScoreManager.formatDate()
+        
         const entry: HighScoreEntry = {
           name: playerName,
           score: finalScore,
           survivedTime: stats.survivedTime,
           level: stats.level,
-          date: '12/27/2025'
+          date: date,
+          location: location
         }
         
         nameInput.disabled = true

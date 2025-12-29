@@ -50,7 +50,7 @@ export class LocalStorageHighScoreService implements IHighScoreService {
           return b.score - a.score
         }
         // For ties, prefer newer entries
-        return new Date(b.date).getTime() - new Date(a.date).getTime()
+        return this.parseDate(b.date).getTime() - this.parseDate(a.date).getTime()
       })
       
       // Keep only top scores
@@ -104,7 +104,7 @@ export class LocalStorageHighScoreService implements IHighScoreService {
         if (b.score !== a.score) {
           return b.score - a.score
         }
-        return new Date(b.date).getTime() - new Date(a.date).getTime()
+        return this.parseDate(b.date).getTime() - this.parseDate(a.date).getTime()
       })
       
       return validScores.slice(0, this.MAX_SCORES)
@@ -165,6 +165,11 @@ export class LocalStorageHighScoreService implements IHighScoreService {
       return false
     }
 
+    // Validate location (optional but should be string if present)
+    if (entry.location !== undefined && typeof entry.location !== 'string') {
+      return false
+    }
+
     return true
   }
 
@@ -174,7 +179,8 @@ export class LocalStorageHighScoreService implements IHighScoreService {
       score: Math.floor(Math.max(0, entry.score)),
       survivedTime: Math.max(0, entry.survivedTime),
       level: Math.max(1, Math.floor(entry.level)),
-      date: entry.date || '12/27/2025'
+      date: entry.date || '12/29/25',
+      location: entry.location || 'LOCAL'
     }
   }
 
@@ -187,6 +193,26 @@ export class LocalStorageHighScoreService implements IHighScoreService {
     } catch {
       return false
     }
+  }
+
+  /**
+   * Parse date string in MM/DD/YY format
+   */
+  private parseDate(dateStr: string): Date {
+    // Try to parse MM/DD/YY format
+    const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+    if (match) {
+      const month = parseInt(match[1], 10) - 1 // Month is 0-indexed
+      const day = parseInt(match[2], 10)
+      let year = parseInt(match[3], 10)
+      // Convert 2-digit year to 4-digit (assume 2000s)
+      if (year < 100) {
+        year += 2000
+      }
+      return new Date(year, month, day)
+    }
+    // Fallback to standard Date parsing
+    return new Date(dateStr)
   }
   
   // 💾 GET LAST PLAYER NAME - For convenience! 💾

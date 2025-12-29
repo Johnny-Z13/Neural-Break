@@ -116,27 +116,48 @@ export class LeaderboardScreen {
           overflow-y: auto;
         "></div>
         
-        <!-- BACK BUTTON -->
-        <button id="backButton" class="arcade-button" style="
-          margin-top: var(--space-lg, 1.5rem);
-          background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
-          border: var(--border-thick, 4px) solid var(--color-red, #FF4444);
-          color: var(--color-red, #FF4444);
-          font-family: inherit;
-          font-size: clamp(0.8rem, 2vw, 1rem);
-          font-weight: bold;
-          padding: var(--space-sm, 0.8rem) var(--space-lg, 2rem);
-          cursor: pointer;
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          text-shadow: 0 0 10px var(--color-red, #FF4444);
-          box-shadow: 
-            0 0 20px var(--color-red-glow, rgba(255, 68, 68, 0.4)),
-            var(--shadow-pixel, 4px 4px 0) var(--color-red-dark, #662222);
-          transition: all 0.1s step-end;
-        ">
-          ◀ BACK TO MENU
-        </button>
+        <!-- BUTTONS -->
+        <div style="display: flex; gap: var(--space-md, 1rem); justify-content: center; margin-top: var(--space-lg, 1.5rem);">
+          <button id="fullscreenButton" class="arcade-button" style="
+            background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+            border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
+            color: var(--color-cyan, #00FFFF);
+            font-family: inherit;
+            font-size: clamp(0.7rem, 1.8vw, 0.9rem);
+            font-weight: bold;
+            padding: var(--space-sm, 0.8rem) var(--space-md, 1.2rem);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
+            box-shadow: 
+              0 0 20px var(--color-cyan-glow, rgba(0, 255, 255, 0.4)),
+              var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666);
+            transition: all 0.1s step-end;
+          ">
+            ⛶ FULLSCREEN
+          </button>
+          
+          <button id="backButton" class="arcade-button" style="
+            background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+            border: var(--border-thick, 4px) solid var(--color-red, #FF4444);
+            color: var(--color-red, #FF4444);
+            font-family: inherit;
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            font-weight: bold;
+            padding: var(--space-sm, 0.8rem) var(--space-lg, 2rem);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 10px var(--color-red, #FF4444);
+            box-shadow: 
+              0 0 20px var(--color-red-glow, rgba(255, 68, 68, 0.4)),
+              var(--shadow-pixel, 4px 4px 0) var(--color-red-dark, #662222);
+            transition: all 0.1s step-end;
+          ">
+            ◀ BACK TO MENU
+          </button>
+        </div>
       </div>
       
       <!-- INSERT COIN TEXT -->
@@ -165,6 +186,21 @@ export class LeaderboardScreen {
         95% { opacity: 0.85; }
       }
       
+      #fullscreenButton:hover {
+        background: #003333 !important;
+        box-shadow: 
+          0 0 30px rgba(0, 255, 255, 0.6),
+          4px 4px 0 var(--color-cyan, #00FFFF) !important;
+        transform: translate(-2px, -2px);
+      }
+      
+      #fullscreenButton:active {
+        transform: translate(2px, 2px);
+        box-shadow: 
+          0 0 15px rgba(0, 255, 255, 0.4),
+          0 0 0 var(--color-cyan-dark, #006666) !important;
+      }
+      
       #backButton:hover {
         background: #330000 !important;
         box-shadow: 
@@ -178,6 +214,18 @@ export class LeaderboardScreen {
         box-shadow: 
           0 0 15px rgba(255, 68, 68, 0.4),
           0 0 0 var(--color-red-dark, #662222) !important;
+      }
+      
+      .expanded-view .score-header,
+      .expanded-view .score-row {
+        grid-template-columns: 50px 1fr 60px 100px 80px 70px 90px !important;
+      }
+      
+      @media (max-width: 600px) {
+        .expanded-view .score-header,
+        .expanded-view .score-row {
+          grid-template-columns: 40px 1fr 50px 80px 60px 60px 70px !important;
+        }
       }
       
       #leaderboardScoresList::-webkit-scrollbar {
@@ -215,15 +263,103 @@ export class LeaderboardScreen {
           grid-template-columns: 40px 1fr 50px 80px 60px !important;
           font-size: 0.5rem !important;
         }
+        
+        .expanded-view .score-header,
+        .expanded-view .score-row {
+          grid-template-columns: 40px 1fr 50px 80px 60px 60px 70px !important;
+          font-size: 0.45rem !important;
+        }
       }
     `
     document.head.appendChild(style)
 
     // Display high scores - pass the container element directly since it's not in DOM yet
     const scoresContainer = leaderboardScreen.querySelector('#leaderboardScoresList') as HTMLElement
-    if (scoresContainer) {
-      await LeaderboardScreen.displayHighScoresInElement(scoresContainer)
+    let isExpanded = false
+    
+    // Check initial fullscreen state
+    const checkFullscreen = () => {
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+      return isFullscreen
     }
+    
+    // Update display based on fullscreen state
+    const updateDisplay = async () => {
+      isExpanded = checkFullscreen()
+      if (scoresContainer) {
+        if (isExpanded) {
+          scoresContainer.parentElement?.classList.add('expanded-view')
+        } else {
+          scoresContainer.parentElement?.classList.remove('expanded-view')
+        }
+        await LeaderboardScreen.displayHighScoresInElement(scoresContainer, isExpanded)
+      }
+    }
+    
+    // Initial display
+    if (scoresContainer) {
+      await updateDisplay()
+    }
+    
+    // Listen for fullscreen changes
+    const fullscreenChangeHandler = () => {
+      updateDisplay()
+    }
+    document.addEventListener('fullscreenchange', fullscreenChangeHandler)
+    document.addEventListener('webkitfullscreenchange', fullscreenChangeHandler)
+    document.addEventListener('mozfullscreenchange', fullscreenChangeHandler)
+    document.addEventListener('MSFullscreenChange', fullscreenChangeHandler)
+    
+    // Store cleanup function
+    const cleanupFullscreen = () => {
+      document.removeEventListener('fullscreenchange', fullscreenChangeHandler)
+      document.removeEventListener('webkitfullscreenchange', fullscreenChangeHandler)
+      document.removeEventListener('mozfullscreenchange', fullscreenChangeHandler)
+      document.removeEventListener('MSFullscreenChange', fullscreenChangeHandler)
+    }
+
+    // Add fullscreen button event listener
+    const fullscreenButton = leaderboardScreen.querySelector('#fullscreenButton') as HTMLButtonElement
+    fullscreenButton.addEventListener('mouseenter', () => {
+      if (audioManager) audioManager.playButtonHoverSound()
+    })
+    fullscreenButton.addEventListener('click', async () => {
+      if (audioManager) audioManager.playButtonPressSound()
+      
+      try {
+        if (checkFullscreen()) {
+          // Exit fullscreen
+          if (document.exitFullscreen) {
+            await document.exitFullscreen()
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen()
+          } else if ((document as any).mozCancelFullScreen) {
+            await (document as any).mozCancelFullScreen()
+          } else if ((document as any).msExitFullscreen) {
+            await (document as any).msExitFullscreen()
+          }
+        } else {
+          // Enter fullscreen
+          const element = document.documentElement
+          if (element.requestFullscreen) {
+            await element.requestFullscreen()
+          } else if ((element as any).webkitRequestFullscreen) {
+            await (element as any).webkitRequestFullscreen()
+          } else if ((element as any).mozRequestFullScreen) {
+            await (element as any).mozRequestFullScreen()
+          } else if ((element as any).msRequestFullscreen) {
+            await (element as any).msRequestFullscreen()
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Fullscreen error:', error)
+      }
+    })
 
     // Add back button event listener
     const backButton = leaderboardScreen.querySelector('#backButton') as HTMLButtonElement
@@ -232,6 +368,7 @@ export class LeaderboardScreen {
     })
     backButton.addEventListener('click', () => {
       if (audioManager) audioManager.playButtonPressSound()
+      cleanupFullscreen()
       LeaderboardScreen.cleanup()
       onBack()
     })
@@ -239,7 +376,7 @@ export class LeaderboardScreen {
     return leaderboardScreen
   }
 
-  private static async displayHighScoresInElement(container: HTMLElement): Promise<void> {
+  private static async displayHighScoresInElement(container: HTMLElement, expanded: boolean = false): Promise<void> {
     try {
       const highScores = await ScoreManager.getHighScores()
       
@@ -260,11 +397,19 @@ export class LeaderboardScreen {
         return
       }
 
-      // Header
+      // Header - adjust columns based on expanded view
+      const headerColumns = expanded 
+        ? '50px 1fr 60px 100px 80px 70px 90px'
+        : '50px 1fr 60px 100px 80px'
+      
+      const headerLabels = expanded
+        ? '<span>RANK</span><span>NAME</span><span>LVL</span><span>SCORE</span><span>TIME</span><span>LOC</span><span>DATE</span>'
+        : '<span>RANK</span><span>NAME</span><span>LVL</span><span>SCORE</span><span>TIME</span>'
+      
       const header = `
         <div class="score-header" style="
           display: grid;
-          grid-template-columns: 50px 1fr 60px 100px 80px;
+          grid-template-columns: ${headerColumns};
           gap: var(--space-sm, 0.6rem);
           padding: var(--space-sm, 0.9rem) var(--space-xs, 0.6rem);
           border-bottom: 2.5px solid var(--color-yellow, #FFFF00);
@@ -275,15 +420,15 @@ export class LeaderboardScreen {
           background: linear-gradient(180deg, rgba(255, 255, 0, 0.12) 0%, rgba(255, 255, 0, 0.06) 100%);
           letter-spacing: 0.05em;
         ">
-          <span>RANK</span>
-          <span>NAME</span>
-          <span>LVL</span>
-          <span>SCORE</span>
-          <span>TIME</span>
+          ${headerLabels}
         </div>
       `
 
       // Generate score rows
+      const rowColumns = expanded
+        ? '50px 1fr 60px 100px 80px 70px 90px'
+        : '50px 1fr 60px 100px 80px'
+      
       const rows = highScores.map((entry, index) => {
         let rankColor = '#CCCCCC'
         let rankIcon = `${index + 1}`
@@ -307,10 +452,18 @@ export class LeaderboardScreen {
           borderLeft = '4px solid var(--color-bronze, #CD7F32)'
         }
 
+        // Location and date cells (only shown in expanded view)
+        const locationCell = expanded 
+          ? `<span style="color: var(--color-magenta, #FF00FF); text-shadow: 0 0 8px var(--color-magenta, #FF00FF);">${(entry.location || 'LOCAL').toUpperCase()}</span>`
+          : ''
+        const dateCell = expanded
+          ? `<span style="color: var(--color-yellow, #FFFF00); text-shadow: 0 0 8px var(--color-yellow, #FFFF00);">${entry.date || 'N/A'}</span>`
+          : ''
+
         return `
           <div class="score-row" style="
             display: grid;
-            grid-template-columns: 50px 1fr 60px 100px 80px;
+            grid-template-columns: ${rowColumns};
             gap: var(--space-sm, 0.6rem);
             padding: var(--space-sm, 0.7rem) var(--space-xs, 0.6rem);
             border-bottom: 1px solid rgba(0, 255, 255, 0.18);
@@ -328,6 +481,8 @@ export class LeaderboardScreen {
               ${ScoreManager.formatScore(entry.score)}
             </span>
             <span style="color: var(--color-cyan, #00FFFF); text-shadow: 0 0 8px var(--color-cyan, #00FFFF);">${ScoreManager.formatTime(entry.survivedTime)}</span>
+            ${locationCell}
+            ${dateCell}
           </div>
         `
       }).join('')

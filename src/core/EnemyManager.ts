@@ -26,6 +26,12 @@ export class EnemyManager {
   // ⚡ FIZZER SPAWN CONDITIONS ⚡
   private fizzersSpawnedThisStreak: number = 0
   private maxFizzersPerStreak: number = 3
+  
+  // 🔷 SPATIAL GRID FOR COLLISION DETECTION 🔷
+  private spatialGrid: Map<string, Enemy[]> = new Map()
+  private gridCellSize: number = 4.0 // Cell size for spatial partitioning
+  private separationForce: number = 8.0 // Force multiplier for separation
+  private separationRadius: number = 2.5 // Distance at which separation starts
 
   initialize(sceneManager: SceneManager, player: Player): void {
     this.sceneManager = sceneManager
@@ -115,15 +121,136 @@ export class EnemyManager {
       }
     }
 
-    // Update all enemies
+    // Update all enemies (AI first)
     for (const enemy of this.enemies) {
       if (enemy.isAlive()) {
         enemy.update(deltaTime, this.player)
       }
     }
 
+    // Resolve enemy-enemy collisions using spatial grid
+    this.resolveEnemyCollisions(deltaTime)
+
     // Remove dead enemies
     this.cleanupDeadEnemies()
+  }
+  
+  // 🔷 SPATIAL GRID UTILITIES 🔷
+  private getGridKey(x: number, y: number): string {
+    const gridX = Math.floor(x / this.gridCellSize)
+    const gridY = Math.floor(y / this.gridCellSize)
+    return `${gridX},${gridY}`
+  }
+  
+  private populateSpatialGrid(): void {
+    this.spatialGrid.clear()
+    
+    for (const enemy of this.enemies) {
+      if (!enemy.isAlive()) continue
+      
+      const pos = enemy.getPosition()
+      const key = this.getGridKey(pos.x, pos.y)
+      
+      if (!this.spatialGrid.has(key)) {
+        this.spatialGrid.set(key, [])
+      }
+      this.spatialGrid.get(key)!.push(enemy)
+    }
+  }
+  
+  private getNeighborsInRadius(enemy: Enemy, radius: number): Enemy[] {
+    const neighbors: Enemy[] = []
+    const pos = enemy.getPosition()
+    const searchRadius = Math.ceil(radius / this.gridCellSize)
+    
+    const centerKey = this.getGridKey(pos.x, pos.y)
+    const [centerX, centerY] = centerKey.split(',').map(Number)
+    
+    // Check surrounding grid cells
+    for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+      for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+        const key = `${centerX + dx},${centerY + dy}`
+        const cellEnemies = this.spatialGrid.get(key)
+        
+        if (cellEnemies) {
+          for (const other of cellEnemies) {
+            if (other !== enemy && other.isAlive()) {
+              const distance = pos.distanceTo(other.getPosition())
+              if (distance <= radius) {
+                neighbors.push(other)
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return neighbors
+  }
+  
+  // 🔷 SEPARATION LOGIC - Soft collision resolution 🔷
+  private resolveEnemyCollisions(deltaTime: number): void {
+    // Only process if we have enemies
+    if (this.enemies.length < 2) return
+    
+    // Populate spatial grid for efficient neighbor lookup
+    this.populateSpatialGrid()
+    
+    // Apply separation forces to all enemies
+    for (const enemy of this.enemies) {
+      if (!enemy.isAlive()) continue
+      
+      const neighbors = this.getNeighborsInRadius(enemy, this.separationRadius)
+      
+      if (neighbors.length === 0) continue
+      
+      // Calculate separation force
+      const separation = new THREE.Vector3(0, 0, 0)
+      const pos = enemy.getPosition()
+      
+      for (const neighbor of neighbors) {
+        const neighborPos = neighbor.getPosition()
+        const direction = pos.clone().sub(neighborPos)
+        const distance = direction.length()
+        
+        if (distance < 0.01) {
+          // Avoid division by zero - add random offset
+          direction.set(
+            (Math.random() - 0.5) * 0.1,
+            (Math.random() - 0.5) * 0.1,
+            0
+          ).normalize()
+        } else {
+          direction.normalize()
+        }
+        
+        // Inverse distance weighting - closer enemies push harder
+        const overlap = Math.max(0, enemy.getRadius() + neighbor.getRadius() - distance)
+        const force = overlap / (enemy.getRadius() + neighbor.getRadius())
+        
+        separation.add(direction.multiplyScalar(force))
+      }
+      
+      // Apply separation force to velocity (soft, arcade-friendly)
+      if (separation.length() > 0.01) {
+        separation.normalize()
+        
+        // Blend separation with existing velocity (85% original, 15% separation)
+        // This keeps the arcade feel while preventing stacking
+        const currentVel = enemy.getVelocity()
+        const separationStrength = Math.min(1.0, separation.length() * 2.0) // Clamp separation strength
+        const blendedVel = currentVel.clone().multiplyScalar(0.85)
+          .add(separation.multiplyScalar(this.separationForce * separationStrength * 0.15))
+        
+        // Preserve speed magnitude to maintain arcade feel
+        const originalSpeed = currentVel.length()
+        if (originalSpeed > 0.01) {
+          blendedVel.normalize().multiplyScalar(originalSpeed)
+        }
+        
+        enemy.setVelocity(blendedVel)
+      }
+    }
   }
 
   // Legacy time-based methods (kept for fallback compatibility)

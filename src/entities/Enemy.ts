@@ -337,6 +337,20 @@ export abstract class Enemy {
     return this.alive
   }
   
+  // 🔷 VELOCITY MANIPULATION FOR SEPARATION 🔷
+  getVelocity(): THREE.Vector3 {
+    return this.velocity.clone()
+  }
+  
+  setVelocity(velocity: THREE.Vector3): void {
+    this.velocity.copy(velocity)
+  }
+  
+  // Apply external force (for separation/collision resolution)
+  applyForce(force: THREE.Vector3, deltaTime: number): void {
+    this.velocity.add(force.clone().multiplyScalar(deltaTime))
+  }
+  
   // 📊 KILL TRACKING - For enemies with death animations (ChaosWorm, Boss) 📊
   // This ensures kills are counted even when alive is temporarily set back to true
   hasBeenKillTracked(): boolean {
