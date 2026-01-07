@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Enemy } from './Enemy'
 import { Player } from './Player'
 import { AudioManager } from '../audio/AudioManager'
+import { BALANCE_CONFIG } from '../config'
 
 /**
  * 🛸 UFO - INTELLIGENT ALIEN CRAFT 🛸
@@ -14,7 +15,6 @@ import { AudioManager } from '../audio/AudioManager'
  */
 export class UFO extends Enemy {
   private sceneManager: any = null
-  private audioManager: AudioManager | null = null
   
   // 🛸 ORGANIC MOVEMENT STATE 🛸
   private targetPoint: THREE.Vector3 = new THREE.Vector3()
@@ -30,12 +30,13 @@ export class UFO extends Enemy {
   private laserChargeDuration: number = 1.5 // Charge up before firing
   private isCharging: boolean = false
   private isFiring: boolean = false
-  private laserDuration: number = 0.8 // How long laser stays active
+  private laserDuration: number = 2.4 // 3x longer! (was 0.8)
   private laserTimer: number = 0
   private laserCooldown: number = 4.0 // Time between laser attacks
   private laserCooldownTimer: number = 2.0 // Start partially charged
   private laserBeam: THREE.Mesh | null = null
   private laserTarget: THREE.Vector3 = new THREE.Vector3()
+  private laserPulseTime: number = 0 // For pulsing effect
   
   // ✨ VISUAL COMPONENTS ✨
   private jetTrails: THREE.Points[] = []
@@ -43,16 +44,30 @@ export class UFO extends Enemy {
   private trailIndex: number = 0
   private maxTrailParticles: number = 40
   private domeLights: THREE.Mesh[] = []
+  
+  // 💀 DEATH ANIMATION STATE 💀
+  private isDying: boolean = false
+  private deathTimer: number = 0
+  private deathDuration: number = 1.2
+  private spinSpeed: number = 0
+  private wobbleIntensity: number = 0
+  private debrisFragments: THREE.Mesh[] = []
 
   constructor(x: number, y: number) {
     super(x, y)
-    // 🛸 STURDY ALIEN CRAFT 🛸
-    this.health = 40
-    this.maxHealth = 40
-    this.speed = 3.5 // Moderate speed - relies on smart movement
-    this.damage = 20 // Collision damage
-    this.xpValue = 25
-    this.radius = 1.2 // Bit larger than player
+    
+    // 🎮 LOAD STATS FROM BALANCE CONFIG 🎮
+    const stats = BALANCE_CONFIG.UFO
+    this.health = stats.HEALTH
+    this.maxHealth = stats.HEALTH
+    this.speed = stats.SPEED
+    this.damage = stats.DAMAGE
+    this.xpValue = stats.XP_VALUE
+    this.radius = stats.RADIUS
+    
+    // 💥 DEATH DAMAGE 💥
+    this.deathDamageRadius = stats.DEATH_RADIUS
+    this.deathDamageAmount = stats.DEATH_DAMAGE
   }
 
   setSceneManager(sceneManager: any): void {
@@ -152,8 +167,8 @@ export class UFO extends Enemy {
     glow.position.z = -0.2
     this.mesh.add(glow)
 
-    // 🔴 LASER WEAPON (initially hidden) 🔴
-    const laserGeometry = new THREE.CylinderGeometry(0.05, 0.08, 20, 8)
+    // 🔴 LASER WEAPON (initially hidden) - TWICE AS FAT! 🔴
+    const laserGeometry = new THREE.CylinderGeometry(0.10, 0.16, 20, 8) // 2x wider (was 0.05, 0.08)
     const laserMaterial = new THREE.MeshBasicMaterial({
       color: 0xFF0000,
       transparent: true,
@@ -162,6 +177,7 @@ export class UFO extends Enemy {
     })
     this.laserBeam = new THREE.Mesh(laserGeometry, laserMaterial)
     this.laserBeam.visible = false
+    this.laserBeam.position.set(0, 0, 0) // Center of UFO
     this.mesh.add(this.laserBeam)
 
     // 🔥 JET TRAILS (2 engines) 🔥
@@ -247,6 +263,288 @@ export class UFO extends Enemy {
       .add(p2.clone().multiplyScalar(t * t))
   }
 
+  // Override takeDamage to trigger custom death
+  takeDamage(damage: number): void {
+    if (this.isDying) return
+    
+    this.health -= damage
+    
+    // Visual feedback - dome flickers
+    const dome = this.mesh.children.find(child => child.userData.isDome) as THREE.Mesh
+    if (dome) {
+      const material = dome.material as THREE.MeshBasicMaterial
+      const originalOpacity = material.opacity
+      material.opacity = 1.0
+      setTimeout(() => {
+        material.opacity = originalOpacity
+      }, 100)
+    }
+
+    if (this.health <= 0 && !this.isDying) {
+      this.startDeathAnimation()
+    }
+  }
+
+  private startDeathAnimation(): void {
+    this.isDying = true
+    this.deathTimer = 0
+    this.alive = true
+    this.spinSpeed = 2
+    this.wobbleIntensity = 0
+    
+    // Disable laser
+    if (this.laserBeam && this.laserBeam.parent) {
+      this.laserBeam.parent.remove(this.laserBeam)
+      this.laserBeam = null
+    }
+    
+    // 🎵 PLAY DEATH SOUND! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemyDeathSound('UFO')
+    }
+  }
+
+  private updateDeathAnimation(deltaTime: number): void {
+    if (!this.isDying) return
+    
+    this.deathTimer += deltaTime
+    const progress = this.deathTimer / this.deathDuration
+    
+    // Phase 1: Loss of control - wobble and spin (0-0.25s)
+    if (progress < 0.25) {
+      const phaseProgress = progress / 0.25
+      this.wobbleIntensity = phaseProgress * 2
+      this.spinSpeed = 2 + phaseProgress * 8
+      
+      // Wobble movement
+      const wobbleX = Math.sin(this.deathTimer * 10) * this.wobbleIntensity
+      const wobbleY = Math.cos(this.deathTimer * 8) * this.wobbleIntensity
+      this.velocity.set(wobbleX, wobbleY, 0)
+      
+      // Spin faster
+      this.mesh.rotation.z += deltaTime * this.spinSpeed
+      
+      // Lights flicker
+      this.domeLights.forEach((light, i) => {
+        const material = light.material as THREE.MeshBasicMaterial
+        material.opacity = Math.random() > 0.5 ? 0.8 : 0.2
+      })
+    }
+    // Phase 2: Tractor beam collapse (0.25-0.4s)
+    else if (progress < 0.4) {
+      const phaseProgress = (progress - 0.25) / 0.15
+      
+      // Tractor beam implodes
+      const tractorBeam = this.mesh.children.find(child => child.userData.isTractorBeam) as THREE.Mesh
+      if (tractorBeam) {
+        tractorBeam.scale.y = 1 - phaseProgress
+        const material = tractorBeam.material as THREE.MeshBasicMaterial
+        material.opacity = 0.3 * (1 - phaseProgress)
+      }
+      
+      // Continue spinning faster
+      this.spinSpeed = 10 + phaseProgress * 10
+      this.mesh.rotation.z += deltaTime * this.spinSpeed
+      
+      // Tilt
+      this.mesh.rotation.x = phaseProgress * Math.PI * 0.3
+      
+      // Sparks
+      if (this.effectsSystem && Math.random() < 0.4) {
+        const angle = Math.random() * Math.PI * 2
+        const velocity = new THREE.Vector3(
+          Math.cos(angle) * (1 + Math.random()),
+          Math.sin(angle) * (1 + Math.random()),
+          (Math.random() - 0.5) * 0.5
+        )
+        const sparkColor = new THREE.Color(0xFF8800)
+        this.effectsSystem.createSparkle(
+          this.position,
+          velocity,
+          sparkColor,
+          0.3
+        )
+      }
+    }
+    // Phase 3: Hull breach - debris (0.4-0.7s)
+    else if (progress < 0.7) {
+      const phaseProgress = (progress - 0.4) / 0.3
+      
+      // Create debris fragments
+      if (phaseProgress < 0.2 && this.debrisFragments.length < 8) {
+        for (let i = 0; i < 2; i++) {
+          const fragmentGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.1)
+          const fragmentMaterial = new THREE.MeshBasicMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 1.0
+          })
+          const fragment = new THREE.Mesh(fragmentGeometry, fragmentMaterial)
+          
+          fragment.position.copy(this.position)
+          const angle = Math.random() * Math.PI * 2
+          const speed = 1 + Math.random() * 2
+          const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            (Math.random() - 0.5) * 1
+          )
+          
+          fragment.userData.velocity = velocity
+          fragment.userData.rotation = new THREE.Vector3(
+            (Math.random() - 0.5) * 10,
+            (Math.random() - 0.5) * 10,
+            (Math.random() - 0.5) * 10
+          )
+          
+          if (this.mesh.parent) {
+            this.mesh.parent.add(fragment)
+          }
+          this.debrisFragments.push(fragment)
+        }
+      }
+      
+      // Animate debris
+      this.debrisFragments.forEach(fragment => {
+        const velocity = fragment.userData.velocity as THREE.Vector3
+        const rotation = fragment.userData.rotation as THREE.Vector3
+        
+        fragment.position.add(velocity.clone().multiplyScalar(deltaTime))
+        fragment.rotation.x += rotation.x * deltaTime
+        fragment.rotation.y += rotation.y * deltaTime
+        fragment.rotation.z += rotation.z * deltaTime
+        
+        // Fade out
+        const material = fragment.material as THREE.MeshBasicMaterial
+        material.opacity = 1 - phaseProgress
+      })
+      
+      // Main UFO fades
+      this.mesh.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          const material = child.material as THREE.MeshBasicMaterial
+          if (material) {
+            material.opacity = Math.max(0, 1 - phaseProgress * 0.5)
+          }
+        }
+      })
+      
+      // More sparks
+      if (this.effectsSystem && Math.random() < 0.5) {
+        const angle = Math.random() * Math.PI * 2
+        const velocity = new THREE.Vector3(
+          Math.cos(angle) * 2,
+          Math.sin(angle) * 2,
+          (Math.random() - 0.5) * 1
+        )
+        const fireColor = new THREE.Color(0xFF4400)
+        this.effectsSystem.createSparkle(
+          this.position,
+          velocity,
+          fireColor,
+          0.4
+        )
+      }
+    }
+    // Phase 4: Final explosion (0.7-1.0s)
+    else {
+      const phaseProgress = (progress - 0.7) / 0.3
+      
+      // Explosion at start of phase
+      if (this.effectsSystem && phaseProgress < 0.1) {
+        const explosionColor = new THREE.Color(0xFF6600)
+        this.effectsSystem.createExplosion(this.position, 2.0, explosionColor)
+        
+        // Radial debris burst
+        for (let i = 0; i < 16; i++) {
+          const angle = (i / 16) * Math.PI * 2
+          const speed = 2 + Math.random() * 2
+          const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            (Math.random() - 0.5) * 1.5
+          )
+          this.effectsSystem.createSparkle(
+            this.position,
+            velocity,
+            explosionColor,
+            0.6
+          )
+        }
+        
+        this.effectsSystem.addScreenFlash(0.15, explosionColor)
+      }
+      
+      // Fade everything
+      this.mesh.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          const material = child.material as THREE.MeshBasicMaterial
+          if (material) {
+            material.opacity = Math.max(0, 1 - phaseProgress * 2)
+          }
+        }
+      })
+      
+      this.debrisFragments.forEach(fragment => {
+        const material = fragment.material as THREE.MeshBasicMaterial
+        material.opacity = Math.max(0, 1 - phaseProgress * 2)
+      })
+      
+      if (progress >= 1.0) {
+        this.completeDeath()
+      }
+    }
+  }
+
+  private completeDeath(): void {
+    // Clean up debris
+    this.debrisFragments.forEach(fragment => {
+      if (fragment.parent) {
+        fragment.parent.remove(fragment)
+      }
+    })
+    this.debrisFragments = []
+    
+    // Final VFX
+    if (this.effectsSystem) {
+      const deathColor = new THREE.Color(0xFF6600)
+      this.effectsSystem.createExplosion(this.position, 2.5, deathColor)
+      this.effectsSystem.addDistortionWave(this.position, 1.5)
+    }
+    
+    this.alive = false
+    this.isDying = false
+    this.createDeathEffect()
+  }
+
+  // Override update to handle death animation
+  update(deltaTime: number, player: Player): void {
+    if (this.isDying) {
+      this.updateDeathAnimation(deltaTime)
+      // Still update position during death
+      this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
+      this.mesh.position.set(this.position.x, this.position.y, 0)
+      return
+    }
+    
+    if (!this.alive) return
+    
+    // Store last position for trail calculation
+    this.lastPosition.copy(this.position)
+    
+    this.updateAI(deltaTime, player)
+    
+    // Update position
+    this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
+    this.mesh.position.set(this.position.x, this.position.y, 0)
+    
+    // Create trail effects
+    this.updateTrails(deltaTime)
+    
+    // Update visual effects
+    this.updateVisuals(deltaTime)
+  }
+
   updateAI(deltaTime: number, player: Player): void {
     const playerPos = player.getPosition()
     const distanceToPlayer = this.position.distanceTo(playerPos)
@@ -327,6 +625,7 @@ export class UFO extends Enemy {
     
     if (this.isFiring) {
       this.laserTimer += deltaTime
+      this.laserPulseTime += deltaTime // Update pulse timer
       
       if (this.laserTimer >= this.laserDuration) {
         this.isFiring = false
@@ -360,7 +659,7 @@ export class UFO extends Enemy {
     const closestPoint = laserStart.clone().add(laserDir.multiplyScalar(projection))
     const distance = playerPos.distanceTo(closestPoint)
     
-    return distance < playerRadius + 0.2 // Laser has some thickness
+    return distance < playerRadius + 0.4 // Laser is THICKER now (was 0.2)
   }
 
   getLaserDamage(): number {
@@ -410,7 +709,7 @@ export class UFO extends Enemy {
       bottomGlow.scale.setScalar(1 + Math.sin(time * 6) * 0.1)
     }
     
-    // 🔴 LASER BEAM VISUAL 🔴
+    // 🔴 LASER BEAM VISUAL - PULSING & CENTERED! 🔴
     if (this.laserBeam) {
       const laserMaterial = this.laserBeam.material as THREE.MeshBasicMaterial
       
@@ -420,26 +719,38 @@ export class UFO extends Enemy {
         laserMaterial.opacity = (this.laserChargeTime / this.laserChargeDuration) * 0.5
         laserMaterial.color.setHSL(0, 1, 0.3 + (this.laserChargeTime / this.laserChargeDuration) * 0.4)
         
-        // Point at target
+        // Point at target from CENTER of UFO - beam starts at (0,0,0)
+        this.laserBeam.position.set(0, 0, 0) // Always centered
         const direction = this.laserTarget.clone().sub(this.position)
-        this.laserBeam.lookAt(this.laserTarget)
+        const targetWorld = this.position.clone().add(direction)
+        this.laserBeam.lookAt(targetWorld)
         this.laserBeam.rotateX(Math.PI / 2)
-        this.laserBeam.position.set(direction.x * 0.5, direction.y * 0.5, -0.2)
         
         const chargeScale = this.laserChargeTime / this.laserChargeDuration
         this.laserBeam.scale.set(chargeScale * 0.5, 0.5, chargeScale * 0.5)
       } else if (this.isFiring) {
-        // Full laser!
+        // Full laser with PULSING effect!
         this.laserBeam.visible = true
-        const flicker = 0.7 + Math.sin(time * 50) * 0.3
-        laserMaterial.opacity = flicker
-        laserMaterial.color.setRGB(1, 0.2, 0.2)
         
+        // Base flicker + pulsing wave
+        const flicker = 0.7 + Math.sin(time * 50) * 0.3
+        const pulse = 0.85 + Math.sin(this.laserPulseTime * 8) * 0.15 // Slower pulse wave
+        laserMaterial.opacity = flicker * pulse
+        
+        // Pulsing color intensity
+        const colorIntensity = 0.8 + Math.sin(this.laserPulseTime * 8) * 0.2
+        laserMaterial.color.setRGB(1, 0.2 * colorIntensity, 0.2 * colorIntensity)
+        
+        // Point at target from CENTER of UFO - beam starts at (0,0,0)
+        this.laserBeam.position.set(0, 0, 0) // Always centered
         const direction = this.laserTarget.clone().sub(this.position)
-        this.laserBeam.lookAt(this.laserTarget)
+        const targetWorld = this.position.clone().add(direction)
+        this.laserBeam.lookAt(targetWorld)
         this.laserBeam.rotateX(Math.PI / 2)
-        this.laserBeam.position.set(direction.x * 0.5, direction.y * 0.5, -0.2)
-        this.laserBeam.scale.set(1, 1, 1)
+        
+        // Pulsing width!
+        const widthPulse = 1.0 + Math.sin(this.laserPulseTime * 8) * 0.2 // Width pulses 80-120%
+        this.laserBeam.scale.set(widthPulse, 1, widthPulse)
       } else {
         this.laserBeam.visible = false
         laserMaterial.opacity = 0
@@ -484,6 +795,27 @@ export class UFO extends Enemy {
     }
     
     this.trailIndex = (this.trailIndex + 1) % this.maxTrailParticles
+  }
+
+  /**
+   * 🧹 CLEANUP - Remove laser beam and jet trails from scene
+   */
+  destroy(): void {
+    // Remove laser beam if it exists
+    if (this.laserBeam && this.laserBeam.parent) {
+      this.laserBeam.parent.remove(this.laserBeam)
+      this.laserBeam = null
+    }
+    
+    // Remove jet trails
+    if (this.sceneManager) {
+      for (const trail of this.jetTrails) {
+        this.sceneManager.removeFromScene(trail)
+      }
+    }
+    this.jetTrails = []
+    
+    console.log('🧹 UFO visuals cleaned up')
   }
 }
 

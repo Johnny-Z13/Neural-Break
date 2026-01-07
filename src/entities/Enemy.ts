@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Player } from './Player'
 import { EffectsSystem } from '../graphics/EffectsSystem'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
+import { AudioManager } from '../audio/AudioManager'
 
 export abstract class Enemy {
   protected mesh: THREE.Mesh
@@ -15,12 +16,17 @@ export abstract class Enemy {
   protected radius: number
   protected alive: boolean = true
   protected effectsSystem: EffectsSystem | null = null
+  protected audioManager: AudioManager | null = null
   protected lastPosition: THREE.Vector3 = new THREE.Vector3()
   protected trailTimer: number = 0
   protected trailInterval: number = 0.05 // Trail every 50ms
   
   // 📊 KILL TRACKING - Separate from alive flag for enemies with death animations! 📊
   private killTracked: boolean = false
+  
+  // 💥 DEATH DAMAGE - Enemies damage nearby enemies when they die! 💥
+  protected deathDamageRadius: number = 3.0 // Default radius for death damage
+  protected deathDamageAmount: number = 10 // Default damage to nearby enemies
 
   constructor(x: number, y: number) {
     this.position = new THREE.Vector3(x, y, 0)
@@ -56,29 +62,62 @@ export abstract class Enemy {
   }
 
   takeDamage(damage: number): void {
+    const wasAlive = this.alive
     this.health -= damage
     
-    // JUICY visual feedback - flash bright saturated color (NOT white!) and scale up
-    const material = this.mesh.material as THREE.MeshLambertMaterial
-    const originalColor = material.color.clone()
-    const originalScale = this.mesh.scale.clone()
-    
-    // Get HSL of original color and boost brightness while keeping saturation
-    const hsl = { h: 0, s: 0, l: 0 }
-    originalColor.getHSL(hsl)
-    // Flash with boosted saturation/brightness but NOT white
-    material.color.setHSL(hsl.h, 1.0, 0.7) // Saturated bright version of enemy color
-    this.mesh.scale.multiplyScalar(1.5)
-    
-    setTimeout(() => {
-      material.color.copy(originalColor)
-      this.mesh.scale.copy(originalScale)
-    }, 100)
+    // 🔴 RED FLASH + HIT SOUND - Just like player ship! 🔴
+    if (wasAlive && this.health > 0) {
+      // Enemy is HIT but NOT KILLED - show clear feedback!
+      this.flashRed()
+      
+      // Play hit sound
+      if (this.audioManager) {
+        this.audioManager.playEnemyHitSound()
+      }
+    }
 
     if (this.health <= 0) {
       this.alive = false
       this.createDeathEffect()
     }
+  }
+  
+  // 🔴 RED FLASH - Clear visual feedback that enemy was hit! 🔴
+  private flashRed(): void {
+    const material = this.mesh.material as THREE.MeshLambertMaterial
+    const originalColor = material.color.clone()
+    const originalEmissive = material.emissive.clone()
+    const originalScale = this.mesh.scale.clone()
+    
+    // BRIGHT RED FLASH! (same as player)
+    material.emissive.setHex(0xFF0000) // Pure red glow
+    material.color.setHex(0xFF0000)    // Full red
+    
+    // Scale up for impact effect
+    this.mesh.scale.multiplyScalar(1.3)
+    
+    // Flash sequence: Red → White → Red → Normal
+    setTimeout(() => {
+      material.emissive.setHex(0xFFFFFF) // White flash
+      material.color.setHex(0xFFAAAA)    // Light red
+    }, 50)
+    
+    setTimeout(() => {
+      material.emissive.setHex(0xFF0000) // Back to red
+      material.color.setHex(0xFF4444)    
+      this.mesh.scale.copy(originalScale) // Reset scale
+    }, 100)
+    
+    setTimeout(() => {
+      material.emissive.setHex(0xFF6666) // Fading red
+      material.color.setHex(0xFF8888)    
+    }, 150)
+    
+    setTimeout(() => {
+      // Restore original colors
+      material.emissive.copy(originalEmissive)
+      material.color.copy(originalColor)
+    }, 200)
   }
 
   protected createDeathEffect(): void {
@@ -103,7 +142,7 @@ export abstract class Enemy {
               Math.sin(angle) * 2,
               (Math.random() - 0.5) * 1
             )
-            this.effectsSystem.createSparkle(this.position, velocity, deathColor, 0.4)
+            this.effectsSystem.createSparkle(this.position, velocity, deathColor, 0.32) // 20% shorter
           }
           break
         case 'ScanDrone':
@@ -120,7 +159,7 @@ export abstract class Enemy {
               (Math.random() - 0.5) * 1.5
             )
             const cyanColor = new THREE.Color().setHSL(0.5, 1.0, 0.6)
-            this.effectsSystem.createSparkle(this.position, velocity, cyanColor, 0.5)
+            this.effectsSystem.createSparkle(this.position, velocity, cyanColor, 0.4) // 20% shorter
           }
           break
         case 'ChaosWorm':
@@ -142,7 +181,7 @@ export abstract class Enemy {
               (Math.random() - 0.5) * 2
             )
             const purpleColor = new THREE.Color(0.7, 0, 1)
-            this.effectsSystem.createSparkle(this.position, velocity, purpleColor, 0.6)
+            this.effectsSystem.createSparkle(this.position, velocity, purpleColor, 0.48) // 20% shorter
           }
           break
         case 'CrystalShardSwarm':
@@ -160,7 +199,7 @@ export abstract class Enemy {
             )
             const hue = (i / 16) % 1
             const crystalColor = new THREE.Color().setHSL(hue, 1.0, 0.7)
-            this.effectsSystem.createSparkle(this.position, velocity, crystalColor, 0.7)
+            this.effectsSystem.createSparkle(this.position, velocity, crystalColor, 0.56) // 20% shorter
           }
           break
         case 'Fizzer':
@@ -178,7 +217,7 @@ export abstract class Enemy {
               (Math.random() - 0.5) * 2
             )
             const electricColor = new THREE.Color().setHSL(0.5 + Math.random() * 0.1, 1.0, 0.7)
-            this.effectsSystem.createSparkle(this.position, velocity, electricColor, 0.5)
+            this.effectsSystem.createSparkle(this.position, velocity, electricColor, 0.4) // 20% shorter
           }
           break
         case 'UFO':
@@ -194,7 +233,7 @@ export abstract class Enemy {
               (Math.random() - 0.5) * 2
             )
             const alienColor = new THREE.Color().setHSL(0.55 + Math.random() * 0.1, 1.0, 0.6)
-            this.effectsSystem.createSparkle(this.position, velocity, alienColor, 0.6)
+            this.effectsSystem.createSparkle(this.position, velocity, alienColor, 0.48) // 20% shorter
           }
           // Add tractor beam collapse effect
           this.effectsSystem.addDistortionWave(this.position, 1.8)
@@ -369,5 +408,18 @@ export abstract class Enemy {
   // 🎆 SET EFFECTS SYSTEM FOR SUPER JUICY EFFECTS! 🎆
   setEffectsSystem(effectsSystem: EffectsSystem): void {
     this.effectsSystem = effectsSystem
+  }
+  
+  setAudioManager(audioManager: AudioManager): void {
+    this.audioManager = audioManager
+  }
+  
+  // 💥 GET DEATH DAMAGE PROPERTIES 💥
+  getDeathDamageRadius(): number {
+    return this.deathDamageRadius
+  }
+  
+  getDeathDamageAmount(): number {
+    return this.deathDamageAmount
   }
 }

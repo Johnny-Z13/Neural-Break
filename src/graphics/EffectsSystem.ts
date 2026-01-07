@@ -944,6 +944,90 @@ export class EffectsSystem {
   getSlowMotionFactor(): number {
     return this.screenEffects.getSlowMotionFactor()
   }
+
+  // 🧹 CLEANUP - Clear all particles and effects for fresh start! 🧹
+  cleanup(): void {
+    // Deactivate all particles in all pools
+    this.particlePools.forEach(pool => {
+      const particles = (pool as any).particles
+      if (particles) {
+        particles.forEach((particle: any) => {
+          particle.active = false
+          particle.life = 0
+        })
+      }
+    })
+    
+    // Deactivate vector particles
+    if (this.vectorParticlePool) {
+      const particles = (this.vectorParticlePool as any).particles
+      if (particles) {
+        particles.forEach((particle: any) => {
+          particle.active = false
+          particle.life = 0
+        })
+      }
+    }
+    
+    // Deactivate specialized particle pools
+    if (this.nebulaPool) {
+      const particles = (this.nebulaPool as any).particles
+      if (particles) {
+        particles.forEach((particle: any) => {
+          particle.active = false
+          particle.life = 0
+        })
+      }
+    }
+    
+    if (this.plasmaPool) {
+      const particles = (this.plasmaPool as any).particles
+      if (particles) {
+        particles.forEach((particle: any) => {
+          particle.active = false
+          particle.life = 0
+        })
+      }
+    }
+    
+    if (this.energyWavePool) {
+      const particles = (this.energyWavePool as any).particles
+      if (particles) {
+        particles.forEach((particle: any) => {
+          particle.active = false
+          particle.life = 0
+        })
+      }
+    }
+    
+    if (this.stardustPool) {
+      const particles = (this.stardustPool as any).particles
+      if (particles) {
+        particles.forEach((particle: any) => {
+          particle.active = false
+          particle.life = 0
+        })
+      }
+    }
+    
+    if (this.auroraPool) {
+      const particles = (this.auroraPool as any).particles
+      if (particles) {
+        particles.forEach((particle: any) => {
+          particle.active = false
+          particle.life = 0
+        })
+      }
+    }
+    
+    // Clear active effects
+    this.activeEffects = []
+    
+    // Clear screen effects
+    if (this.screenEffects && (this.screenEffects as any).cleanup) {
+      (this.screenEffects as any).cleanup()
+    }
+  }
 }
 
 // NOTE: ParticlePool, Particle, Effect, VectorParticlePool, and VectorParticle
@@ -1008,11 +1092,11 @@ class NebulaParticlePool {
     
     for (let i = 0; i < this.activeCount; i++) {
       const particle = this.particles[i]
+      const i3 = i * 3
       
       if (particle.active) {
         particle.update(deltaTime)
         
-        const i3 = i * 3
         this.positions[i3] = particle.position.x
         this.positions[i3 + 1] = particle.position.y
         this.positions[i3 + 2] = particle.position.z
@@ -1122,11 +1206,11 @@ class PlasmaParticlePool {
     
     for (let i = 0; i < this.activeCount; i++) {
       const particle = this.particles[i]
+      const i3 = i * 3
       
       if (particle.active) {
         particle.update(deltaTime)
         
-        const i3 = i * 3
         this.positions[i3] = particle.position.x
         this.positions[i3 + 1] = particle.position.y
         this.positions[i3 + 2] = particle.position.z
@@ -1233,11 +1317,11 @@ class EnergyWavePool {
     
     for (let i = 0; i < this.activeCount; i++) {
       const particle = this.particles[i]
+      const i3 = i * 3
       
       if (particle.active) {
         particle.update(deltaTime)
         
-        const i3 = i * 3
         this.positions[i3] = particle.position.x
         this.positions[i3 + 1] = particle.position.y
         this.positions[i3 + 2] = particle.position.z
@@ -1342,11 +1426,11 @@ class StardustPool {
     
     for (let i = 0; i < this.activeCount; i++) {
       const particle = this.particles[i]
+      const i3 = i * 3
       
       if (particle.active) {
         particle.update(deltaTime)
         
-        const i3 = i * 3
         this.positions[i3] = particle.position.x
         this.positions[i3 + 1] = particle.position.y
         this.positions[i3 + 2] = particle.position.z
@@ -1453,11 +1537,11 @@ class AuroraPool {
     
     for (let i = 0; i < this.activeCount; i++) {
       const particle = this.particles[i]
+      const i3 = i * 3
       
       if (particle.active) {
         particle.update(deltaTime)
         
-        const i3 = i * 3
         this.positions[i3] = particle.position.x
         this.positions[i3 + 1] = particle.position.y
         this.positions[i3 + 2] = particle.position.z

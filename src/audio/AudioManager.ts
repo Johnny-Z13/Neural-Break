@@ -2,7 +2,14 @@
  * 🎵 NEURAL BREAK AUDIO SYSTEM 🎵
  * Procedural sci-fi audio - Aphex Twin / Autechre vibes
  * Optimized for reliability + distinct sound effects
+ * 
+ * 🎯 OPTIMIZATIONS:
+ * - Memory leak prevention with proper node cleanup
+ * - Sound limiting and priority system
+ * - Performance tracking and debugging
  */
+
+import { AudioPool, SoundCategory } from './AudioPool'
 
 export class AudioManager {
   private audioContext: AudioContext | null = null
@@ -10,6 +17,9 @@ export class AudioManager {
   private masterGainNode: GainNode | null = null
   private sfxGainNode: GainNode | null = null  // Separate gain for sound effects
   private ambientGainNode: GainNode | null = null  // Separate gain for ambient
+  
+  // 🎯 AUDIO POOL - Memory and performance management
+  private audioPool: AudioPool = new AudioPool()
   
   // Ambient soundscape
   private ambientNodes: AudioNode[] = []
@@ -19,6 +29,9 @@ export class AudioManager {
   // Audio context state
   private isInitialized: boolean = false
   private pendingSounds: (() => void)[] = []
+  
+  // 🎵 DEBUG MODE - Performance tracking
+  private debugMode: boolean = false
 
   initialize(): void {
     try {
@@ -96,6 +109,72 @@ export class AudioManager {
     sounds.forEach(fn => this.queueSound(fn))
   }
 
+  /**
+   * 🎯 MANAGED SOUND - Automatically cleaned up after duration
+   * Prevents memory leaks and tracks sound limits
+   */
+  private createManagedSound(
+    duration: number,
+    category: SoundCategory,
+    priority: number,
+    createNodes: () => AudioNode[]
+  ): void {
+    // Check if we can play this sound
+    if (!this.audioPool.canPlaySound(category, priority)) {
+      if (this.debugMode) {
+        console.log(`🔇 Sound rejected (category: ${category}, priority: ${priority})`)
+      }
+      return
+    }
+
+    // Create the audio nodes
+    const nodes = createNodes()
+    
+    // Register with pool for automatic cleanup
+    this.audioPool.registerSound(nodes, duration, category, priority)
+  }
+
+  /**
+   * Get audio context for external systems (like MusicManager)
+   */
+  getAudioContext(): AudioContext | null {
+    return this.audioContext
+  }
+
+  /**
+   * Get master gain node for external systems
+   */
+  getMasterGainNode(): GainNode | null {
+    return this.masterGainNode
+  }
+
+  /**
+   * Enable/disable debug mode
+   */
+  setDebugMode(enabled: boolean): void {
+    this.debugMode = enabled
+  }
+
+  /**
+   * Get audio system performance stats
+   */
+  getDebugInfo() {
+    return {
+      audioPool: this.audioPool.getDebugInfo(),
+      audioContextState: this.audioContext?.state || 'none',
+      isInitialized: this.isInitialized,
+      ambientPlaying: this.isAmbientPlaying
+    }
+  }
+
+  /**
+   * Force cleanup all sounds (for menu transitions, game over, etc.)
+   */
+  cleanup(): void {
+    this.audioPool.forceCleanupAll()
+    this.stopAmbient()
+  }
+
   // ============================================
   // 🔫 WEAPON SOUNDS - Punchy, distinct
   // ============================================
@@ -110,149 +189,225 @@ export class AudioManager {
   
   /**
    * 🔫🔥 POWER-SCALED FIRE SOUND - Gets BIGGER and more DRAMATIC at higher power levels! 🔥🔫
+   * ✅ OPTIMIZED: Uses managed sound system with automatic cleanup
    */
   playPowerScaledFireSound(powerLevel: number, weaponType: string): void {
+    const duration = 0.1 * (1 + powerLevel * 0.08) // Calculate total duration
+    
     this.queueSound(() => {
-      const ctx = this.audioContext!
-      const now = ctx.currentTime
-      const variation = Math.random()
+      // Create nodes and track them for cleanup
+      const nodes: AudioNode[] = []
       
-      // 🔥 Power scaling factors 🔥
-      const powerScale = 1 + powerLevel * 0.15 // Overall intensity
-      const durationScale = 1 + powerLevel * 0.08 // Sound lasts longer
-      const layerCount = 1 + Math.floor(powerLevel / 3) // More layers at high power
-      
-      // 🎯 Weapon-type specific base frequencies and characteristics
-      let baseFreq: number
-      let oscType: OscillatorType
-      let filterType: BiquadFilterType = 'bandpass'
-      
-      switch (weaponType) {
-        case 'lasers':
-          baseFreq = 1200 + variation * 300 // Higher pitched
-          oscType = 'sawtooth' // Harsher sound
-          break
-        case 'photons':
-          baseFreq = 600 + variation * 200 // Mid-range
-          oscType = 'sine' // Cleaner sound
-          filterType = 'highpass'
-          break
-        default: // bullets
-          baseFreq = 800 + variation * 400
-          oscType = 'square'
-      }
-      
-      // 🔥 MAIN PULSE - scales with power! 🔥
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      const filter = ctx.createBiquadFilter()
-      
-      // Frequency drops more dramatically at higher power
-      osc.frequency.setValueAtTime(baseFreq * powerScale, now)
-      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.4, now + 0.08 * durationScale)
-      osc.type = oscType
-      
-      filter.type = filterType
-      filter.frequency.setValueAtTime(baseFreq * powerScale, now)
-      filter.Q.value = 4 + powerLevel * 0.5
-      
-      // Louder and punchier at higher power
-      const mainGain = 0.6 + powerLevel * 0.04
-      gain.gain.setValueAtTime(0, now)
-      gain.gain.linearRampToValueAtTime(Math.min(mainGain, 0.9), now + 0.005)
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08 * durationScale)
-      
-      osc.connect(filter)
-      filter.connect(gain)
-      gain.connect(this.sfxGainNode!)
-      
-      osc.start(now)
-      osc.stop(now + 0.1 * durationScale)
-      
-      // 🔥 SUB-BASS THUMP - DEEPER and HEAVIER at high power! 🔥
-      const sub = ctx.createOscillator()
-      const subGain = ctx.createGain()
-      
-      // Lower bass at higher power
-      const subFreq = 80 - powerLevel * 4 // Goes down to 40Hz at max power
-      sub.frequency.setValueAtTime(subFreq, now)
-      sub.frequency.exponentialRampToValueAtTime(subFreq * 0.4, now + 0.05 * durationScale)
-      sub.type = 'sine'
-      
-      const subVol = 0.3 + powerLevel * 0.06
-      subGain.gain.setValueAtTime(0, now)
-      subGain.gain.linearRampToValueAtTime(Math.min(subVol, 0.7), now + 0.002)
-      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06 * durationScale)
-      
-      sub.connect(subGain)
-      subGain.connect(this.sfxGainNode!)
-      
-      sub.start(now)
-      sub.stop(now + 0.08 * durationScale)
-      
-      // 💥 EXTRA HARMONIC LAYERS AT HIGH POWER! 💥
-      for (let i = 0; i < layerCount; i++) {
-        if (i === 0) continue // Skip first layer (main already plays)
-        
-        const harmonic = ctx.createOscillator()
-        const harmonicGain = ctx.createGain()
-        const harmonicFilter = ctx.createBiquadFilter()
-        
-        const delay = i * 0.008
-        const harmonicFreq = baseFreq * (1 + i * 0.5) + Math.random() * 100
-        
-        harmonic.frequency.setValueAtTime(harmonicFreq, now + delay)
-        harmonic.frequency.exponentialRampToValueAtTime(harmonicFreq * 0.3, now + delay + 0.06 * durationScale)
-        harmonic.type = ['square', 'sawtooth', 'triangle'][i % 3] as OscillatorType
-        
-        harmonicFilter.type = 'bandpass'
-        harmonicFilter.frequency.setValueAtTime(harmonicFreq, now + delay)
-        harmonicFilter.Q.value = 6
-        
-        const harmonicVol = (0.25 - i * 0.04) + powerLevel * 0.02
-        harmonicGain.gain.setValueAtTime(0, now + delay)
-        harmonicGain.gain.linearRampToValueAtTime(Math.max(harmonicVol, 0.1), now + delay + 0.003)
-        harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.05 * durationScale)
-        
-        harmonic.connect(harmonicFilter)
-        harmonicFilter.connect(harmonicGain)
-        harmonicGain.connect(this.sfxGainNode!)
-        
-        harmonic.start(now + delay)
-        harmonic.stop(now + delay + 0.07 * durationScale)
-      }
-      
-      // ⚡ CRACKLE/DISTORTION at power level 7+ ⚡
-      if (powerLevel >= 7) {
-        const noise = ctx.createBufferSource()
-        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate)
-        const noiseData = noiseBuffer.getChannelData(0)
-        
-        for (let i = 0; i < noiseData.length; i++) {
-          noiseData[i] = (Math.random() * 2 - 1) * 0.5 * Math.pow(1 - i / noiseData.length, 2)
+      this.createManagedSound(
+        duration,
+        SoundCategory.WEAPON,
+        6, // Medium-high priority
+        () => {
+          const ctx = this.audioContext!
+          const now = ctx.currentTime
+          const variation = Math.random()
+          
+          // 🔥 Power scaling factors 🔥
+          const powerScale = 1 + powerLevel * 0.15 // Overall intensity
+          const durationScale = 1 + powerLevel * 0.08 // Sound lasts longer
+          const layerCount = 1 + Math.floor(powerLevel / 3) // More layers at high power
+          
+          // 🎯 Weapon-type specific base frequencies and characteristics
+          let baseFreq: number
+          let oscType: OscillatorType
+          let filterType: BiquadFilterType = 'bandpass'
+          
+          switch (weaponType) {
+            case 'lasers':
+              baseFreq = 1200 + variation * 300 // Higher pitched
+              oscType = 'sawtooth' // Harsher sound
+              break
+            case 'photons':
+              baseFreq = 600 + variation * 200 // Mid-range
+              oscType = 'sine' // Cleaner sound
+              filterType = 'highpass'
+              break
+            default: // bullets
+              baseFreq = 800 + variation * 400
+              oscType = 'square'
+          }
+          
+          // 🔥 MAIN PULSE - scales with power! 🔥
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          const filter = ctx.createBiquadFilter()
+          
+          // Frequency drops more dramatically at higher power
+          osc.frequency.setValueAtTime(baseFreq * powerScale, now)
+          osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.4, now + 0.08 * durationScale)
+          osc.type = oscType
+          
+          filter.type = filterType
+          filter.frequency.setValueAtTime(baseFreq * powerScale, now)
+          filter.Q.value = 4 + powerLevel * 0.5
+          
+          // Louder and punchier at higher power
+          const mainGain = 0.6 + powerLevel * 0.04
+          gain.gain.setValueAtTime(0, now)
+          gain.gain.linearRampToValueAtTime(Math.min(mainGain, 0.9), now + 0.005)
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08 * durationScale)
+          
+          osc.connect(filter)
+          filter.connect(gain)
+          gain.connect(this.sfxGainNode!)
+          
+          osc.start(now)
+          osc.stop(now + 0.1 * durationScale)
+          
+          // Track nodes for cleanup
+          nodes.push(osc, gain, filter)
+          
+          // 🔥 SUB-BASS THUMP - DEEPER and HEAVIER at high power! 🔥
+          const sub = ctx.createOscillator()
+          const subGain = ctx.createGain()
+          
+          sub.frequency.setValueAtTime(80 * powerScale, now)
+          sub.frequency.exponentialRampToValueAtTime(30, now + 0.06 * durationScale)
+          sub.type = 'sine'
+          
+          const subVolume = 0.3 + powerLevel * 0.03
+          subGain.gain.setValueAtTime(0, now)
+          subGain.gain.linearRampToValueAtTime(Math.min(subVolume, 0.5), now + 0.01)
+          subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08 * durationScale)
+          
+          sub.connect(subGain)
+          subGain.connect(this.sfxGainNode!)
+          
+          sub.start(now)
+          sub.stop(now + 0.08 * durationScale)
+          
+          nodes.push(sub, subGain)
+          
+          // 💥 EXTRA HARMONIC LAYERS AT HIGH POWER! 💥
+          for (let i = 0; i < layerCount; i++) {
+            if (i === 0) continue // Skip first layer (main already plays)
+            
+            const delay = i * 0.01
+            const harmonic = ctx.createOscillator()
+            const harmonicGain = ctx.createGain()
+            const harmonicFilter = ctx.createBiquadFilter()
+            
+            const harmonicFreq = baseFreq * (1 + i * 0.5) * powerScale
+            harmonic.frequency.setValueAtTime(harmonicFreq, now + delay)
+            harmonic.frequency.exponentialRampToValueAtTime(harmonicFreq * 0.5, now + delay + 0.05 * durationScale)
+            harmonic.type = 'sawtooth'
+            
+            harmonicFilter.type = 'bandpass'
+            harmonicFilter.frequency.value = harmonicFreq
+            harmonicFilter.Q.value = 3
+            
+            harmonicGain.gain.setValueAtTime(0, now + delay)
+            harmonicGain.gain.linearRampToValueAtTime(0.2, now + delay + 0.005)
+            harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.06 * durationScale)
+            
+            harmonic.connect(harmonicFilter)
+            harmonicFilter.connect(harmonicGain)
+            harmonicGain.connect(this.sfxGainNode!)
+            
+            harmonic.start(now + delay)
+            harmonic.stop(now + delay + 0.07 * durationScale)
+            
+            nodes.push(harmonic, harmonicGain, harmonicFilter)
+          }
+          
+          // ⚡ CRACKLE/DISTORTION at power level 7+ ⚡
+          if (powerLevel >= 7) {
+            const noise = ctx.createBufferSource()
+            const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate)
+            const noiseData = noiseBuffer.getChannelData(0)
+            
+            for (let i = 0; i < noiseData.length; i++) {
+              noiseData[i] = (Math.random() * 2 - 1) * 0.5 * Math.pow(1 - i / noiseData.length, 2)
+            }
+            
+            noise.buffer = noiseBuffer
+            
+            const noiseGain = ctx.createGain()
+            const noiseFilter = ctx.createBiquadFilter()
+            noiseFilter.type = 'highpass'
+            noiseFilter.frequency.value = 3000
+            
+            noiseGain.gain.setValueAtTime(0, now)
+            noiseGain.gain.linearRampToValueAtTime(0.15, now + 0.002)
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04)
+            
+            noise.connect(noiseFilter)
+            noiseFilter.connect(noiseGain)
+            noiseGain.connect(this.sfxGainNode!)
+            
+            noise.start(now)
+            noise.stop(now + 0.05)
+            
+            nodes.push(noise, noiseGain, noiseFilter)
+          }
+          
+          return nodes
         }
-        
-        noise.buffer = noiseBuffer
-        
-        const noiseGain = ctx.createGain()
-        const noiseFilter = ctx.createBiquadFilter()
-        noiseFilter.type = 'highpass'
-        noiseFilter.frequency.value = 3000
-        
-        noiseGain.gain.setValueAtTime(0, now)
-        noiseGain.gain.linearRampToValueAtTime(0.15, now + 0.002)
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04)
-        
-        noise.connect(noiseFilter)
-        noiseFilter.connect(noiseGain)
-        noiseGain.connect(this.sfxGainNode!)
-        
-        noise.start(now)
-        noise.stop(now + 0.05)
-      }
+      )
     })
   }
 
+  /**
+   * 🎯 Enemy Hit Sound - Enemy takes damage (but survives) - satisfying feedback
+   */
+  playEnemyHitSound(): void {
+    this.queueSound(() => {
+      const ctx = this.audioContext!
+      const now = ctx.currentTime
+      
+      // Short metallic "ping" sound for hit confirmation
+      const hit = ctx.createOscillator()
+      const hitGain = ctx.createGain()
+      
+      // Higher pitched than player hit - more "satisfying" tone
+      hit.frequency.setValueAtTime(800, now)
+      hit.frequency.exponentialRampToValueAtTime(1200, now + 0.05)
+      hit.type = 'sine'
+      
+      hitGain.gain.setValueAtTime(0, now)
+      hitGain.gain.linearRampToValueAtTime(0.3, now + 0.01)
+      hitGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+      
+      // Add a little noise for texture
+      const noise = ctx.createBufferSource()
+      const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate)
+      const noiseData = noiseBuffer.getChannelData(0)
+      
+      for (let i = 0; i < noiseData.length; i++) {
+        noiseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / noiseData.length, 2)
+      }
+      
+      noise.buffer = noiseBuffer
+      
+      const noiseGain = ctx.createGain()
+      const noiseFilter = ctx.createBiquadFilter()
+      noiseFilter.type = 'highpass'
+      noiseFilter.frequency.value = 2000
+      
+      noiseGain.gain.setValueAtTime(0, now)
+      noiseGain.gain.linearRampToValueAtTime(0.15, now + 0.005)
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
+      
+      // Connect
+      hit.connect(hitGain)
+      hitGain.connect(this.sfxGainNode!)
+      
+      noise.connect(noiseFilter)
+      noiseFilter.connect(noiseGain)
+      noiseGain.connect(this.sfxGainNode!)
+      
+      hit.start(now)
+      hit.stop(now + 0.1)
+      noise.start(now)
+      noise.stop(now + 0.08)
+    })
+  }
+  
   /**
    * 💥 Hit Sound - Player takes damage - harsh, alarming
    */
@@ -375,57 +530,170 @@ export class AudioManager {
   }
 
   private playDataMiteDeathInternal(ctx: AudioContext, now: number): void {
-    // Quick digital pop
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
+    // 🔥 ARCADE DATA BURST - 3 variations for variety! 🔥
+    const variation = Math.floor(Math.random() * 3)
     
-    osc.frequency.setValueAtTime(1200, now)
-    osc.frequency.exponentialRampToValueAtTime(300, now + 0.08)
-    osc.type = 'square'
-    
-    gain.gain.setValueAtTime(0, now)
-    gain.gain.linearRampToValueAtTime(0.5, now + 0.005)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
-    
-    osc.connect(gain)
-    gain.connect(this.sfxGainNode!)
-    
-    osc.start(now)
-    osc.stop(now + 0.1)
+    switch (variation) {
+      case 0:
+        // Quick digital pop with bit-crush effect
+        const osc1 = ctx.createOscillator()
+        const gain1 = ctx.createGain()
+        
+        osc1.frequency.setValueAtTime(1400 + Math.random() * 200, now)
+        osc1.frequency.exponentialRampToValueAtTime(250, now + 0.08)
+        osc1.type = 'square'
+        
+        gain1.gain.setValueAtTime(0, now)
+        gain1.gain.linearRampToValueAtTime(0.5, now + 0.005)
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+        
+        osc1.connect(gain1)
+        gain1.connect(this.sfxGainNode!)
+        
+        osc1.start(now)
+        osc1.stop(now + 0.1)
+        break
+        
+      case 1:
+        // Double-pop arcade explosion
+        for (let i = 0; i < 2; i++) {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          const delay = i * 0.035
+          
+          osc.frequency.setValueAtTime(1200 - i * 300, now + delay)
+          osc.frequency.exponentialRampToValueAtTime(200, now + delay + 0.06)
+          osc.type = i === 0 ? 'square' : 'sawtooth'
+          
+          gain.gain.setValueAtTime(0, now + delay)
+          gain.gain.linearRampToValueAtTime(0.45, now + delay + 0.003)
+          gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.08)
+          
+          osc.connect(gain)
+          gain.connect(this.sfxGainNode!)
+          
+          osc.start(now + delay)
+          osc.stop(now + delay + 0.1)
+        }
+        break
+        
+      case 2:
+        // Glitchy digital break
+        const osc2 = ctx.createOscillator()
+        const gain2 = ctx.createGain()
+        const noise = ctx.createOscillator()
+        const noiseGain = ctx.createGain()
+        
+        osc2.frequency.setValueAtTime(1600, now)
+        osc2.frequency.setValueAtTime(1200, now + 0.02)
+        osc2.frequency.exponentialRampToValueAtTime(300, now + 0.09)
+        osc2.type = 'square'
+        
+        noise.frequency.setValueAtTime(50, now)
+        noise.type = 'sawtooth'
+        
+        gain2.gain.setValueAtTime(0, now)
+        gain2.gain.linearRampToValueAtTime(0.5, now + 0.003)
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+        
+        noiseGain.gain.setValueAtTime(0, now)
+        noiseGain.gain.linearRampToValueAtTime(0.15, now + 0.005)
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
+        
+        osc2.connect(gain2)
+        noise.connect(noiseGain)
+        gain2.connect(this.sfxGainNode!)
+        noiseGain.connect(this.sfxGainNode!)
+        
+        osc2.start(now)
+        osc2.stop(now + 0.1)
+        noise.start(now)
+        noise.stop(now + 0.08)
+        break
+    }
   }
 
   private playScanDroneDeathInternal(ctx: AudioContext, now: number): void {
-    // Electric zap with descending whistle
-    const osc1 = ctx.createOscillator()
-    const osc2 = ctx.createOscillator()
-    const gain1 = ctx.createGain()
-    const gain2 = ctx.createGain()
+    // 📡 GRID COLLAPSE - Multi-phase synced to animation! 📡
+    // Phase 1: Grid flicker (0-0.25s)
+    const flicker = ctx.createOscillator()
+    const flickerGain = ctx.createGain()
     
-    osc1.frequency.setValueAtTime(800, now)
-    osc1.frequency.exponentialRampToValueAtTime(100, now + 0.2)
-    osc1.type = 'sawtooth'
+    flicker.frequency.setValueAtTime(900, now)
+    flicker.frequency.setValueAtTime(950, now + 0.05)
+    flicker.frequency.setValueAtTime(900, now + 0.1)
+    flicker.frequency.setValueAtTime(800, now + 0.15)
+    flicker.type = 'square'
     
-    osc2.frequency.setValueAtTime(1600, now)
-    osc2.frequency.exponentialRampToValueAtTime(200, now + 0.15)
-    osc2.type = 'square'
+    flickerGain.gain.setValueAtTime(0, now)
+    flickerGain.gain.linearRampToValueAtTime(0.3, now + 0.01)
+    flickerGain.gain.setValueAtTime(0.15, now + 0.1)
+    flickerGain.gain.setValueAtTime(0.3, now + 0.15)
+    flickerGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
     
-    gain1.gain.setValueAtTime(0, now)
-    gain1.gain.linearRampToValueAtTime(0.4, now + 0.01)
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.22)
+    flicker.connect(flickerGain)
+    flickerGain.connect(this.sfxGainNode!)
+    flicker.start(now)
+    flicker.stop(now + 0.25)
     
-    gain2.gain.setValueAtTime(0, now)
-    gain2.gain.linearRampToValueAtTime(0.25, now + 0.005)
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+    // Phase 2: Grid collapse (0.25-0.5s)
+    const collapse = ctx.createOscillator()
+    const collapseGain = ctx.createGain()
     
-    osc1.connect(gain1)
-    osc2.connect(gain2)
-    gain1.connect(this.sfxGainNode!)
-    gain2.connect(this.sfxGainNode!)
+    collapse.frequency.setValueAtTime(800, now + 0.25)
+    collapse.frequency.exponentialRampToValueAtTime(100, now + 0.5)
+    collapse.type = 'sawtooth'
     
-    osc1.start(now)
-    osc1.stop(now + 0.22)
-    osc2.start(now)
-    osc2.stop(now + 0.15)
+    collapseGain.gain.setValueAtTime(0, now + 0.25)
+    collapseGain.gain.linearRampToValueAtTime(0.45, now + 0.27)
+    collapseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.52)
+    
+    collapse.connect(collapseGain)
+    collapseGain.connect(this.sfxGainNode!)
+    collapse.start(now + 0.25)
+    collapse.stop(now + 0.52)
+    
+    // Phase 3: Electric arcs (0.5-0.75s)
+    for (let i = 0; i < 3; i++) {
+      const arc = ctx.createOscillator()
+      const arcGain = ctx.createGain()
+      const delay = 0.5 + i * 0.08
+      
+      arc.frequency.setValueAtTime(1200 + Math.random() * 400, now + delay)
+      arc.frequency.exponentialRampToValueAtTime(400, now + delay + 0.06)
+      arc.type = 'sine'
+      
+      arcGain.gain.setValueAtTime(0, now + delay)
+      arcGain.gain.linearRampToValueAtTime(0.25, now + delay + 0.003)
+      arcGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.08)
+      
+      arc.connect(arcGain)
+      arcGain.connect(this.sfxGainNode!)
+      arc.start(now + delay)
+      arc.stop(now + delay + 0.1)
+    }
+    
+    // Phase 4: Final discharge (0.75s+)
+    const discharge = ctx.createOscillator()
+    const dischargeGain = ctx.createGain()
+    const dischargeFilter = ctx.createBiquadFilter()
+    
+    discharge.frequency.setValueAtTime(600, now + 0.75)
+    discharge.frequency.exponentialRampToValueAtTime(80, now + 0.95)
+    discharge.type = 'triangle'
+    
+    dischargeFilter.type = 'highpass'
+    dischargeFilter.frequency.value = 100
+    
+    dischargeGain.gain.setValueAtTime(0, now + 0.75)
+    dischargeGain.gain.linearRampToValueAtTime(0.35, now + 0.77)
+    dischargeGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0)
+    
+    discharge.connect(dischargeFilter)
+    dischargeFilter.connect(dischargeGain)
+    dischargeGain.connect(this.sfxGainNode!)
+    discharge.start(now + 0.75)
+    discharge.stop(now + 1.0)
   }
 
   private playChaosWormDeathInternal(ctx: AudioContext, now: number): void {
@@ -453,73 +721,218 @@ export class AudioManager {
   }
 
   private playVoidSphereDeathInternal(ctx: AudioContext, now: number): void {
-    // Deep resonant implosion
-    const osc1 = ctx.createOscillator()
-    const osc2 = ctx.createOscillator()
-    const gain1 = ctx.createGain()
-    const gain2 = ctx.createGain()
-    const filter = ctx.createBiquadFilter()
+    // 🌀 VOID IMPLOSION - Deep techno bass with distortion! 🌀
+    // Phase 1: Rings collapse (0-0.27s)
+    const ringCollapse = ctx.createOscillator()
+    const ringGain = ctx.createGain()
+    const ringFilter = ctx.createBiquadFilter()
     
-    osc1.frequency.setValueAtTime(50, now)
-    osc1.frequency.exponentialRampToValueAtTime(20, now + 0.4)
-    osc1.type = 'sine'
+    ringCollapse.frequency.setValueAtTime(80, now)
+    ringCollapse.frequency.exponentialRampToValueAtTime(40, now + 0.27)
+    ringCollapse.type = 'sine'
     
-    osc2.frequency.setValueAtTime(100, now)
-    osc2.frequency.exponentialRampToValueAtTime(35, now + 0.35)
-    osc2.type = 'triangle'
+    ringFilter.type = 'lowpass'
+    ringFilter.frequency.setValueAtTime(200, now)
+    ringFilter.frequency.exponentialRampToValueAtTime(60, now + 0.27)
+    ringFilter.Q.value = 8
     
-    filter.type = 'lowpass'
-    filter.frequency.setValueAtTime(150, now)
-    filter.frequency.exponentialRampToValueAtTime(40, now + 0.4)
+    ringGain.gain.setValueAtTime(0, now)
+    ringGain.gain.linearRampToValueAtTime(0.6, now + 0.05)
+    ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3)
     
-    gain1.gain.setValueAtTime(0, now)
-    gain1.gain.linearRampToValueAtTime(0.6, now + 0.03)
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
+    ringCollapse.connect(ringFilter)
+    ringFilter.connect(ringGain)
+    ringGain.connect(this.sfxGainNode!)
+    ringCollapse.start(now)
+    ringCollapse.stop(now + 0.3)
     
-    gain2.gain.setValueAtTime(0, now)
-    gain2.gain.linearRampToValueAtTime(0.4, now + 0.02)
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4)
+    // Phase 2: Singularity (0.27-0.4s) - Extreme implosion
+    const singularity = ctx.createOscillator()
+    const singularityGain = ctx.createGain()
+    const singularityFilter = ctx.createBiquadFilter()
     
-    osc1.connect(gain1)
-    osc2.connect(gain2)
-    gain1.connect(filter)
-    gain2.connect(filter)
-    filter.connect(this.sfxGainNode!)
+    singularity.frequency.setValueAtTime(30, now + 0.27)
+    singularity.frequency.exponentialRampToValueAtTime(15, now + 0.4)
+    singularity.type = 'triangle'
     
-    osc1.start(now)
-    osc1.stop(now + 0.45)
-    osc2.start(now)
-    osc2.stop(now + 0.4)
+    singularityFilter.type = 'lowpass'
+    singularityFilter.frequency.setValueAtTime(50, now + 0.27)
+    singularityFilter.frequency.exponentialRampToValueAtTime(25, now + 0.4)
+    singularityFilter.Q.value = 12
+    
+    singularityGain.gain.setValueAtTime(0, now + 0.27)
+    singularityGain.gain.linearRampToValueAtTime(0.8, now + 0.3)
+    singularityGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
+    
+    singularity.connect(singularityFilter)
+    singularityFilter.connect(singularityGain)
+    singularityGain.connect(this.sfxGainNode!)
+    singularity.start(now + 0.27)
+    singularity.stop(now + 0.45)
+    
+    // Phase 3: Void burst (0.4-0.67s) - Violent techno explosion
+    const burst = ctx.createOscillator()
+    const burstGain = ctx.createGain()
+    const burstFilter = ctx.createBiquadFilter()
+    
+    burst.frequency.setValueAtTime(50, now + 0.4)
+    burst.frequency.exponentialRampToValueAtTime(200, now + 0.42)
+    burst.frequency.exponentialRampToValueAtTime(40, now + 0.67)
+    burst.type = 'sawtooth'
+    
+    burstFilter.type = 'bandpass'
+    burstFilter.frequency.setValueAtTime(80, now + 0.4)
+    burstFilter.frequency.exponentialRampToValueAtTime(300, now + 0.45)
+    burstFilter.frequency.exponentialRampToValueAtTime(60, now + 0.67)
+    burstFilter.Q.value = 10
+    
+    burstGain.gain.setValueAtTime(0, now + 0.4)
+    burstGain.gain.linearRampToValueAtTime(0.7, now + 0.42)
+    burstGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7)
+    
+    burst.connect(burstFilter)
+    burstFilter.connect(burstGain)
+    burstGain.connect(this.sfxGainNode!)
+    burst.start(now + 0.4)
+    burst.stop(now + 0.7)
+    
+    // Add void tendrils (high-frequency artifacts)
+    for (let i = 0; i < 5; i++) {
+      const tendril = ctx.createOscillator()
+      const tendrilGain = ctx.createGain()
+      const delay = 0.4 + i * 0.05
+      
+      tendril.frequency.setValueAtTime(400 + i * 150 + Math.random() * 100, now + delay)
+      tendril.frequency.exponentialRampToValueAtTime(100, now + delay + 0.12)
+      tendril.type = 'sine'
+      
+      tendrilGain.gain.setValueAtTime(0, now + delay)
+      tendrilGain.gain.linearRampToValueAtTime(0.2, now + delay + 0.005)
+      tendrilGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.15)
+      
+      tendril.connect(tendrilGain)
+      tendrilGain.connect(this.sfxGainNode!)
+      tendril.start(now + delay)
+      tendril.stop(now + delay + 0.18)
+    }
+    
+    // Phase 4: Distortion waves (0.67-1.5s) - Eerie techno decay
+    const wave = ctx.createOscillator()
+    const waveGain = ctx.createGain()
+    const waveFilter = ctx.createBiquadFilter()
+    
+    wave.frequency.setValueAtTime(60, now + 0.67)
+    wave.frequency.exponentialRampToValueAtTime(30, now + 1.5)
+    wave.type = 'triangle'
+    
+    waveFilter.type = 'lowpass'
+    waveFilter.frequency.setValueAtTime(120, now + 0.67)
+    waveFilter.frequency.exponentialRampToValueAtTime(40, now + 1.5)
+    
+    waveGain.gain.setValueAtTime(0, now + 0.67)
+    waveGain.gain.linearRampToValueAtTime(0.4, now + 0.7)
+    waveGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5)
+    
+    wave.connect(waveFilter)
+    waveFilter.connect(waveGain)
+    waveGain.connect(this.sfxGainNode!)
+    wave.start(now + 0.67)
+    wave.stop(now + 1.5)
   }
 
   private playCrystalSwarmDeathInternal(ctx: AudioContext, now: number): void {
-    // Shattering glass harmonics
-    for (let i = 0; i < 6; i++) {
-      const delay = i * 0.015
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      const filter = ctx.createBiquadFilter()
+    // 💎 PRISMATIC SHATTER - Rainbow harmonics with crystal resonance! 💎
+    // Phase 1: Shards fly outward (0-0.3s) - Rising harmonics
+    for (let i = 0; i < 8; i++) {
+      const shard = ctx.createOscillator()
+      const shardGain = ctx.createGain()
+      const shardFilter = ctx.createBiquadFilter()
+      const delay = i * 0.035
       
-      const freq = 1000 + i * 250 + Math.random() * 200
-      osc.frequency.setValueAtTime(freq, now + delay)
-      osc.frequency.exponentialRampToValueAtTime(freq * 0.4, now + delay + 0.2)
-      osc.type = 'sine'
+      const baseFreq = 800 + i * 200 + Math.random() * 150
+      shard.frequency.setValueAtTime(baseFreq, now + delay)
+      shard.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + delay + 0.15)
+      shard.type = 'sine'
       
-      filter.type = 'bandpass'
-      filter.frequency.setValueAtTime(freq, now + delay)
-      filter.Q.value = 12
+      shardFilter.type = 'bandpass'
+      shardFilter.frequency.setValueAtTime(baseFreq, now + delay)
+      shardFilter.Q.value = 15 + Math.random() * 5
       
-      gain.gain.setValueAtTime(0, now + delay)
-      gain.gain.linearRampToValueAtTime(0.3, now + delay + 0.003)
-      gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.22)
+      shardGain.gain.setValueAtTime(0, now + delay)
+      shardGain.gain.linearRampToValueAtTime(0.25, now + delay + 0.005)
+      shardGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.2)
       
-      osc.connect(gain)
-      gain.connect(filter)
-      filter.connect(this.sfxGainNode!)
-      
-      osc.start(now + delay)
-      osc.stop(now + delay + 0.25)
+      shard.connect(shardFilter)
+      shardFilter.connect(shardGain)
+      shardGain.connect(this.sfxGainNode!)
+      shard.start(now + delay)
+      shard.stop(now + delay + 0.22)
     }
+    
+    // Phase 2: Prism fragments (0.3-0.5s) - Chaotic harmonics
+    for (let i = 0; i < 12; i++) {
+      const fragment = ctx.createOscillator()
+      const fragmentGain = ctx.createGain()
+      const delay = 0.3 + (i * 0.015)
+      
+      const fragFreq = 1200 + Math.random() * 800
+      fragment.frequency.setValueAtTime(fragFreq, now + delay)
+      fragment.frequency.exponentialRampToValueAtTime(fragFreq * 0.5, now + delay + 0.12)
+      fragment.type = 'sine'
+      
+      fragmentGain.gain.setValueAtTime(0, now + delay)
+      fragmentGain.gain.linearRampToValueAtTime(0.2, now + delay + 0.003)
+      fragmentGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.15)
+      
+      fragment.connect(fragmentGain)
+      fragmentGain.connect(this.sfxGainNode!)
+      fragment.start(now + delay)
+      fragment.stop(now + delay + 0.18)
+    }
+    
+    // Phase 3: Rainbow explosion (0.5-0.7s) - Harmonic cascade
+    const rainbowFreqs = [440, 554, 659, 784, 988, 1175, 1397] // Musical intervals
+    for (let i = 0; i < rainbowFreqs.length; i++) {
+      const rainbow = ctx.createOscillator()
+      const rainbowGain = ctx.createGain()
+      const delay = 0.5 + i * 0.025
+      
+      rainbow.frequency.setValueAtTime(rainbowFreqs[i], now + delay)
+      rainbow.frequency.exponentialRampToValueAtTime(rainbowFreqs[i] * 0.6, now + delay + 0.18)
+      rainbow.type = 'sine'
+      
+      rainbowGain.gain.setValueAtTime(0, now + delay)
+      rainbowGain.gain.linearRampToValueAtTime(0.3, now + delay + 0.01)
+      rainbowGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.2)
+      
+      rainbow.connect(rainbowGain)
+      rainbowGain.connect(this.sfxGainNode!)
+      rainbow.start(now + delay)
+      rainbow.stop(now + delay + 0.22)
+    }
+    
+    // Phase 4: Prismatic distortion (0.7-1.0s) - Shimmering decay
+    const distortion = ctx.createOscillator()
+    const distortionGain = ctx.createGain()
+    const distortionFilter = ctx.createBiquadFilter()
+    
+    distortion.frequency.setValueAtTime(1500, now + 0.7)
+    distortion.frequency.exponentialRampToValueAtTime(300, now + 1.0)
+    distortion.type = 'triangle'
+    
+    distortionFilter.type = 'highpass'
+    distortionFilter.frequency.setValueAtTime(500, now + 0.7)
+    distortionFilter.frequency.exponentialRampToValueAtTime(150, now + 1.0)
+    
+    distortionGain.gain.setValueAtTime(0, now + 0.7)
+    distortionGain.gain.linearRampToValueAtTime(0.3, now + 0.72)
+    distortionGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0)
+    
+    distortion.connect(distortionFilter)
+    distortionFilter.connect(distortionGain)
+    distortionGain.connect(this.sfxGainNode!)
+    distortion.start(now + 0.7)
+    distortion.stop(now + 1.0)
   }
 
   private playGenericDeathInternal(ctx: AudioContext, now: number): void {
@@ -2178,53 +2591,49 @@ export class AudioManager {
   // ============================================
 
   /**
-   * 💚 Med Pack Collect - Healing sound
+   * 💚 Med Pack Collect - SHORT "UP" HEALING SOUND
    */
   playMedPackCollectSound(): void {
     this.queueSound(() => {
       const ctx = this.audioContext!
       const now = ctx.currentTime
       
-      // Soothing heal chord
-      const healFreqs = [261, 329, 392, 523] // C major
-      healFreqs.forEach((freq, i) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        const delay = i * 0.04
-        
-        osc.frequency.value = freq
-        osc.type = 'sine'
-        
-        gain.gain.setValueAtTime(0, now + delay)
-        gain.gain.linearRampToValueAtTime(0.2, now + delay + 0.03)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.3)
-        
-        osc.connect(gain)
-        gain.connect(this.sfxGainNode!)
-        
-        osc.start(now + delay)
-        osc.stop(now + delay + 0.35)
-      })
+      // Short upward pitch sweep - classic "power up" sound!
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
       
-      // Shimmer effect
-      for (let i = 0; i < 5; i++) {
-        const shimmer = ctx.createOscillator()
-        const shimmerGain = ctx.createGain()
-        const delay = i * 0.03 + 0.1
-        
-        shimmer.frequency.value = 1000 + i * 200
-        shimmer.type = 'sine'
-        
-        shimmerGain.gain.setValueAtTime(0, now + delay)
-        shimmerGain.gain.linearRampToValueAtTime(0.1, now + delay + 0.01)
-        shimmerGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.15)
-        
-        shimmer.connect(shimmerGain)
-        shimmerGain.connect(this.sfxGainNode!)
-        
-        shimmer.start(now + delay)
-        shimmer.stop(now + delay + 0.2)
-      }
+      // Frequency sweeps UP from 400Hz to 800Hz quickly
+      osc.frequency.setValueAtTime(400, now)
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.1)
+      osc.type = 'sine'
+      
+      // Short, punchy envelope
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+      
+      osc.connect(gain)
+      gain.connect(this.sfxGainNode!)
+      
+      osc.start(now)
+      osc.stop(now + 0.15)
+      
+      // Add a quick bright "ding" at the top for sparkle
+      const ding = ctx.createOscillator()
+      const dingGain = ctx.createGain()
+      
+      ding.frequency.value = 1200
+      ding.type = 'sine'
+      
+      dingGain.gain.setValueAtTime(0, now + 0.08)
+      dingGain.gain.linearRampToValueAtTime(0.15, now + 0.09)
+      dingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18)
+      
+      ding.connect(dingGain)
+      dingGain.connect(this.sfxGainNode!)
+      
+      ding.start(now + 0.08)
+      ding.stop(now + 0.18)
     })
   }
 
@@ -2576,17 +2985,23 @@ export class AudioManager {
     schedulePulse()
   }
 
+  /**
+   * Stop ambient soundscape with proper cleanup
+   * ✅ OPTIMIZED: Added disconnect() to prevent memory leaks
+   */
   stopAmbientSoundscape(): void {
     this.isAmbientPlaying = false
     
-    // Stop all ambient oscillators
+    // Stop and disconnect all ambient nodes
     this.ambientNodes.forEach(node => {
       try {
         if (node instanceof OscillatorNode || node instanceof AudioBufferSourceNode) {
           node.stop()
         }
+        // CRITICAL: Disconnect to free memory
+        node.disconnect()
       } catch (e) {
-        // Already stopped
+        // Already stopped/disconnected
       }
     })
     this.ambientNodes = []
@@ -2594,6 +3009,11 @@ export class AudioManager {
     // Clear all timeouts
     this.ambientTimeouts.forEach(id => window.clearTimeout(id))
     this.ambientTimeouts = []
+  }
+
+  // Alias for consistent API
+  stopAmbient(): void {
+    this.stopAmbientSoundscape()
   }
 
   // ============================================
@@ -2669,25 +3089,91 @@ export class AudioManager {
   }
 
   private playFizzerDeathInternal(ctx: AudioContext, now: number): void {
-    // Electric pop with multiple sparks
-    for (let i = 0; i < 4; i++) {
-      const spark = ctx.createOscillator()
-      const sparkGain = ctx.createGain()
-      const delay = i * 0.02
+    // ⚡ ELECTRIC OVERLOAD - Multi-phase chaotic breakdown! ⚡
+    // Phase 1: Overload buildup (0-0.25s) - Rapid flickering
+    for (let i = 0; i < 6; i++) {
+      const flicker = ctx.createOscillator()
+      const flickerGain = ctx.createGain()
+      const delay = i * 0.04
       
-      spark.frequency.setValueAtTime(2500 - i * 300, now + delay)
-      spark.frequency.exponentialRampToValueAtTime(200, now + delay + 0.08)
-      spark.type = 'sawtooth'
+      flicker.frequency.setValueAtTime(2000 + Math.random() * 500, now + delay)
+      flicker.frequency.setValueAtTime(2400 + Math.random() * 500, now + delay + 0.015)
+      flicker.frequency.exponentialRampToValueAtTime(400, now + delay + 0.04)
+      flicker.type = 'sawtooth'
       
-      sparkGain.gain.setValueAtTime(0, now + delay)
-      sparkGain.gain.linearRampToValueAtTime(0.25, now + delay + 0.005)
-      sparkGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.1)
+      flickerGain.gain.setValueAtTime(0, now + delay)
+      flickerGain.gain.linearRampToValueAtTime(0.25, now + delay + 0.003)
+      flickerGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.05)
       
-      spark.connect(sparkGain)
-      sparkGain.connect(this.sfxGainNode!)
+      flicker.connect(flickerGain)
+      flickerGain.connect(this.sfxGainNode!)
+      flicker.start(now + delay)
+      flicker.stop(now + delay + 0.06)
+    }
+    
+    // Phase 2: Violent discharge (0.25-0.4s) - Explosion of sparks
+    for (let i = 0; i < 12; i++) {
+      const discharge = ctx.createOscillator()
+      const dischargeGain = ctx.createGain()
+      const delay = 0.25 + i * 0.01
       
-      spark.start(now + delay)
-      spark.stop(now + delay + 0.12)
+      discharge.frequency.setValueAtTime(1500 + Math.random() * 1000, now + delay)
+      discharge.frequency.exponentialRampToValueAtTime(300 + Math.random() * 200, now + delay + 0.06)
+      discharge.type = i % 2 === 0 ? 'square' : 'sawtooth'
+      
+      dischargeGain.gain.setValueAtTime(0, now + delay)
+      dischargeGain.gain.linearRampToValueAtTime(0.2, now + delay + 0.002)
+      dischargeGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.08)
+      
+      discharge.connect(dischargeGain)
+      dischargeGain.connect(this.sfxGainNode!)
+      discharge.start(now + delay)
+      discharge.stop(now + delay + 0.1)
+    }
+    
+    // Phase 3: Fragmentation (0.4-0.6s) - Breaking apart
+    for (let i = 0; i < 8; i++) {
+      const fragment = ctx.createOscillator()
+      const fragmentGain = ctx.createGain()
+      const fragmentFilter = ctx.createBiquadFilter()
+      const delay = 0.4 + Math.random() * 0.15
+      
+      fragment.frequency.setValueAtTime(800 + Math.random() * 800, now + delay)
+      fragment.frequency.exponentialRampToValueAtTime(200, now + delay + 0.1)
+      fragment.type = 'triangle'
+      
+      fragmentFilter.type = 'highpass'
+      fragmentFilter.frequency.value = 300
+      
+      fragmentGain.gain.setValueAtTime(0, now + delay)
+      fragmentGain.gain.linearRampToValueAtTime(0.18, now + delay + 0.005)
+      fragmentGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.12)
+      
+      fragment.connect(fragmentFilter)
+      fragmentFilter.connect(fragmentGain)
+      fragmentGain.connect(this.sfxGainNode!)
+      fragment.start(now + delay)
+      fragment.stop(now + delay + 0.15)
+    }
+    
+    // Phase 4: Final electric trails (0.6-0.8s) - Sparks fading
+    for (let i = 0; i < 5; i++) {
+      const trail = ctx.createOscillator()
+      const trailGain = ctx.createGain()
+      const delay = 0.6 + i * 0.035
+      
+      trail.frequency.setValueAtTime(1200 - i * 150, now + delay)
+      trail.frequency.exponentialRampToValueAtTime(400, now + delay + 0.08)
+      trail.type = 'sine'
+      
+      trailGain.gain.setValueAtTime(0, now + delay)
+      trailGain.gain.linearRampToValueAtTime(0.15, now + delay + 0.005)
+      trailGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.1)
+      
+      trail.connect(trailGain)
+      trailGain.connect(this.sfxGainNode!)
+      trail.start(now + delay)
+      trail.stop(now + delay + 0.12)
     }
   }
 
@@ -2800,16 +3286,18 @@ export class AudioManager {
     this.queueSound(() => {
       const ctx = this.audioContext!
       const now = ctx.currentTime
+      const duration = 2.4 // 3x longer (was 0.8)
       
-      // Devastating laser beam - sustained and powerful
+      // Devastating laser beam - sustained and powerful with SIZZLE!
       const laser = ctx.createOscillator()
       const laserGain = ctx.createGain()
       const laserFilter = ctx.createBiquadFilter()
       
       laser.frequency.setValueAtTime(150, now)
-      laser.frequency.setValueAtTime(180, now + 0.1)
-      laser.frequency.setValueAtTime(150, now + 0.2)
-      laser.frequency.setValueAtTime(170, now + 0.4)
+      laser.frequency.setValueAtTime(180, now + 0.3)
+      laser.frequency.setValueAtTime(150, now + 0.6)
+      laser.frequency.setValueAtTime(170, now + 1.2)
+      laser.frequency.setValueAtTime(160, now + 1.8)
       laser.type = 'sawtooth'
       
       laserFilter.type = 'bandpass'
@@ -2818,33 +3306,82 @@ export class AudioManager {
       
       laserGain.gain.setValueAtTime(0, now)
       laserGain.gain.linearRampToValueAtTime(0.35, now + 0.02)
-      laserGain.gain.setValueAtTime(0.3, now + 0.6)
-      laserGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
+      laserGain.gain.setValueAtTime(0.3, now + 1.8)
+      laserGain.gain.exponentialRampToValueAtTime(0.001, now + duration)
       
       laser.connect(laserFilter)
       laserFilter.connect(laserGain)
       laserGain.connect(this.sfxGainNode!)
       
       laser.start(now)
-      laser.stop(now + 0.85)
+      laser.stop(now + duration + 0.1)
       
-      // High frequency sizzle overlay
+      // SIZZLE EFFECT - High frequency crackling throughout!
+      for (let i = 0; i < 10; i++) {
+        const sizzle = ctx.createOscillator()
+        const sizzleGain = ctx.createGain()
+        const sizzleFilter = ctx.createBiquadFilter()
+        const delay = i * 0.24 // Spread over full duration
+        
+        sizzle.frequency.setValueAtTime(3000 + Math.random() * 2000, now + delay)
+        sizzle.frequency.linearRampToValueAtTime(2500 + Math.random() * 1500, now + delay + 0.2)
+        sizzle.type = 'square'
+        
+        sizzleFilter.type = 'highpass'
+        sizzleFilter.frequency.value = 2000
+        
+        sizzleGain.gain.setValueAtTime(0, now + delay)
+        sizzleGain.gain.linearRampToValueAtTime(0.08, now + delay + 0.01)
+        sizzleGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.2)
+        
+        sizzle.connect(sizzleFilter)
+        sizzleFilter.connect(sizzleGain)
+        sizzleGain.connect(this.sfxGainNode!)
+        
+        sizzle.start(now + delay)
+        sizzle.stop(now + delay + 0.22)
+      }
+      
+      // Continuous high-frequency sizzle layer
+      const continuousSizzle = ctx.createOscillator()
+      const continuousSizzleGain = ctx.createGain()
+      const continuousSizzleFilter = ctx.createBiquadFilter()
+      
+      continuousSizzle.frequency.setValueAtTime(4000, now)
+      continuousSizzle.type = 'square'
+      
+      continuousSizzleFilter.type = 'highpass'
+      continuousSizzleFilter.frequency.value = 3000
+      
+      continuousSizzleGain.gain.setValueAtTime(0, now)
+      continuousSizzleGain.gain.linearRampToValueAtTime(0.05, now + 0.02)
+      continuousSizzleGain.gain.setValueAtTime(0.045, now + duration - 0.2)
+      continuousSizzleGain.gain.exponentialRampToValueAtTime(0.001, now + duration)
+      
+      continuousSizzle.connect(continuousSizzleFilter)
+      continuousSizzleFilter.connect(continuousSizzleGain)
+      continuousSizzleGain.connect(this.sfxGainNode!)
+      
+      continuousSizzle.start(now)
+      continuousSizzle.stop(now + duration)
+      
+      // High frequency sizzle overlay - energy crackle
       const sizzle = ctx.createOscillator()
       const sizzleGain = ctx.createGain()
       
       sizzle.frequency.setValueAtTime(4000, now)
-      sizzle.frequency.linearRampToValueAtTime(3000, now + 0.8)
+      sizzle.frequency.linearRampToValueAtTime(3000, now + duration)
       sizzle.type = 'square'
       
       sizzleGain.gain.setValueAtTime(0, now)
       sizzleGain.gain.linearRampToValueAtTime(0.08, now + 0.02)
-      sizzleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
+      sizzleGain.gain.exponentialRampToValueAtTime(0.001, now + duration)
       
       sizzle.connect(sizzleGain)
       sizzleGain.connect(this.sfxGainNode!)
       
       sizzle.start(now)
-      sizzle.stop(now + 0.85)
+      sizzle.stop(now + duration)
     })
   }
 
@@ -2876,68 +3413,142 @@ export class AudioManager {
   }
 
   private playUFODeathInternal(ctx: AudioContext, now: number): void {
-    // Alien spacecraft explosion - metallic + eerie
-    const explosion = ctx.createOscillator()
-    const expGain = ctx.createGain()
-    const expFilter = ctx.createBiquadFilter()
+    // 🛸 TRACTOR BEAM COLLAPSE - Multi-phase alien tech breakdown! 🛸
+    // Phase 1: Loss of control - wobble (0-0.25s)
+    const wobble = ctx.createOscillator()
+    const wobbleGain = ctx.createGain()
+    const wobbleFilter = ctx.createBiquadFilter()
     
-    explosion.frequency.setValueAtTime(200, now)
-    explosion.frequency.exponentialRampToValueAtTime(40, now + 0.4)
-    explosion.type = 'sawtooth'
+    wobble.frequency.setValueAtTime(120, now)
+    wobble.frequency.setValueAtTime(140, now + 0.06)
+    wobble.frequency.setValueAtTime(110, now + 0.12)
+    wobble.frequency.setValueAtTime(130, now + 0.18)
+    wobble.frequency.exponentialRampToValueAtTime(90, now + 0.25)
+    wobble.type = 'triangle'
     
-    expFilter.type = 'lowpass'
-    expFilter.frequency.setValueAtTime(800, now)
-    expFilter.frequency.exponentialRampToValueAtTime(100, now + 0.4)
+    wobbleFilter.type = 'lowpass'
+    wobbleFilter.frequency.setValueAtTime(300, now)
+    wobbleFilter.frequency.linearRampToValueAtTime(180, now + 0.25)
+    wobbleFilter.Q.value = 5
     
-    expGain.gain.setValueAtTime(0, now)
-    expGain.gain.linearRampToValueAtTime(0.4, now + 0.02)
-    expGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+    wobbleGain.gain.setValueAtTime(0, now)
+    wobbleGain.gain.linearRampToValueAtTime(0.3, now + 0.02)
+    wobbleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28)
     
-    explosion.connect(expFilter)
-    expFilter.connect(expGain)
-    expGain.connect(this.sfxGainNode!)
+    wobble.connect(wobbleFilter)
+    wobbleFilter.connect(wobbleGain)
+    wobbleGain.connect(this.sfxGainNode!)
+    wobble.start(now)
+    wobble.stop(now + 0.3)
     
-    explosion.start(now)
-    explosion.stop(now + 0.55)
+    // Phase 2: Tractor beam collapse (0.25-0.4s)
+    const beamCollapse = ctx.createOscillator()
+    const beamGain = ctx.createGain()
+    const beamFilter = ctx.createBiquadFilter()
     
-    // Eerie descending whistle (alien tech failing)
-    const whistle = ctx.createOscillator()
-    const whistleGain = ctx.createGain()
+    beamCollapse.frequency.setValueAtTime(600, now + 0.25)
+    beamCollapse.frequency.exponentialRampToValueAtTime(80, now + 0.4)
+    beamCollapse.type = 'sine'
     
-    whistle.frequency.setValueAtTime(1500, now)
-    whistle.frequency.exponentialRampToValueAtTime(100, now + 0.5)
-    whistle.type = 'sine'
+    beamFilter.type = 'lowpass'
+    beamFilter.frequency.setValueAtTime(800, now + 0.25)
+    beamFilter.frequency.exponentialRampToValueAtTime(100, now + 0.4)
     
-    whistleGain.gain.setValueAtTime(0, now)
-    whistleGain.gain.linearRampToValueAtTime(0.2, now + 0.05)
-    whistleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+    beamGain.gain.setValueAtTime(0, now + 0.25)
+    beamGain.gain.linearRampToValueAtTime(0.4, now + 0.27)
+    beamGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
     
-    whistle.connect(whistleGain)
-    whistleGain.connect(this.sfxGainNode!)
+    beamCollapse.connect(beamFilter)
+    beamFilter.connect(beamGain)
+    beamGain.connect(this.sfxGainNode!)
+    beamCollapse.start(now + 0.25)
+    beamCollapse.stop(now + 0.45)
     
-    whistle.start(now)
-    whistle.stop(now + 0.55)
+    // Sparks during collapse
+    for (let i = 0; i < 3; i++) {
+      const spark = ctx.createOscillator()
+      const sparkGain = ctx.createGain()
+      const delay = 0.25 + i * 0.05
+      
+      spark.frequency.setValueAtTime(1200 + Math.random() * 400, now + delay)
+      spark.frequency.exponentialRampToValueAtTime(300, now + delay + 0.06)
+      spark.type = 'square'
+      
+      sparkGain.gain.setValueAtTime(0, now + delay)
+      sparkGain.gain.linearRampToValueAtTime(0.18, now + delay + 0.005)
+      sparkGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.08)
+      
+      spark.connect(sparkGain)
+      sparkGain.connect(this.sfxGainNode!)
+      spark.start(now + delay)
+      spark.stop(now + delay + 0.1)
+    }
     
-    // Metallic debris
-    for (let i = 0; i < 4; i++) {
+    // Phase 3: Hull breach - metallic debris (0.4-0.7s)
+    for (let i = 0; i < 8; i++) {
       const debris = ctx.createOscillator()
       const debrisGain = ctx.createGain()
-      const delay = 0.1 + i * 0.08
+      const debrisFilter = ctx.createBiquadFilter()
+      const delay = 0.4 + i * 0.035
       
-      debris.frequency.setValueAtTime(800 + Math.random() * 400, now + delay)
-      debris.frequency.exponentialRampToValueAtTime(100, now + delay + 0.15)
+      debris.frequency.setValueAtTime(700 + Math.random() * 500, now + delay)
+      debris.frequency.exponentialRampToValueAtTime(200 + Math.random() * 100, now + delay + 0.15)
       debris.type = 'triangle'
+      
+      debrisFilter.type = 'bandpass'
+      debrisFilter.frequency.value = 600 + i * 100
+      debrisFilter.Q.value = 3
       
       debrisGain.gain.setValueAtTime(0, now + delay)
       debrisGain.gain.linearRampToValueAtTime(0.15, now + delay + 0.01)
       debrisGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.18)
       
-      debris.connect(debrisGain)
+      debris.connect(debrisFilter)
+      debrisFilter.connect(debrisGain)
       debrisGain.connect(this.sfxGainNode!)
-      
       debris.start(now + delay)
       debris.stop(now + delay + 0.2)
     }
+    
+    // Phase 4: Final explosion (0.7s+)
+    const explosion = ctx.createOscillator()
+    const expGain = ctx.createGain()
+    const expFilter = ctx.createBiquadFilter()
+    
+    explosion.frequency.setValueAtTime(250, now + 0.7)
+    explosion.frequency.exponentialRampToValueAtTime(40, now + 1.1)
+    explosion.type = 'sawtooth'
+    
+    expFilter.type = 'lowpass'
+    expFilter.frequency.setValueAtTime(1000, now + 0.7)
+    expFilter.frequency.exponentialRampToValueAtTime(80, now + 1.1)
+    
+    expGain.gain.setValueAtTime(0, now + 0.7)
+    expGain.gain.linearRampToValueAtTime(0.5, now + 0.72)
+    expGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2)
+    
+    explosion.connect(expFilter)
+    expFilter.connect(expGain)
+    expGain.connect(this.sfxGainNode!)
+    explosion.start(now + 0.7)
+    explosion.stop(now + 1.2)
+    
+    // Alien tech whine-down
+    const whine = ctx.createOscillator()
+    const whineGain = ctx.createGain()
+    
+    whine.frequency.setValueAtTime(1800, now + 0.7)
+    whine.frequency.exponentialRampToValueAtTime(100, now + 1.0)
+    whine.type = 'sine'
+    
+    whineGain.gain.setValueAtTime(0, now + 0.7)
+    whineGain.gain.linearRampToValueAtTime(0.25, now + 0.73)
+    whineGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0)
+    
+    whine.connect(whineGain)
+    whineGain.connect(this.sfxGainNode!)
+    whine.start(now + 0.7)
+    whine.stop(now + 1.0)
   }
 
   private playBossDeathInternal(ctx: AudioContext, now: number): void {

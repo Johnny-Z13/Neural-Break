@@ -10,16 +10,32 @@ export class EnemyProjectile {
   private velocity: THREE.Vector3
   private damage: number
   private lifeTime: number = 5.0 // 5 seconds max life
-  private radius: number = 0.08 // Slightly larger than player projectiles
+  private radius: number = 0.16 // 2x larger (was 0.08)
   private alive: boolean = true
   private effectsSystem: EffectsSystem | null = null
   private trailTimer: number = 0
   private trailInterval: number = 0.05
+  private color: number
+  private emissiveColor: number
+  private glowIntensity: number
 
-  constructor(startPos: THREE.Vector3, direction: THREE.Vector3, speed: number, damage: number) {
+  constructor(
+    startPos: THREE.Vector3, 
+    direction: THREE.Vector3, 
+    speed: number, 
+    damage: number,
+    sizeMultiplier: number = 1.0,
+    color: number = 0xFF4400,
+    emissiveColor: number = 0xFF2200,
+    glowIntensity: number = 0.4
+  ) {
     this.position = startPos.clone()
     this.velocity = direction.normalize().multiplyScalar(speed)
     this.damage = damage
+    this.radius = this.radius * sizeMultiplier
+    this.color = color
+    this.emissiveColor = emissiveColor
+    this.glowIntensity = glowIntensity
     
     this.createMesh()
   }
@@ -28,8 +44,8 @@ export class EnemyProjectile {
     // 🔴 ENEMY PROJECTILE - RED/ORANGE DANGER COLOR! 🔴
     const geometry = new THREE.SphereGeometry(this.radius, 12, 12)
     const material = new THREE.MeshBasicMaterial({
-      color: 0xFF4400, // Red-orange
-      emissive: 0xFF2200, // Bright red glow
+      color: this.color,
+      emissive: this.emissiveColor,
       transparent: true,
       opacity: 0.95
     })
@@ -40,9 +56,9 @@ export class EnemyProjectile {
     // 🔥 OUTER GLOW - Danger aura! 🔥
     const glowGeometry = new THREE.SphereGeometry(this.radius * 1.5, 8, 8)
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFF0000,
+      color: this.emissiveColor,
       transparent: true,
-      opacity: 0.4,
+      opacity: this.glowIntensity,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending
     })
@@ -76,7 +92,7 @@ export class EnemyProjectile {
     this.trailTimer += deltaTime
     if (this.trailTimer >= this.trailInterval) {
       const trailVelocity = this.velocity.clone().multiplyScalar(-0.2)
-      const trailColor = new THREE.Color(0xFF4400)
+      const trailColor = new THREE.Color(this.color)
       this.effectsSystem.createSparkle(this.position, trailVelocity, trailColor, 0.3)
       this.trailTimer = 0
     }
@@ -100,7 +116,7 @@ export class EnemyProjectile {
     
     // Create destruction effect
     if (this.effectsSystem) {
-      this.effectsSystem.createExplosion(this.position, 0.5, new THREE.Color(0xFF4400))
+      this.effectsSystem.createExplosion(this.position, 0.5, new THREE.Color(this.color))
     }
   }
 

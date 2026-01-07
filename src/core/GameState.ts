@@ -104,7 +104,7 @@ export class ScoreManager {
     const d = date || new Date()
     const month = (d.getMonth() + 1).toString().padStart(2, '0')
     const day = d.getDate().toString().padStart(2, '0')
-    const year = d.getFullYear().toString().slice(-2)
+    const year = d.getFullYear().toString() // Full 4-digit year (e.g., 2025)
     return `${month}/${day}/${year}`
   }
 
@@ -115,7 +115,7 @@ export class ScoreManager {
       score: 12345,
       survivedTime: 180, // 3 minutes
       level: 5,
-      date: '12/29/25',
+      date: '12/29/2025',
       location: 'UK'
     }
     const saved = await this.saveHighScore(testEntry)

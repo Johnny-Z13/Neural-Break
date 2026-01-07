@@ -15,6 +15,7 @@ import { PowerUpManager } from './PowerUpManager'
 import { MedPackManager } from './MedPackManager'
 import { SpeedUpManager } from './SpeedUpManager'
 import { ShieldManager } from './ShieldManager'
+import { InvulnerableManager } from './InvulnerableManager'
 import { DEBUG_MODE } from '../config'
 
 export class Game {
@@ -27,6 +28,7 @@ export class Game {
   private medPackManager: MedPackManager
   private speedUpManager: SpeedUpManager
   private shieldManager: ShieldManager
+  private invulnerableManager: InvulnerableManager
   private uiManager: UIManager
   private gameTimer: GameTimer
   private levelManager: LevelManager
@@ -45,6 +47,14 @@ export class Game {
   private isDeathAnimationPlaying: boolean = false
   private deathAnimationTime: number = 0
   private deathAnimationDuration: number = 2.0 // 2 seconds of death animation
+  
+  // 🎯 LEVEL TRANSITION STATE 🎯
+  private isLevelTransitioning: boolean = false
+  private transitionPhase: 'clearing' | 'displaying' | 'complete' = 'clearing'
+  private transitionTimer: number = 0
+  private transitionDuration: number = 6.0 // Total transition time
+  private clearingDuration: number = 3.0 // Time for death animations to play (was 1.0)
+  private displayDuration: number = 3.0 // Time to show level complete screen
   
   // 🎯 ARCADE-STYLE MULTIPLIER SYSTEM! 🎯
   private scoreMultiplier: number = 1
@@ -83,6 +93,7 @@ export class Game {
     this.medPackManager = new MedPackManager()
     this.speedUpManager = new SpeedUpManager()
     this.shieldManager = new ShieldManager()
+    this.invulnerableManager = new InvulnerableManager()
     
     // Timer will be initialized per-level
     this.gameTimer = new GameTimer(30) // Placeholder, will be updated per level
@@ -223,12 +234,30 @@ export class Game {
     this.levelManager.start()
     
     // Reset player
+    if (this.player) {
+      this.player.cleanupFragments()
+    }
+    
     if (DEBUG_MODE) console.log('👤 Creating player...')
     this.player = new Player()
     if (DEBUG_MODE) console.log('✅ Player object created')
     
     this.player.initialize(this.audioManager)
     if (DEBUG_MODE) console.log('✅ Player initialized')
+    
+    // Set shield notification callbacks
+    this.player.setShieldCallbacks(
+      () => this.uiManager.showShieldActivated(),
+      () => this.uiManager.showShieldDeactivated()
+    )
+    if (DEBUG_MODE) console.log('✅ Shield callbacks connected')
+    
+    // Set invulnerable notification callbacks
+    this.player.setInvulnerableCallbacks(
+      () => this.uiManager.showInvulnerableActivated(),
+      () => this.uiManager.showInvulnerableDeactivated()
+    )
+    if (DEBUG_MODE) console.log('✅ Invulnerable callbacks connected')
     
     const playerMesh = this.player.getMesh()
     if (DEBUG_MODE) console.log('🔍 Player mesh retrieved:', playerMesh)
@@ -337,13 +366,14 @@ export class Game {
     this.shieldManager.setLevelManager(this.levelManager)
     this.shieldManager.setEffectsSystem(effectsSystem)
     
+    // Reset invulnerable manager
+    this.invulnerableManager = new InvulnerableManager()
+    this.invulnerableManager.setSceneManager(this.sceneManager)
+    
     // Reset player power-up level, speed level, and shield
     this.player.resetPowerUpLevel()
     this.player.resetSpeedUpLevel()
     this.player.resetShield()
-    
-    // Initialize level-based timer
-    this.initializeLevelTimer()
     
     // Initialize health tracking
     this.lastDamageTaken = this.player.getHealth()
@@ -366,11 +396,7 @@ export class Game {
     if (DEBUG_MODE) console.log('🎮 Game initialization complete. Game state:', this.gameState)
   }
 
-  private initializeLevelTimer(): void {
-    const levelConfig = this.levelManager.getCurrentLevelConfig()
-    this.gameTimer = new GameTimer(levelConfig.duration)
-    this.gameTimer.start()
-  }
+  // Removed: Timer-based system replaced with objective-based system
 
   private cleanupGameObjects(): void {
     if (DEBUG_MODE) console.log('🧹 Starting cleanup...')
@@ -380,9 +406,12 @@ export class Game {
     if (DEBUG_MODE) console.log('✅ Game loop stopped')
     
     // Clean up existing player
-    if (this.player?.getMesh()) {
-      if (DEBUG_MODE) console.log('🧹 Removing player from scene...')
-      this.sceneManager.removeFromScene(this.player.getMesh())
+    if (this.player) {
+      this.player.cleanupFragments()
+      if (this.player.getMesh()) {
+        if (DEBUG_MODE) console.log('🧹 Removing player from scene...')
+        this.sceneManager.removeFromScene(this.player.getMesh())
+      }
     }
     
     // Clean up all enemies using proper cleanup method
@@ -410,9 +439,21 @@ export class Game {
       this.shieldManager.cleanup()
     }
     
+    // Clean up all invulnerables
+    if (this.invulnerableManager?.reset) {
+      this.invulnerableManager.reset()
+    }
+    
     // Clean up all projectiles using proper cleanup method
     if (this.weaponSystem?.cleanup) {
       this.weaponSystem.cleanup()
+    }
+    
+    // 🎆 Clean up all visual effects (particles, trails, etc.)
+    const effectsSystem = this.sceneManager.getEffectsSystem()
+    if (effectsSystem?.cleanup) {
+      effectsSystem.cleanup()
+      if (DEBUG_MODE) console.log('✅ Effects system cleaned up')
     }
     
     // Reset game loop state (ensure it's stopped)
@@ -490,9 +531,20 @@ export class Game {
   }
 
   private update(deltaTime: number): void {
+    // 🎮 UPDATE GAMEPAD STATE (must be called every frame)
+    this.inputManager.update()
+    
     // 💀 Allow updates during death animation 💀
     if (this.isDeathAnimationPlaying) {
       this.updateDeathAnimation(deltaTime)
+      return
+    }
+    
+    // 🎯 Handle level transition 🎯
+    if (this.isLevelTransitioning) {
+      this.updateLevelTransition(deltaTime)
+      // Still update scene manager for effects during transition
+      this.sceneManager.update(deltaTime)
       return
     }
     
@@ -511,9 +563,6 @@ export class Game {
     // Update level manager
     this.levelManager.update(deltaTime)
     
-    // Update game timer
-    this.gameTimer.update(deltaTime)
-    
     // Update combo timer
     this.comboTimer -= deltaTime
     if (this.comboTimer <= 0) {
@@ -526,34 +575,10 @@ export class Game {
       deathTime => currentTime - deathTime < this.clusterWindow
     )
     
-    // Check for level completion
-    if (this.gameTimer.isExpired()) {
-      const levelAdvanced = this.levelManager.checkLevelComplete()
-      if (levelAdvanced) {
-        const newLevel = this.levelManager.getCurrentLevel()
-        if (DEBUG_MODE) console.log(`🎯 Level ${newLevel} started!`)
-        this.audioManager.playLevelCompleteSound()
-        this.uiManager.showLevelUpNotification(newLevel)
-        // Reset power-up manager for new level
-        this.powerUpManager.resetForNewLevel()
-        // Reset med pack manager for new level
-        this.medPackManager.resetForNewLevel()
-        // Reset speed-up manager for new level
-        this.speedUpManager.resetForNewLevel()
-        // Reset shield manager for new level
-        this.shieldManager.resetForNewLevel()
-        this.initializeLevelTimer()
-      } else if (this.levelManager.isGameComplete()) {
-        // All levels completed - victory!
-        this.gameOver()
-        return
-      }
-    }
-    
-    // Timer warning (last 10 seconds)
-    const timeRemaining = this.gameTimer.getRemainingTime()
-    if (timeRemaining > 0 && timeRemaining <= 10 && Math.floor(timeRemaining) !== Math.floor(timeRemaining + deltaTime)) {
-      this.audioManager.playTimerWarningSound()
+    // 🎯 CHECK FOR OBJECTIVE COMPLETION
+    if (this.levelManager.checkObjectivesComplete()) {
+      // Objectives complete! Start level transition
+      this.startLevelTransition()
     }
     
     // Check for game over (player death)
@@ -612,6 +637,11 @@ export class Game {
     // Update shields
     if (this.shieldManager) {
       this.shieldManager.update(deltaTime)
+    }
+    
+    // Update invulnerables
+    if (this.invulnerableManager) {
+      this.invulnerableManager.update(deltaTime)
     }
     
     // Update weapons
@@ -732,8 +762,11 @@ export class Game {
           this.audioManager.playHitSound() // Play hit sound when player takes damage
           // JUICY screen shake when player takes damage!
           this.sceneManager.addScreenShake(0.5, 0.2)
-          enemy.destroy()
-          this.enemyManager.removeEnemy(enemy)
+          // 🎮 GAMEPAD VIBRATION - Heavy hit!
+          this.inputManager.vibrateHeavy()
+          
+          // 💥 KILL ENEMY WITH MASSIVE DAMAGE - Triggers death animation & audio! 💥
+          enemy.takeDamage(9999) // Instant kill that triggers proper death sequence
           
           // 💀 RESET MULTIPLIER ON DAMAGE! 💀
           if (this.scoreMultiplier >= 3) {
@@ -756,6 +789,8 @@ export class Game {
           this.player.takeDamage(enemyProjectile.getDamage())
           this.audioManager.playHitSound()
           this.sceneManager.addScreenShake(0.3, 0.15)
+          // 🎮 GAMEPAD VIBRATION - Medium hit from projectile
+          this.inputManager.vibrateMedium()
           enemyProjectile.destroy()
           
           // 💀 RESET MULTIPLIER ON DAMAGE! 💀
@@ -778,6 +813,8 @@ export class Game {
         this.player.takeDamage(laserHit.damage)
         this.audioManager.playHitSound()
         this.sceneManager.addScreenShake(0.6, 0.3) // Big shake for laser
+        // 🎮 GAMEPAD VIBRATION - INTENSE laser hit!
+        this.inputManager.vibrateExplosion()
         
         // 💀 RESET MULTIPLIER ON DAMAGE! 💀
         if (this.scoreMultiplier >= 3) {
@@ -887,6 +924,9 @@ export class Game {
             // JUICY screen shake when enemy dies!
             this.sceneManager.addScreenShake(0.3, 0.1)
             
+            // 🎮 GAMEPAD VIBRATION - Light feedback on kill
+            this.inputManager.vibrateLight()
+            
             // 🛡️ DO NOT call removeEnemy here! 🛡️
             // The EnemyManager handles removal based on the alive flag.
             // This allows enemies with death animations (ChaosWorm, Boss) 
@@ -979,7 +1019,7 @@ export class Game {
           this.audioManager.playSpeedUpCollectSound()
           
           if (DEBUG_MODE) {
-            console.log(`⚡ Speed-Up collected! Level: ${oldSpeedLevel} → ${newSpeedLevel}/10`)
+            console.log(`⚡ Speed-Up collected! Level: ${oldSpeedLevel} → ${newSpeedLevel}/20 (${newSpeedLevel * 5}% boost)`)
           }
         } else if (wasAtMax) {
           // Show "already at max speed" notification
@@ -1021,19 +1061,29 @@ export class Game {
           // Remove the pickup visually
           shield.collect()
           this.shieldManager.removeShield(shield)
+        }
+      }
+    }
+    
+    // 🌟 Check player-invulnerable collisions 🌟
+    const invulnerables = this.invulnerableManager.getInvulnerables()
+    for (const invulnerable of invulnerables) {
+      if (invulnerable.isAlive() && this.player.isCollidingWith(invulnerable)) {
+        // Collect invulnerable (this triggers player callbacks which show notifications)
+        const wasCollected = this.player.collectInvulnerable()
+        
+        if (wasCollected) {
+          // Remove the pickup visually
+          invulnerable.setAlive(false)
+          this.sceneManager.removeFromScene(invulnerable.getMesh())
           
           // Visual feedback
-          this.sceneManager.addScreenShake(0.2, 0.1)
+          this.sceneManager.addScreenShake(0.3, 0.15)
           
-          // 🛡️ Audio feedback - Shield activation sound! 🛡️
-          // Audio method can be added to AudioManager later
-          // this.audioManager.playShieldCollectSound()
-          
-          // Show notification (UI method can be added later)
-          // this.uiManager.showShieldCollected()
+          // Notifications are triggered via player callbacks
           
           if (DEBUG_MODE) {
-            console.log('🛡️ Shield collected! Force field active! 🛡️')
+            console.log('⚡ Invulnerable collected! Player is invulnerable! ⚡')
           }
         }
       }
@@ -1042,6 +1092,11 @@ export class Game {
 
   private trackEnemyKill(enemy: Enemy): void {
     this.gameStats.enemiesKilled++
+    
+    const enemyType = enemy.constructor.name
+    
+    // 🎯 REGISTER KILL WITH LEVEL MANAGER FOR OBJECTIVES
+    this.levelManager.registerKill(enemyType)
     
     // Track specific enemy types
     if (enemy instanceof DataMite) {
@@ -1075,6 +1130,9 @@ export class Game {
     this.isDeathAnimationPlaying = true
     this.deathAnimationTime = 0
     
+    // 💀 TRIGGER ASTEROIDS-STYLE SHIP BREAKUP 💀
+    this.player.explodeIntoFragments()
+    
     // Play game over sound immediately
     this.audioManager.playGameOverSound()
     
@@ -1082,26 +1140,42 @@ export class Game {
     const playerPos = this.player.getPosition()
     const effectsSystem = this.sceneManager.getEffectsSystem()
     
-    // Multiple explosion layers for dramatic effect
-    for (let i = 0; i < 5; i++) {
+    // 💥 MASSIVE INITIAL SCREEN SHAKE 💥
+    this.sceneManager.addScreenShake(2.0, 0.8)
+    
+    // Multiple explosion layers for dramatic effect - MORE EXPLOSIONS!
+    for (let i = 0; i < 8; i++) {
       setTimeout(() => {
         effectsSystem.createExplosion(
           playerPos.clone().add(new THREE.Vector3(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 3,
+            (Math.random() - 0.5) * 3,
             0
           )),
-          2.0 + Math.random() * 1.0,
-          new THREE.Color().setHSL(0.0, 1.0, 0.5) // Red explosion
+          1.5 + Math.random() * 1.5,
+          new THREE.Color().setHSL(Math.random() * 0.1, 1.0, 0.5 + Math.random() * 0.2) // Red-orange explosions
         )
-      }, i * 100)
+      }, i * 120)
     }
     
-    // Screen flash (dark red) - 🔴 REDUCED to prevent white-out
-    effectsSystem.addScreenFlash(0.2, new THREE.Color().setHSL(0.0, 1.0, 0.35))
-    
-    // Screen shake
-    this.sceneManager.addScreenShake(1.0, 0.5)
+    // 💥 SECONDARY EXPLOSION WAVE 💥
+    setTimeout(() => {
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2
+        const distance = 2.0 + Math.random() * 1.0
+        effectsSystem.createExplosion(
+          playerPos.clone().add(new THREE.Vector3(
+            Math.cos(angle) * distance,
+            Math.sin(angle) * distance,
+            0
+          )),
+          1.0,
+          new THREE.Color().setHSL(0.05, 1.0, 0.6)
+        )
+      }
+      // Secondary screen shake
+      this.sceneManager.addScreenShake(1.5, 0.4)
+    }, 600)
     
     // Final stats update
     this.updateGameStats()
@@ -1110,32 +1184,42 @@ export class Game {
   // 💀 UPDATE DEATH ANIMATION 💀
   private updateDeathAnimation(deltaTime: number): void {
     this.deathAnimationTime += deltaTime
+    const progress = this.deathAnimationTime / this.deathAnimationDuration
     
-    // Animate player during death
-    if (!this.player) {
-      return
-    }
-    
-    const playerMesh = this.player.getMesh()
-    if (playerMesh) {
-      // Fade out
-      const material = playerMesh.material as THREE.MeshLambertMaterial
-      const fadeProgress = this.deathAnimationTime / this.deathAnimationDuration
-      material.opacity = 0.9 * (1 - fadeProgress)
-      
-      // Scale down and rotate
-      const scale = 1 - fadeProgress * 0.5
-      playerMesh.scale.setScalar(scale)
-      playerMesh.rotation.z += deltaTime * 10 // Spin during death
-      
-      // Change color to red
-      const redAmount = fadeProgress
-      material.emissive.setHex(0xFF0000)
-      material.emissiveIntensity = redAmount * 2
+    // Animate player fragments during death
+    if (this.player) {
+      this.player.update(deltaTime, this.inputManager)
     }
     
     // Continue updating scene for visual effects
     this.sceneManager.update(deltaTime)
+    
+    // 💥 CONTINUOUS VISUAL EFFECTS DURING DEATH 💥
+    const effectsSystem = this.sceneManager.getEffectsSystem()
+    
+    // Random sparks throughout the death animation
+    if (Math.random() < 0.15) {
+      const playerPos = this.player?.getPosition() || new THREE.Vector3(0, 0, 0)
+      const sparkVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 15,
+        (Math.random() - 0.5) * 15,
+        0
+      )
+      const sparkColor = new THREE.Color().setHSL(
+        Math.random() * 0.1, // Red-orange range
+        1.0,
+        0.5 + Math.random() * 0.3
+      )
+      effectsSystem.createSparkle(playerPos, sparkVel, sparkColor, 0.5)
+    }
+    
+    // Slow-motion camera zoom effect as we approach the end
+    if (progress > 0.5) {
+      // Gradually slow down time perception (visual effect only)
+      // TODO: Implement setSlowMotion in SceneManager if needed
+      // const slowMoFactor = 1.0 + (progress - 0.5) * 0.5
+      // this.sceneManager.setSlowMotion?.(slowMoFactor)
+    }
     
     // Check if animation is complete
     if (this.deathAnimationTime >= this.deathAnimationDuration) {
@@ -1168,5 +1252,165 @@ export class Game {
     GameScreens.showGameOverScreen(this.gameStats, () => this.showStartScreen()).catch(err => {
       console.error('Error showing game over screen:', err)
     })
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 🎯 LEVEL TRANSITION SYSTEM
+  // ═══════════════════════════════════════════════════════
+
+  private startLevelTransition(): void {
+    if (this.isLevelTransitioning) return
+
+    console.log('🎯 Level objectives complete! Starting transition...')
+    this.isLevelTransitioning = true
+    this.transitionPhase = 'clearing'
+    this.transitionTimer = 0
+
+    // 🎊 JUICY FEEDBACK - Level complete!
+    // Play level complete sound
+    this.audioManager.playLevelCompleteSound()
+    
+    // BIG screen shake for satisfaction!
+    this.sceneManager.addScreenShake(1.0, 0.5)
+    
+    // 💥 IMMEDIATELY trigger death animations for all enemies!
+    // This will create a spectacular chain of explosions!
+    this.clearAllEnemies()
+    
+    // Stop spawning new enemies during transition
+    this.enemyManager.pauseSpawning()
+  }
+
+  private updateLevelTransition(deltaTime: number): void {
+    this.transitionTimer += deltaTime
+
+    switch (this.transitionPhase) {
+      case 'clearing':
+        // PHASE 1: Wait for death animations to complete (3 seconds)
+        // (Enemies were already killed in startLevelTransition)
+        if (this.transitionTimer >= this.clearingDuration) {
+          this.transitionPhase = 'displaying'
+          this.transitionTimer = 0
+          
+          // Check if game is complete
+          if (this.levelManager.isGameComplete()) {
+            console.log('🎉 ALL LEVELS COMPLETE!')
+            this.isLevelTransitioning = false
+            this.gameOver()
+            return
+          }
+
+          // Show level complete notification
+          this.uiManager.showLevelCompleteNotification()
+        }
+        break
+
+      case 'displaying':
+        // PHASE 2: Display "LEVEL COMPLETE" message (3 seconds)
+        if (this.transitionTimer >= this.displayDuration) {
+          this.transitionPhase = 'complete'
+          this.completeTransition()
+        }
+        break
+
+      case 'complete':
+        // Transition complete
+        this.isLevelTransitioning = false
+        break
+    }
+  }
+
+  private clearAllEnemies(): void {
+    console.log('💥 Clearing all enemies with death animations!')
+    
+    // Screen shake for dramatic effect
+    this.sceneManager.addScreenShake(1.0, 0.5)
+    this.inputManager.vibrateExplosion()
+    
+    // Get ALL enemies (not just alive ones - in case some are mid-death)
+    const enemies = this.enemyManager.getEnemies()
+    const effectsSystem = this.sceneManager.getEffectsSystem()
+    
+    // Stagger deaths by 0.1s for fireworks effect! 🎆
+    enemies.forEach((enemy, index) => {
+      setTimeout(() => {
+        // Kill enemy with massive damage - triggers proper death sequence with VFX!
+        // This will play:
+        // - Death animation (if enemy has one)
+        // - Death particles and effects
+        // - Death sound
+        // - All the juicy VFX you've created!
+        enemy.takeDamage(999999)
+        
+        // Add extra cyan glow effect for level transition
+        effectsSystem.createExplosion(
+          enemy.getPosition(),
+          2.0,
+          new THREE.Color(0, 1, 1) // Cyan glow overlay
+        )
+        
+        // Play special transition sound
+        this.audioManager.playEnemyDeathSound(enemy.constructor.name)
+      }, index * 100) // 0.1s stagger per enemy = FIREWORKS! 🎆
+    })
+    
+    // Note: Don't force clear here - let death animations play out naturally
+    // The EnemyManager will clean up dead enemies automatically
+  }
+
+  private completeTransition(): void {
+    // 🧹 FORCE CLEAR ALL REMAINING ENEMIES 🧹
+    // (Ensures no stragglers from death animations)
+    console.log('🧹 Force-clearing any remaining enemies...')
+    const remainingEnemies = this.enemyManager.getEnemies()
+    if (remainingEnemies.length > 0) {
+      console.warn(`⚠️ ${remainingEnemies.length} enemies still present - force removing!`)
+      for (const enemy of remainingEnemies) {
+        enemy.destroy()
+        this.sceneManager.removeFromScene(enemy.getMesh())
+      }
+    }
+    // Clear the enemies array
+    this.enemyManager.clearAllEnemies()
+    
+    // 🎯 CLEAR ALL PROJECTILES - Player and enemy bullets
+    console.log('🧹 Clearing all projectiles...')
+    this.weaponSystem.clearAllProjectiles()
+    
+    // 🎆 CLEAR VISUAL EFFECTS - Particles, trails, explosions
+    console.log('🧹 Clearing visual effects...')
+    const effectsSystem = this.sceneManager.getEffectsSystem()
+    if (effectsSystem?.cleanup) {
+      effectsSystem.cleanup()
+    }
+    
+    // Advance to next level
+    this.levelManager.advanceLevel()
+    const newLevel = this.levelManager.getCurrentLevel()
+    const config = this.levelManager.getCurrentLevelConfig()
+    
+    console.log(`🎯 Starting Level ${newLevel}: ${config.name}`)
+    
+    // Show new level notification
+    this.uiManager.showLevelUpNotification(newLevel)
+    
+    // 🔄 Reset managers for new level (pickups carry over EXCEPT invulnerable)
+    this.powerUpManager.resetForNewLevel()
+    this.medPackManager.resetForNewLevel()
+    this.speedUpManager.resetForNewLevel()
+    this.shieldManager.resetForNewLevel()
+    
+    // 🚫 CLEAR INVULNERABLE - Does NOT carry over between levels!
+    this.invulnerableManager.reset()
+    this.player.clearInvulnerable()
+    console.log('🚫 Invulnerable state cleared for new level')
+    
+    // Resume enemy spawning
+    this.enemyManager.resumeSpawning()
+    
+    // Reset transition state
+    this.isLevelTransitioning = false
+    this.transitionPhase = 'clearing'
+    this.transitionTimer = 0
   }
 }

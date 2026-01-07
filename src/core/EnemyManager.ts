@@ -27,6 +27,9 @@ export class EnemyManager {
   private fizzersSpawnedThisStreak: number = 0
   private maxFizzersPerStreak: number = 3
   
+  // 🎯 SPAWNING CONTROL (for transitions)
+  private spawningPaused: boolean = false
+  
   // 🔷 SPATIAL GRID FOR COLLISION DETECTION 🔷
   private spatialGrid: Map<string, Enemy[]> = new Map()
   private gridCellSize: number = 4.0 // Cell size for spatial partitioning
@@ -47,12 +50,14 @@ export class EnemyManager {
   }
 
   update(deltaTime: number, gameTime: number): void {
-    // Update spawn timers
-    this.spawnTimer += deltaTime
-    this.scanDroneTimer += deltaTime
-    this.chaosWormTimer += deltaTime
-    this.voidSphereTimer += deltaTime
-    this.crystalSwarmTimer += deltaTime
+    // Skip spawning if paused (during transitions)
+    if (!this.spawningPaused) {
+      // Update spawn timers
+      this.spawnTimer += deltaTime
+      this.scanDroneTimer += deltaTime
+      this.chaosWormTimer += deltaTime
+      this.voidSphereTimer += deltaTime
+      this.crystalSwarmTimer += deltaTime
     this.bossTimer += deltaTime
     this.ufoTimer += deltaTime
 
@@ -111,15 +116,12 @@ export class EnemyManager {
       this.bossTimer = 0
     }
 
-    // 🛸 Spawn UFO - Later game enemy (level 5+)
-    const currentLevel = this.levelManager?.getCurrentLevel() || 1
-    if (currentLevel >= 5) {
-      const ufoSpawnRate = Math.max(20, 50 - (currentLevel - 5) * 5) // 50s at level 5, down to 20s at level 10
-      if (this.ufoTimer >= ufoSpawnRate) {
-        this.spawnUFO()
-        this.ufoTimer = 0
-      }
+    // 🛸 Spawn UFO - Uses levelConfig spawn rate (no more hardcoded magic numbers!)
+    if (levelConfig.ufoSpawnRate !== Infinity && this.ufoTimer >= levelConfig.ufoSpawnRate) {
+      this.spawnUFO()
+      this.ufoTimer = 0
     }
+    } // End of spawning pause check
 
     // Update all enemies (AI first)
     for (const enemy of this.enemies) {
@@ -310,6 +312,11 @@ export class EnemyManager {
         mite.setEffectsSystem(this.effectsSystem)
       }
       
+      // Connect audio manager for hit sounds
+      if (this.audioManager) {
+        mite.setAudioManager(this.audioManager)
+      }
+      
       this.enemies.push(mite)
       const mesh = mite.getMesh()
       
@@ -354,6 +361,11 @@ export class EnemyManager {
       drone.setEffectsSystem(this.effectsSystem)
     }
     
+    // 🔊 Connect audio manager for hit sounds!
+    if (this.audioManager) {
+      drone.setAudioManager(this.audioManager)
+    }
+    
     // 🔫 Connect sceneManager so drone can fire bullets!
     drone.setSceneManager(this.sceneManager)
     
@@ -381,10 +393,18 @@ export class EnemyManager {
       worm.setEffectsSystem(this.effectsSystem)
     }
     
+    // 🔊 Connect audio manager for hit sounds!
+    if (this.audioManager) {
+      worm.setAudioManager(this.audioManager)
+    }
+    
     // 🎵 Connect audioManager for death sequence sounds!
     if (this.audioManager) {
       worm.setAudioManager(this.audioManager)
     }
+    
+    // 💥 Connect sceneManager for death projectiles!
+    worm.setSceneManager(this.sceneManager)
     
     this.enemies.push(worm)
     this.sceneManager.addToScene(worm.getMesh())
@@ -403,6 +423,11 @@ export class EnemyManager {
     // 🎆 Connect effects system for SUPER JUICY trails and death effects!
     if (this.effectsSystem) {
       voidSphere.setEffectsSystem(this.effectsSystem)
+    }
+    
+    // 🔊 Connect audio manager for hit sounds!
+    if (this.audioManager) {
+      voidSphere.setAudioManager(this.audioManager)
     }
     
     // 🔫 Connect sceneManager so VoidSphere can fire bullets!
@@ -434,6 +459,11 @@ export class EnemyManager {
       crystalSwarm.setEffectsSystem(this.effectsSystem)
     }
     
+    // 🔊 Connect audio manager for hit sounds!
+    if (this.audioManager) {
+      crystalSwarm.setAudioManager(this.audioManager)
+    }
+    
     // 🔫 Connect sceneManager so crystalSwarm can fire bullets!
     crystalSwarm.setSceneManager(this.sceneManager)
     
@@ -460,6 +490,12 @@ export class EnemyManager {
     if (this.effectsSystem) {
       boss.setEffectsSystem(this.effectsSystem)
     }
+    
+    // 🔊 Connect audio manager for hit sounds!
+    if (this.audioManager) {
+      boss.setAudioManager(this.audioManager)
+    }
+    
     if (this.sceneManager) {
       boss.setSceneManager(this.sceneManager)
     }
@@ -491,6 +527,12 @@ export class EnemyManager {
     if (this.effectsSystem) {
       fizzer.setEffectsSystem(this.effectsSystem)
     }
+    
+    // 🔊 Connect audio manager for hit sounds!
+    if (this.audioManager) {
+      fizzer.setAudioManager(this.audioManager)
+    }
+    
     if (this.sceneManager) {
       fizzer.setSceneManager(this.sceneManager)
     }
@@ -520,6 +562,12 @@ export class EnemyManager {
     if (this.effectsSystem) {
       ufo.setEffectsSystem(this.effectsSystem)
     }
+    
+    // 🔊 Connect audio manager for hit sounds!
+    if (this.audioManager) {
+      ufo.setAudioManager(this.audioManager)
+    }
+    
     if (this.sceneManager) {
       ufo.setSceneManager(this.sceneManager)
     }
@@ -547,33 +595,13 @@ export class EnemyManager {
   }
 
   private getSpawnPosition(): THREE.Vector3 {
-    // Spawn enemies at random positions around screen edges
-    const worldBound = 28 // Just inside the walls
-    const side = Math.floor(Math.random() * 4) // 0=top, 1=right, 2=bottom, 3=left
+    // 🔘 CIRCULAR SPAWN LOGIC 🔘
+    // Spawn enemies at random positions around the circular edge
+    const boundaryRadius = 29.5
+    const angle = Math.random() * Math.PI * 2
     
-    let x: number, y: number
-    
-    switch (side) {
-      case 0: // Top edge
-        x = (Math.random() - 0.5) * worldBound * 2
-        y = worldBound
-        break
-      case 1: // Right edge
-        x = worldBound
-        y = (Math.random() - 0.5) * worldBound * 2
-        break
-      case 2: // Bottom edge
-        x = (Math.random() - 0.5) * worldBound * 2
-        y = -worldBound
-        break
-      case 3: // Left edge
-        x = -worldBound
-        y = (Math.random() - 0.5) * worldBound * 2
-        break
-      default:
-        x = 0
-        y = worldBound
-    }
+    const x = Math.cos(angle) * (boundaryRadius + 2) // Spawn slightly outside
+    const y = Math.sin(angle) * (boundaryRadius + 2)
     
     return new THREE.Vector3(x, y, 0)
   }
@@ -582,10 +610,100 @@ export class EnemyManager {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]
       if (!enemy.isAlive()) {
+        // 💥 CHAIN REACTION - Apply death damage to nearby enemies! 💥
+        this.applyDeathDamageToNearby(enemy)
+        
         // 🧹 CLEANUP: Call destroy to clean up projectiles before removing! 🧹
         enemy.destroy()
         this.sceneManager.removeFromScene(enemy.getMesh())
         this.enemies.splice(i, 1)
+      }
+    }
+  }
+  
+  // 💥 CHAIN REACTION SYSTEM - Enemies damage nearby enemies when they die! 💥
+  private applyDeathDamageToNearby(dyingEnemy: Enemy): void {
+    const dyingPos = dyingEnemy.getPosition()
+    const damageRadius = dyingEnemy.getDeathDamageRadius()
+    const damageAmount = dyingEnemy.getDeathDamageAmount()
+    
+    // Check all other alive enemies
+    for (const enemy of this.enemies) {
+      if (enemy === dyingEnemy || !enemy.isAlive()) continue
+      
+      const enemyPos = enemy.getPosition()
+      const distance = dyingPos.distanceTo(enemyPos)
+      
+      // If within damage radius, apply damage
+      if (distance <= damageRadius) {
+        // Apply damage with falloff based on distance
+        const damageMultiplier = 1.0 - (distance / damageRadius) * 0.5 // 50-100% damage based on distance
+        const finalDamage = Math.floor(damageAmount * damageMultiplier)
+        
+        if (DEBUG_MODE) {
+          console.log(`💥 Chain damage: ${finalDamage} to ${enemy.constructor.name} at distance ${distance.toFixed(2)}`)
+        }
+        
+        enemy.takeDamage(finalDamage)
+        
+        // Visual feedback - small explosion/shockwave effect
+        if (this.effectsSystem) {
+          const chainColor = new THREE.Color(0xFF8800) // Orange for chain damage
+          this.effectsSystem.createExplosion(enemyPos, 0.8, chainColor)
+          
+          // Add a few sparkles
+          for (let i = 0; i < 3; i++) {
+            const angle = Math.random() * Math.PI * 2
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * 1.5,
+              Math.sin(angle) * 1.5,
+              (Math.random() - 0.5) * 0.5
+            )
+            this.effectsSystem.createSparkle(enemyPos, velocity, chainColor, 0.3)
+          }
+        }
+      }
+    }
+  }
+  
+  // 💥 CHAOS WORM SEGMENT DEATH DAMAGE - Called for each exploding segment! 💥
+  applySegmentDeathDamage(segmentPos: THREE.Vector3, damageRadius: number, damageAmount: number): void {
+    // Check all alive enemies
+    for (const enemy of this.enemies) {
+      if (!enemy.isAlive()) continue
+      
+      const enemyPos = enemy.getPosition()
+      const distance = segmentPos.distanceTo(enemyPos)
+      
+      // If within damage radius, apply damage
+      if (distance <= damageRadius) {
+        // Apply damage with falloff based on distance
+        const damageMultiplier = 1.0 - (distance / damageRadius) * 0.5 // 50-100% damage based on distance
+        const finalDamage = Math.floor(damageAmount * damageMultiplier)
+        
+        if (DEBUG_MODE) {
+          console.log(`🐛 Worm segment chain damage: ${finalDamage} to ${enemy.constructor.name} at distance ${distance.toFixed(2)}`)
+        }
+        
+        enemy.takeDamage(finalDamage)
+        
+        // Visual feedback - rainbow-colored explosion for worm segments
+        if (this.effectsSystem) {
+          const hue = Math.random() // Random rainbow color
+          const chainColor = new THREE.Color().setHSL(hue, 1.0, 0.6)
+          this.effectsSystem.createExplosion(enemyPos, 0.8, chainColor)
+          
+          // Add a few sparkles
+          for (let i = 0; i < 3; i++) {
+            const angle = Math.random() * Math.PI * 2
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * 1.5,
+              Math.sin(angle) * 1.5,
+              (Math.random() - 0.5) * 0.5
+            )
+            this.effectsSystem.createSparkle(enemyPos, velocity, chainColor, 0.3)
+          }
+        }
       }
     }
   }
@@ -596,6 +714,15 @@ export class EnemyManager {
       this.sceneManager.removeFromScene(enemy.getMesh())
       this.enemies.splice(index, 1)
     }
+  }
+
+  clearAllEnemies(): void {
+    // 💥 Clear all enemies immediately (for level transitions)
+    for (const enemy of this.enemies) {
+      enemy.destroy()
+      this.sceneManager.removeFromScene(enemy.getMesh())
+    }
+    this.enemies = []
   }
 
   getEnemies(): Enemy[] {
@@ -635,7 +762,7 @@ export class EnemyManager {
     return allProjectiles
   }
   
-  // 🔫 GET ALL ENEMY PROJECTILES (including ScanDrone + VoidSphere + Fizzer + ChaosWorm death bullets!) 🔫
+  // 🔫 GET ALL ENEMY PROJECTILES (including ScanDrone + VoidSphere + Fizzer + ChaosWorm!) 🔫
   getAllEnemyProjectiles(): EnemyProjectile[] {
     const allProjectiles: EnemyProjectile[] = []
     for (const enemy of this.enemies) {
@@ -648,12 +775,16 @@ export class EnemyManager {
           allProjectiles.push(...enemy.getProjectiles())
         } else if (enemy instanceof Fizzer) {
           allProjectiles.push(...enemy.getProjectiles())
+        } else if (enemy instanceof ChaosWorm) {
+          allProjectiles.push(...enemy.getProjectiles())
         }
-      }
-      // 💥 CHAOS WORM DEATH BULLETS - Include even when dying! 💥
-      if (enemy instanceof ChaosWorm) {
-        // Include projectiles even during death animation
-        allProjectiles.push(...enemy.getProjectiles())
+      } else {
+        // 🔴 Include Fizzer + ChaosWorm projectiles even after death - let them finish trajectory! 🔴
+        if (enemy instanceof Fizzer) {
+          allProjectiles.push(...enemy.getProjectiles())
+        } else if (enemy instanceof ChaosWorm) {
+          allProjectiles.push(...enemy.getProjectiles())
+        }
       }
     }
     return allProjectiles
@@ -662,5 +793,16 @@ export class EnemyManager {
   // 🎆 SET EFFECTS SYSTEM FOR SUPER JUICY EFFECTS! 🎆
   setEffectsSystem(effectsSystem: EffectsSystem): void {
     this.effectsSystem = effectsSystem
+  }
+
+  // 🎯 SPAWNING CONTROL (for level transitions)
+  pauseSpawning(): void {
+    this.spawningPaused = true
+    if (DEBUG_MODE) console.log('⏸️ Enemy spawning paused')
+  }
+
+  resumeSpawning(): void {
+    this.spawningPaused = false
+    if (DEBUG_MODE) console.log('▶️ Enemy spawning resumed')
   }
 }

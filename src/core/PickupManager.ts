@@ -4,6 +4,7 @@ import { SceneManager } from '../graphics/SceneManager'
 import { EffectsSystem } from '../graphics/EffectsSystem'
 import { LevelManager } from './LevelManager'
 import { ENEMY_CONFIG } from '../config'
+import { DEBUG_MODE } from '../config'
 
 /**
  * Base class for managing pickup entities (PowerUps, MedPacks, SpeedUps)
@@ -45,25 +46,23 @@ export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive()
     // Update spawn timer
     this.spawnTimer += deltaTime
     
-    // Calculate spawn interval based on level duration
-    const levelConfig = this.levelManager?.getCurrentLevelConfig()
-    if (levelConfig) {
-      const levelDuration = levelConfig.duration
-      const targetSpawns = this.SPAWNS_PER_LEVEL
-      const baseInterval = levelDuration / targetSpawns
+    // Calculate random spawn interval (FIXED - no longer relies on level duration!)
+    const targetSpawns = this.SPAWNS_PER_LEVEL
+    const randomInterval = this.SPAWN_INTERVAL_MIN + 
+      (Math.random() * (this.SPAWN_INTERVAL_MAX - this.SPAWN_INTERVAL_MIN))
+    
+    // Check if we should spawn
+    const timeSinceLastSpawn = this.spawnTimer - this.lastSpawnTime
+    const shouldSpawn = this.shouldSpawn(timeSinceLastSpawn, randomInterval, targetSpawns)
+    
+    if (shouldSpawn) {
+      this.spawnPickup()
+      this.lastSpawnTime = this.spawnTimer
+      this.spawnsThisLevel++
       
-      // Add some randomness
-      const randomInterval = baseInterval + 
-        (Math.random() * (this.SPAWN_INTERVAL_MAX - this.SPAWN_INTERVAL_MIN))
-      
-      // Check if we should spawn
-      const timeSinceLastSpawn = this.spawnTimer - this.lastSpawnTime
-      const shouldSpawn = this.shouldSpawn(timeSinceLastSpawn, randomInterval, targetSpawns)
-      
-      if (shouldSpawn) {
-        this.spawnPickup()
-        this.lastSpawnTime = this.spawnTimer
-        this.spawnsThisLevel++
+      // Debug logging
+      if (DEBUG_MODE) {
+        console.log(`✅ Spawned ${this.constructor.name} - Count: ${this.spawnsThisLevel}/${targetSpawns}, Next spawn in: ${randomInterval.toFixed(1)}s`)
       }
     }
 
@@ -106,8 +105,8 @@ export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive()
   }
 
   protected getSpawnPosition(): THREE.Vector3 {
-    // Spawn pickups at random positions, minimum distance from player
-    const worldBound = ENEMY_CONFIG.PICKUP.WORLD_BOUND
+    // 🔘 CIRCULAR SPAWN LOGIC for Pickups 🔘
+    const boundaryRadius = 28 // Stay well within the 29.5 radius
     const minDistanceFromPlayer = ENEMY_CONFIG.PICKUP.MIN_DISTANCE_FROM_PLAYER
     const playerPos = this.player.getPosition()
     
@@ -115,8 +114,11 @@ export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive()
     let x: number, y: number
     
     do {
-      x = (Math.random() - 0.5) * worldBound * 2
-      y = (Math.random() - 0.5) * worldBound * 2
+      // Random position within circle: sqrt(random) for uniform distribution
+      const r = boundaryRadius * Math.sqrt(Math.random())
+      const theta = Math.random() * Math.PI * 2
+      x = r * Math.cos(theta)
+      y = r * Math.sin(theta)
       attempts++
     } while (
       playerPos.distanceTo(new THREE.Vector3(x, y, 0)) < minDistanceFromPlayer &&

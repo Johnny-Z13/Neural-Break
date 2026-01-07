@@ -7,6 +7,14 @@ import { LevelManager } from '../core/LevelManager'
  * UIManager - Unified HUD and Notification System
  * Uses CSS classes from the unified design system in index.html
  */
+// 📬 NOTIFICATION QUEUE SYSTEM 📬
+interface QueuedNotification {
+  element: HTMLElement
+  duration: number
+  priority: number // Higher = more important
+  timestamp: number
+}
+
 export class UIManager {
   private healthElement: HTMLElement | null = null
   private healthBarFill: HTMLElement
@@ -27,6 +35,11 @@ export class UIManager {
   private heatBarFill: HTMLElement
   private heatBarContainer: HTMLElement
   private healthPulseAnimation: number | null = null
+  
+  // 📬 NOTIFICATION QUEUE MANAGEMENT 📬
+  private notificationQueue: QueuedNotification[] = []
+  private currentNotification: QueuedNotification | null = null
+  private notificationContainer: HTMLElement | null = null
 
   initialize(): void {
     // Get UI elements
@@ -58,6 +71,80 @@ export class UIManager {
       console.error('❌ Critical UI elements not found! Game may not function properly.')
       throw new Error('Required UI elements are missing from the DOM')
     }
+    
+    // 📬 Initialize notification container 📬
+    this.initializeNotificationSystem()
+  }
+  
+  // 📬 NOTIFICATION SYSTEM INITIALIZATION 📬
+  private initializeNotificationSystem(): void {
+    // Create dedicated notification container
+    this.notificationContainer = document.createElement('div')
+    this.notificationContainer.id = 'notification-container'
+    this.notificationContainer.style.cssText = `
+      position: fixed;
+      top: 35%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10000;
+      pointer-events: none;
+      width: 90%;
+      max-width: 1000px;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    `
+    document.body.appendChild(this.notificationContainer)
+    
+    // Start processing queue
+    this.processNotificationQueue()
+  }
+  
+  // 📬 PROCESS NOTIFICATION QUEUE 📬
+  private processNotificationQueue(): void {
+    const process = () => {
+      // If currently showing a notification, wait
+      if (this.currentNotification) {
+        requestAnimationFrame(process)
+        return
+      }
+      
+      // If queue is empty, wait
+      if (this.notificationQueue.length === 0) {
+        requestAnimationFrame(process)
+        return
+      }
+      
+      // Sort queue by priority (highest first), then by timestamp (oldest first)
+      this.notificationQueue.sort((a, b) => {
+        if (a.priority !== b.priority) {
+          return b.priority - a.priority // Higher priority first
+        }
+        return a.timestamp - b.timestamp // Older first
+      })
+      
+      // Get next notification
+      const next = this.notificationQueue.shift()!
+      this.currentNotification = next
+      
+      // Show it
+      if (this.notificationContainer) {
+        this.notificationContainer.appendChild(next.element)
+        
+        // Remove after duration
+        setTimeout(() => {
+          if (this.notificationContainer && this.notificationContainer.contains(next.element)) {
+            this.notificationContainer.removeChild(next.element)
+          }
+          this.currentNotification = null
+        }, next.duration)
+      }
+      
+      requestAnimationFrame(process)
+    }
+    
+    requestAnimationFrame(process)
   }
 
   update(player: Player, gameTimer: GameTimer, gameStats?: GameStats, combo?: number, levelManager?: LevelManager): void {
@@ -104,28 +191,42 @@ export class UIManager {
       this.healthElement.textContent = `${Math.ceil(health)}`
     }
 
-    // Update timer display
-    this.timerElement.textContent = gameTimer.getFormattedRemainingTime()
-    
-    // Change timer color as time runs out
-    const timePercentage = gameTimer.getProgressPercentage()
-    const timerElement = this.timerElement.parentElement!
-    if (timePercentage > 90) {
-      timerElement.style.borderColor = '#FF0000'
-      timerElement.style.color = '#FF0000'
-      timerElement.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5), 3px 3px 0 #660000'
-    } else if (timePercentage > 75) {
-      timerElement.style.borderColor = '#FF6600'
-      timerElement.style.color = '#FF6600'
-      timerElement.style.boxShadow = '0 0 20px rgba(255, 102, 0, 0.5), 3px 3px 0 #663300'
-    } else {
-      timerElement.style.borderColor = '#00FFFF'
-      timerElement.style.color = '#00FFFF'
-      timerElement.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.3), 3px 3px 0 #006666'
-    }
-
-    // Update game level display
+    // 🎯 UPDATE OBJECTIVES DISPLAY (replaces timer)
     if (levelManager) {
+      const progress = levelManager.getProgress()
+      const objectives = levelManager.getObjectives()
+      
+      // Build objectives string
+      let objectivesText = ''
+      if (objectives.dataMites > 0) objectivesText += `M:${progress.dataMites}/${objectives.dataMites} `
+      if (objectives.scanDrones > 0) objectivesText += `D:${progress.scanDrones}/${objectives.scanDrones} `
+      if (objectives.chaosWorms > 0) objectivesText += `W:${progress.chaosWorms}/${objectives.chaosWorms} `
+      if (objectives.crystalSwarms > 0) objectivesText += `C:${progress.crystalSwarms}/${objectives.crystalSwarms} `
+      if (objectives.voidSpheres > 0) objectivesText += `V:${progress.voidSpheres}/${objectives.voidSpheres} `
+      if (objectives.ufos > 0) objectivesText += `U:${progress.ufos}/${objectives.ufos} `
+      if (objectives.fizzers > 0) objectivesText += `F:${progress.fizzers}/${objectives.fizzers} `
+      if (objectives.bosses > 0) objectivesText += `B:${progress.bosses}/${objectives.bosses} `
+      
+      this.timerElement.textContent = objectivesText.trim()
+      
+      // Color based on progress
+      const progressPercent = levelManager.getLevelProgress()
+      const timerElement = this.timerElement.parentElement!
+      if (progressPercent >= 100) {
+        timerElement.style.borderColor = '#FFD700'
+        timerElement.style.color = '#FFD700'
+        timerElement.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8), 3px 3px 0 #886600'
+      } else if (progressPercent >= 75) {
+        timerElement.style.borderColor = '#00FF00'
+        timerElement.style.color = '#00FF00'
+        timerElement.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.5), 3px 3px 0 #006600'
+      } else {
+        timerElement.style.borderColor = '#00FFFF'
+        timerElement.style.color = '#00FFFF'
+        timerElement.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.3), 3px 3px 0 #006666'
+      }
+      
+      // Update game level display
       this.gameLevelElement.textContent = `${levelManager.getCurrentLevel()}`
     }
     
@@ -207,7 +308,19 @@ export class UIManager {
       level ? `LEVEL ${level} STARTED!` : 'LEVEL UP!',
       'notification-level-up'
     )
-    this.showAndRemove(notification, 2000)
+    this.queueNotification(notification, 2000, 8) // High priority - level events
+  }
+
+  // 🏆 LEVEL COMPLETE NOTIFICATION 🏆
+  showLevelCompleteNotification(): void {
+    const notification = this.createNotification('🏆 LEVEL COMPLETE! 🏆', 'notification-level-up')
+    notification.style.color = '#FFD700' // Gold
+    notification.style.textShadow = '0 0 40px rgba(255, 215, 0, 1.0), 0 0 80px rgba(255, 215, 0, 0.6), 3px 3px 0 #886600'
+    notification.style.fontSize = 'clamp(1.2rem, 3.2vw, 2.0rem)' // Same as INVULNERABLE
+    notification.style.fontWeight = 'bold'
+    notification.style.animation = 'pulse 0.5s ease-in-out infinite'
+    
+    this.queueNotification(notification, 3000, 10) // MAX PRIORITY - same as INVULNERABLE!
   }
 
   showDamageIndicator(damage: number): void {
@@ -230,18 +343,19 @@ export class UIManager {
       notification.style.textShadow = '0 0 30px rgba(255, 215, 0, 0.8), 3px 3px 0 #886600'
     }
     
-    this.showAndRemove(notification, 1500)
+    this.queueNotification(notification, 1500, 6) // Medium-high priority - pickups
   }
   
   showSpeedUpCollected(level: number): void {
-    const validLevel = Math.max(0, Math.min(10, level))
-    const text = validLevel >= 10 ? '⚡ SPEED MAXED! ⚡' : `⚡ SPEED +${validLevel * 5}% ⚡`
+    const validLevel = Math.max(0, Math.min(20, level))
+    const speedPercent = validLevel * 5
+    const text = validLevel >= 20 ? '⚡ SPEED MAXED! ⚡' : `⚡ SPEED +${speedPercent}% ⚡`
     
     const notification = this.createNotification(text, 'notification-powerup')
-    notification.style.color = validLevel >= 10 ? '#FFD700' : '#FFFF00'
-    notification.style.textShadow = `0 0 30px ${validLevel >= 10 ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 255, 0, 0.6)'}, 3px 3px 0 #886600`
+    notification.style.color = validLevel >= 20 ? '#FFD700' : '#00FF00' // Green for speed
+    notification.style.textShadow = `0 0 30px ${validLevel >= 20 ? 'rgba(255, 215, 0, 0.8)' : 'rgba(0, 255, 0, 0.6)'}, 3px 3px 0 #006600`
     
-    this.showAndRemove(notification, 1500)
+    this.queueNotification(notification, 1500, 6) // Medium-high priority - pickups
   }
 
   updateWeaponType(weaponType: string): void {
@@ -288,7 +402,7 @@ export class UIManager {
       'notification-damage' // Re-use damage style for red/warning
     )
     notification.style.color = '#FF0000'
-    this.showAndRemove(notification, 1500)
+    this.queueNotification(notification, 1500, 8) // High priority - critical warning
   }
   
   showWeaponTypeChangeNotification(weaponType: string): void {
@@ -305,7 +419,7 @@ export class UIManager {
     )
     notification.style.color = color
     
-    this.showAndRemove(notification, 2000)
+    this.queueNotification(notification, 2000, 4) // Lower priority - informational
   }
   
   // 🎯 ARCADE-STYLE KILL SCORE POPUP 🎯
@@ -318,30 +432,30 @@ export class UIManager {
     const totalPoints = points * multiplier
     notification.textContent = `+${totalPoints.toLocaleString()}${multiplierText}`
     
-    // Color and size based on multiplier level - Reduced by 25%
+    // Color and size based on multiplier level - Reduced by 20%
     let color = '#00FF00'
-    let fontSize = 'clamp(0.6rem, 1.5vw, 0.9rem)'
+    let fontSize = 'clamp(0.48rem, 1.2vw, 0.72rem)'
     let glowIntensity = 10
     
     if (multiplier >= 10) {
       color = '#FF00FF'
-      fontSize = 'clamp(1.05rem, 2.25vw, 1.5rem)'
+      fontSize = 'clamp(0.84rem, 1.8vw, 1.2rem)'
       glowIntensity = 30
     } else if (multiplier >= 7) {
       color = '#FFD700'
-      fontSize = 'clamp(0.9rem, 1.875vw, 1.35rem)'
+      fontSize = 'clamp(0.72rem, 1.5vw, 1.08rem)'
       glowIntensity = 25
     } else if (multiplier >= 5) {
       color = '#FF6600'
-      fontSize = 'clamp(0.825rem, 1.725vw, 1.2rem)'
+      fontSize = 'clamp(0.66rem, 1.38vw, 0.96rem)'
       glowIntensity = 20
     } else if (multiplier >= 3) {
       color = '#FFFF00'
-      fontSize = 'clamp(0.75rem, 1.5vw, 1.05rem)'
+      fontSize = 'clamp(0.6rem, 1.2vw, 0.84rem)'
       glowIntensity = 15
     } else if (multiplier >= 2) {
       color = '#00FFFF'
-      fontSize = 'clamp(0.675rem, 1.5vw, 0.975rem)'
+      fontSize = 'clamp(0.54rem, 1.2vw, 0.78rem)'
       glowIntensity = 12
     }
     
@@ -372,23 +486,27 @@ export class UIManager {
     
     let text = `x${multiplier} MULTIPLIER!`
     let color = '#00FFFF'
-    let fontSize = 'clamp(0.9rem, 2.25vw, 1.35rem)' // Reduced 25%
+    let fontSize = 'clamp(0.72rem, 1.8vw, 1.08rem)' // Reduced 20%
+    let priority = 5 // Default priority
     
     if (multiplier >= 10) {
       color = '#FF00FF'
-      fontSize = 'clamp(1.5rem, 3vw, 2.25rem)'
+      fontSize = 'clamp(1.2rem, 2.4vw, 1.8rem)'
       text = `x${multiplier} INSANE!!!`
+      priority = 7
     } else if (multiplier >= 7) {
       color = '#FFD700'
-      fontSize = 'clamp(1.35rem, 2.625vw, 1.875rem)'
+      fontSize = 'clamp(1.08rem, 2.1vw, 1.5rem)'
       text = `x${multiplier} INCREDIBLE!`
+      priority = 6
     } else if (multiplier >= 5) {
       color = '#FF6600'
-      fontSize = 'clamp(1.125rem, 2.25vw, 1.65rem)'
+      fontSize = 'clamp(0.9rem, 1.8vw, 1.32rem)'
       text = `x${multiplier} AMAZING!`
+      priority = 6
     } else if (multiplier >= 3) {
       color = '#FFFF00'
-      fontSize = 'clamp(0.975rem, 2.1vw, 1.5rem)'
+      fontSize = 'clamp(0.78rem, 1.68vw, 1.2rem)'
       text = `x${multiplier} GREAT!`
     }
     
@@ -396,7 +514,7 @@ export class UIManager {
     notification.style.color = color
     notification.style.fontSize = fontSize
     
-    this.showAndRemove(notification, 800)
+    this.queueNotification(notification, 800, priority) // Priority based on multiplier
   }
   
   // 💀 MULTIPLIER LOST NOTIFICATION 💀
@@ -405,7 +523,7 @@ export class UIManager {
       'MULTIPLIER LOST!',
       'notification-multiplier-lost'
     )
-    this.showAndRemove(notification, 1000)
+    this.queueNotification(notification, 1000, 6) // Medium-high priority - important warning
   }
 
   // 🚫 ALREADY AT MAX NOTIFICATION 🚫
@@ -417,7 +535,48 @@ export class UIManager {
     notification.style.color = color
     notification.style.top = '25%'
     
-    this.showAndRemove(notification, 1500)
+    this.queueNotification(notification, 1500, 4) // Lower priority - informational
+  }
+
+  // 🛡️ SHIELD ACTIVATED NOTIFICATION 🛡️
+  showShieldActivated(): void {
+    const notification = this.createNotification('🛡️ SHIELDS ON 🛡️', 'notification-shield')
+    notification.style.color = '#00FF00' // Green
+    notification.style.textShadow = '0 0 30px rgba(0, 255, 0, 0.8), 3px 3px 0 #006600'
+    notification.style.fontSize = 'clamp(0.96rem, 2.4vw, 1.44rem)' // Reduced 20%
+    
+    this.queueNotification(notification, 2000, 7) // High priority - defensive pickup
+  }
+  
+  // 🛡️ SHIELD DEACTIVATED NOTIFICATION 🛡️
+  showShieldDeactivated(): void {
+    const notification = this.createNotification('🛡️ SHIELDS OFF 🛡️', 'notification-damage')
+    notification.style.color = '#FF0000' // Red
+    notification.style.textShadow = '0 0 30px rgba(255, 0, 0, 0.8), 3px 3px 0 #660000'
+    notification.style.fontSize = 'clamp(0.96rem, 2.4vw, 1.44rem)' // Reduced 20%
+    
+    this.queueNotification(notification, 2000, 7) // High priority - defensive state change
+  }
+  
+  // 🌟 INVULNERABLE ACTIVATED NOTIFICATION 🌟
+  showInvulnerableActivated(): void {
+    const notification = this.createNotification('🌟 INVULNERABLE! 🌟', 'notification-shield')
+    notification.style.color = '#00FF00' // Bright green
+    notification.style.textShadow = '0 0 40px rgba(0, 255, 0, 1.0), 0 0 80px rgba(0, 255, 0, 0.6), 3px 3px 0 #006600'
+    notification.style.fontSize = 'clamp(1.2rem, 3.2vw, 2.0rem)' // Reduced 20%
+    notification.style.fontWeight = 'bold'
+    
+    this.queueNotification(notification, 3000, 10) // MAX PRIORITY - rare and important!
+  }
+  
+  // 🌟 INVULNERABLE DEACTIVATED NOTIFICATION 🌟
+  showInvulnerableDeactivated(): void {
+    const notification = this.createNotification('⚠️ INVULNERABLE EXPIRED ⚠️', 'notification-damage')
+    notification.style.color = '#FFAA00' // Orange warning
+    notification.style.textShadow = '0 0 30px rgba(255, 170, 0, 0.8), 3px 3px 0 #884400'
+    notification.style.fontSize = 'clamp(0.96rem, 2.4vw, 1.44rem)' // Reduced 20%
+    
+    this.queueNotification(notification, 2000, 9) // Very high priority - critical warning
   }
 
   // 👁️ HUD VISIBILITY CONTROL 👁️
@@ -447,13 +606,19 @@ export class UIManager {
     return notification
   }
 
+  // 📬 QUEUE NOTIFICATION (replaces showAndRemove) 📬
+  private queueNotification(element: HTMLElement, duration: number, priority: number = 5): void {
+    this.notificationQueue.push({
+      element,
+      duration,
+      priority,
+      timestamp: Date.now()
+    })
+  }
+  
+  // Legacy method for backward compatibility (redirects to queue)
   private showAndRemove(element: HTMLElement, duration: number): void {
-    document.body.appendChild(element)
-    setTimeout(() => {
-      if (document.body.contains(element)) {
-        document.body.removeChild(element)
-      }
-    }, duration)
+    this.queueNotification(element, duration, 5) // Default priority
   }
 
   // 🔴 HEALTH PULSE ANIMATION 🔴

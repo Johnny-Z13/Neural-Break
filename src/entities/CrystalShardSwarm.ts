@@ -3,6 +3,7 @@ import { Enemy } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { AudioManager } from '../audio/AudioManager'
+import { BALANCE_CONFIG } from '../config'
 
 /**
  * 💎 CRYSTAL SHARD SWARM - MASSIVE PRISMATIC STORM 💎
@@ -14,7 +15,7 @@ import { AudioManager } from '../audio/AudioManager'
  */
 export class CrystalShardSwarm extends Enemy {
   private shards: THREE.Mesh[] = []
-  private shardCount: number = 18 // More shards!
+  private shardCount: number = BALANCE_CONFIG.CRYSTAL_SWARM.SHARD_COUNT
   private orbitRadius: number = 4.0 // Compact orbit
   private orbitSpeed: number = 0
   private lightningEffects: THREE.Line[] = []
@@ -23,12 +24,11 @@ export class CrystalShardSwarm extends Enemy {
   private sceneManager: any = null
   private projectiles: EnemyProjectile[] = []
   private fireTimer: number = 0
-  private fireRate: number = 1.2 // Fire every 1.2 seconds
+  private fireRate: number = BALANCE_CONFIG.CRYSTAL_SWARM.FIRE_RATE
   private burstCount: number = 0
   private burstTimer: number = 0
-  private maxBurst: number = 3 // Fire 3 shards per burst
-  private burstDelay: number = 0.15
-  private audioManager: AudioManager | null = null
+  private maxBurst: number = BALANCE_CONFIG.CRYSTAL_SWARM.BURST_COUNT
+  private burstDelay: number = BALANCE_CONFIG.CRYSTAL_SWARM.BURST_DELAY
   
   // 💎 AMBIENT CRYSTAL HUM 💎
   private humTimer: number = 0
@@ -39,18 +39,32 @@ export class CrystalShardSwarm extends Enemy {
   private flashTimer: number = 0
   private flashDuration: number = 0.15 // 150ms flash
   private originalShardColors: THREE.Color[] = []
+  
+  // 💀 DEATH ANIMATION STATE 💀
+  private isDying: boolean = false
+  private deathTimer: number = 0
+  private deathDuration: number = 1.0
+  private shardVelocities: THREE.Vector3[] = []
+  private shardRotations: THREE.Vector3[] = []
+  private prismFragments: THREE.Mesh[] = []
 
   constructor(x: number, y: number) {
     super(x, y)
-    // 🔥 MASSIVE HEALTH - NEEDS LOTS OF BULLETS! 🔥
-    this.health = 120
-    this.maxHealth = 120
-    this.speed = 1.8 // Fast
-    this.damage = 40 // Collision damage
-    this.xpValue = 45 // Big reward
-    this.radius = 4.5 // Hitbox matches orbit radius
-    this.orbitSpeed = Math.random() * 1.5 + 0.8
+    
+    // 🎮 LOAD STATS FROM BALANCE CONFIG 🎮
+    const stats = BALANCE_CONFIG.CRYSTAL_SWARM
+    this.health = stats.HEALTH
+    this.maxHealth = stats.HEALTH
+    this.speed = stats.SPEED
+    this.damage = stats.DAMAGE
+    this.xpValue = stats.XP_VALUE
+    this.radius = stats.RADIUS
+    this.orbitSpeed = stats.ORBIT_SPEED
     this.trailInterval = 0.1 // Slower trail for performance (parent default is 0.05)
+    
+    // 💥 DEATH DAMAGE 💥
+    this.deathDamageRadius = stats.DEATH_RADIUS
+    this.deathDamageAmount = stats.DEATH_DAMAGE
   }
   
   setSceneManager(sceneManager: any): void {
@@ -223,6 +237,274 @@ export class CrystalShardSwarm extends Enemy {
     }
   }
 
+  // Override takeDamage to trigger custom death
+  takeDamage(damage: number): void {
+    if (this.isDying) return
+    
+    this.health -= damage
+    
+    // Visual feedback - flash all shards
+    this.isFlashing = true
+    this.flashTimer = 0
+    
+    if (this.health <= 0 && !this.isDying) {
+      this.startDeathAnimation()
+    }
+  }
+
+  private startDeathAnimation(): void {
+    this.isDying = true
+    this.deathTimer = 0
+    this.alive = true
+    
+    // Initialize velocities for each shard
+    this.shardVelocities = []
+    this.shardRotations = []
+    
+    for (let i = 0; i < this.shards.length; i++) {
+      const angle = (i / this.shards.length) * Math.PI * 2
+      const speed = 1.5 + Math.random() * 2.0
+      this.shardVelocities.push(
+        new THREE.Vector3(
+          Math.cos(angle) * speed,
+          Math.sin(angle) * speed,
+          (Math.random() - 0.5) * 1.5
+        )
+      )
+      this.shardRotations.push(
+        new THREE.Vector3(
+          (Math.random() - 0.5) * 10,
+          (Math.random() - 0.5) * 10,
+          (Math.random() - 0.5) * 10
+        )
+      )
+    }
+    
+    // 🎵 PLAY DEATH SOUND! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemyDeathSound('CrystalShardSwarm')
+    }
+  }
+
+  private updateDeathAnimation(deltaTime: number): void {
+    if (!this.isDying) return
+    
+    this.deathTimer += deltaTime
+    const progress = this.deathTimer / this.deathDuration
+    
+    // Phase 1: Shards fly outward, rainbow colors (0-0.3s)
+    if (progress < 0.3) {
+      const phaseProgress = progress / 0.3
+      
+      this.shards.forEach((shard, i) => {
+        if (!this.shardVelocities[i]) return
+        
+        // Move shard outward
+        const velocity = this.shardVelocities[i]
+        shard.position.add(velocity.clone().multiplyScalar(deltaTime))
+        
+        // Rotate wildly
+        const rotation = this.shardRotations[i]
+        shard.rotation.x += rotation.x * deltaTime
+        shard.rotation.y += rotation.y * deltaTime
+        shard.rotation.z += rotation.z * deltaTime
+        
+        // Cycle through rainbow colors
+        const material = shard.material as THREE.MeshBasicMaterial
+        const hue = (i / this.shards.length + phaseProgress * 2) % 1.0
+        material.color.setHSL(hue, 1.0, 0.6)
+      })
+      
+      // Lightning between shards
+      if (Math.random() < 0.3 && this.effectsSystem) {
+        const shard1 = this.shards[Math.floor(Math.random() * this.shards.length)]
+        const shard2 = this.shards[Math.floor(Math.random() * this.shards.length)]
+        if (shard1 && shard2) {
+          this.createLightningBetween(shard1.position, shard2.position)
+        }
+      }
+    }
+    // Phase 2: Shards shatter into prisms (0.3-0.5s)
+    else if (progress < 0.5) {
+      const phaseProgress = (progress - 0.3) / 0.2
+      
+      // Create prism fragments from each shard
+      if (phaseProgress < 0.1 && this.prismFragments.length === 0) {
+        this.shards.forEach((shard, i) => {
+          // Create 3 smaller prisms per shard
+          for (let j = 0; j < 3; j++) {
+            const fragmentGeometry = new THREE.ConeGeometry(0.1, 0.3, 3)
+            const material = Array.isArray(shard.material) 
+              ? (shard.material[0] as THREE.MeshBasicMaterial).clone()
+              : (shard.material as THREE.MeshBasicMaterial).clone()
+            const fragment = new THREE.Mesh(fragmentGeometry, material)
+            
+            fragment.position.copy(shard.position)
+            const angle = (j / 3) * Math.PI * 2
+            const speed = 2 + Math.random()
+            const velocity = new THREE.Vector3(
+              Math.cos(angle) * speed,
+              Math.sin(angle) * speed,
+              (Math.random() - 0.5) * 2
+            )
+            
+            // Store velocity in userData
+            fragment.userData.velocity = velocity
+            fragment.userData.rotation = new THREE.Vector3(
+              (Math.random() - 0.5) * 15,
+              (Math.random() - 0.5) * 15,
+              (Math.random() - 0.5) * 15
+            )
+            
+            if (this.mesh.parent) {
+              this.mesh.parent.add(fragment)
+            }
+            this.prismFragments.push(fragment)
+          }
+          
+          // Hide original shard
+          shard.visible = false
+        })
+      }
+      
+      // Animate prism fragments
+      this.prismFragments.forEach(fragment => {
+        const velocity = fragment.userData.velocity as THREE.Vector3
+        const rotation = fragment.userData.rotation as THREE.Vector3
+        
+        fragment.position.add(velocity.clone().multiplyScalar(deltaTime))
+        fragment.rotation.x += rotation.x * deltaTime
+        fragment.rotation.y += rotation.y * deltaTime
+        fragment.rotation.z += rotation.z * deltaTime
+        
+        // Fade out
+        const material = fragment.material as THREE.MeshBasicMaterial
+        material.opacity = 1 - phaseProgress
+      })
+    }
+    // Phase 3: Rainbow explosion (0.5-0.7s)
+    else if (progress < 0.7) {
+      const phaseProgress = (progress - 0.5) / 0.2
+      
+      // Create rainbow particle burst
+      if (this.effectsSystem && phaseProgress < 0.2) {
+        for (let i = 0; i < 30; i++) {
+          const angle = (i / 30) * Math.PI * 2
+          const speed = 3 + Math.random() * 2
+          const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            (Math.random() - 0.5) * 2
+          )
+          const hue = i / 30
+          const rainbowColor = new THREE.Color().setHSL(hue, 1.0, 0.6)
+          this.effectsSystem.createSparkle(
+            this.position,
+            velocity,
+            rainbowColor,
+            0.5
+          )
+        }
+        
+        // Rainbow screen flash
+        this.effectsSystem.addScreenFlash(0.2, new THREE.Color().setHSL(0.5, 1.0, 0.7))
+      }
+      
+      // Fade prism fragments
+      this.prismFragments.forEach(fragment => {
+        const material = fragment.material as THREE.MeshBasicMaterial
+        material.opacity = Math.max(0, 1 - phaseProgress * 2)
+      })
+    }
+    // Phase 4: Prismatic distortion waves (0.7-1.0s)
+    else {
+      const phaseProgress = (progress - 0.7) / 0.3
+      
+      // Create expanding rainbow distortion
+      if (this.effectsSystem && Math.random() < 0.4) {
+        this.effectsSystem.addDistortionWave(
+          this.position,
+          1.5 + phaseProgress * 2.0
+        )
+      }
+      
+      if (progress >= 1.0) {
+        this.completeDeath()
+      }
+    }
+  }
+
+  private createLightningBetween(pos1: THREE.Vector3, pos2: THREE.Vector3): void {
+    const points = [pos1.clone(), pos2.clone()]
+    const geometry = new THREE.BufferGeometry().setFromPoints(points)
+    const material = new THREE.LineBasicMaterial({
+      color: new THREE.Color().setHSL(Math.random(), 1.0, 0.7),
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    })
+    
+    const lightning = new THREE.Line(geometry, material)
+    if (this.mesh.parent) {
+      this.mesh.parent.add(lightning)
+    }
+    
+    setTimeout(() => {
+      if (lightning.parent) {
+        lightning.parent.remove(lightning)
+      }
+    }, 100)
+  }
+
+  private completeDeath(): void {
+    // Clean up prism fragments
+    this.prismFragments.forEach(fragment => {
+      if (fragment.parent) {
+        fragment.parent.remove(fragment)
+      }
+    })
+    this.prismFragments = []
+    
+    // Final VFX
+    if (this.effectsSystem) {
+      const deathColor = new THREE.Color().setHSL(0.7, 1.0, 0.6)
+      this.effectsSystem.createExplosion(this.position, 2.0, deathColor)
+      this.effectsSystem.addDistortionWave(this.position, 2.0)
+    }
+    
+    this.alive = false
+    this.isDying = false
+    this.createDeathEffect()
+  }
+
+  // Override update to handle death animation
+  update(deltaTime: number, player: Player): void {
+    if (this.isDying) {
+      this.updateDeathAnimation(deltaTime)
+      return
+    }
+    
+    if (!this.alive) return
+    
+    // Store last position for trail calculation
+    this.lastPosition.copy(this.position)
+    
+    this.updateAI(deltaTime, player)
+    
+    // Update position
+    this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
+    this.mesh.position.set(this.position.x, this.position.y, 0)
+    
+    // Update projectiles
+    this.updateProjectiles(deltaTime)
+    
+    // Create trail effects
+    this.updateTrails(deltaTime)
+    
+    // Update visual effects
+    this.updateVisuals(deltaTime)
+  }
+
   updateAI(deltaTime: number, player: Player): void {
     // Erratic movement toward player
     const playerPos = player.getPosition()
@@ -293,11 +575,12 @@ export class CrystalShardSwarm extends Enemy {
     // Direction towards player
     const direction = playerPos.clone().sub(worldPos).normalize()
     
+    const stats = BALANCE_CONFIG.CRYSTAL_SWARM
     const projectile = new EnemyProjectile(
       worldPos,
       direction,
-      12, // Fast!
-      12  // Damage
+      stats.BULLET_SPEED,
+      stats.BULLET_DAMAGE
     )
     
     // Set custom color for crystal projectiles - cyan/prismatic
@@ -335,45 +618,6 @@ export class CrystalShardSwarm extends Enemy {
     }
   }
 
-  // 🔴 OVERRIDE TAKE DAMAGE - Flash red, don't scale container! 🔴
-  takeDamage(damage: number): void {
-    this.health -= damage
-    
-    // Flash all shards and core RED
-    if (!this.isFlashing) {
-      this.isFlashing = true
-      this.flashTimer = 0
-      
-      // Store original colors and set to RED
-      this.originalShardColors = []
-      for (const shard of this.shards) {
-        const material = shard.material as THREE.MeshLambertMaterial
-        this.originalShardColors.push(material.color.clone())
-        
-        // Set to bright RED
-        material.color.setRGB(1, 0, 0)
-        material.emissive.setRGB(1, 0, 0)
-      }
-      
-      // Flash core red too
-      const core = this.mesh.children[0] as THREE.Mesh
-      if (core) {
-        const coreMaterial = core.material as THREE.MeshBasicMaterial
-        coreMaterial.color.setRGB(1, 0, 0)
-      }
-      
-      // Flash lightning red
-      for (const lightning of this.lightningEffects) {
-        const lightningMaterial = lightning.material as THREE.LineBasicMaterial
-        lightningMaterial.color.setRGB(1, 0, 0)
-      }
-    }
-
-    if (this.health <= 0) {
-      this.alive = false
-      this.createDeathEffect()
-    }
-  }
 
   protected updateVisuals(deltaTime: number): void {
     const time = Date.now() * 0.001

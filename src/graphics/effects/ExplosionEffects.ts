@@ -41,7 +41,7 @@ export class ExplosionEffects {
         useSaturated ? 0.4 + Math.random() * 0.12 : 0.55 // Darker colors prevent white-out
       )
       
-      explosionPool.emit(position, velocity, particleColor, 1.2 + Math.random() * 0.8)
+      explosionPool.emit(position, velocity, particleColor, 0.96 + Math.random() * 0.64) // 20% shorter (was 1.2 + 0.8)
     }
     
     // 🎆 VECTOR-STYLE PARTICLES - Geometric shapes with saturated colors! 🎆
@@ -65,7 +65,7 @@ export class ExplosionEffects {
         )
         
         const shapeType = Math.floor(Math.random() * 3)
-        this.vectorParticlePool.emit(position, velocity, vectorColor, 1.5 + Math.random() * 1.0, shapeType)
+        this.vectorParticlePool.emit(position, velocity, vectorColor, 1.2 + Math.random() * 0.8, shapeType) // 20% shorter (was 1.5 + 1.0)
       }
     }
     
@@ -85,7 +85,7 @@ export class ExplosionEffects {
           0.7,
           0.6
         )
-        this.specializedPools.nebulaPool.emit(position, velocity, nebulaColor, 2.0 + Math.random() * 1.0)
+        this.specializedPools.nebulaPool.emit(position, velocity, nebulaColor, 1.6 + Math.random() * 0.8) // 20% shorter (was 2.0 + 1.0)
       }
     }
     
@@ -107,7 +107,7 @@ export class ExplosionEffects {
           1.0,
           useSaturated ? 0.45 + Math.random() * 0.12 : 0.58 // Darker colors prevent white-out
         )
-        this.specializedPools.plasmaPool.emit(position, velocity, plasmaColor, 1.5 + Math.random() * 0.8)
+        this.specializedPools.plasmaPool.emit(position, velocity, plasmaColor, 1.2 + Math.random() * 0.64) // 20% shorter (was 1.5 + 0.8)
       }
     }
     
@@ -129,7 +129,7 @@ export class ExplosionEffects {
           1.0, // Full saturation
           useSaturated ? 0.4 + Math.random() * 0.12 : 0.55 // Darker colors prevent white-out
         )
-        this.specializedPools.stardustPool.emit(position, velocity, stardustColor, 1.0 + Math.random() * 0.5)
+        this.specializedPools.stardustPool.emit(position, velocity, stardustColor, 0.8 + Math.random() * 0.4) // 20% shorter (was 1.0 + 0.5)
       }
     }
     
@@ -178,7 +178,7 @@ export class ExplosionEffects {
         1.0,
         useSaturated ? 0.45 + Math.random() * 0.12 : 0.58
       )
-      electricPool.emit(position, velocity, electricColor, 0.8 + Math.random() * 0.4)
+      electricPool.emit(position, velocity, electricColor, 0.64 + Math.random() * 0.32) // 20% shorter (was 0.8 + 0.4)
     }
     
     // Electric sparks - 85% saturated, 15% bright - prevents white-out
@@ -197,7 +197,7 @@ export class ExplosionEffects {
         1.0,
         useSaturated ? 0.4 + Math.random() * 0.12 : 0.55
       )
-      sparkPool.emit(position, velocity, sparkColor, 0.5 + Math.random() * 0.3)
+      sparkPool.emit(position, velocity, sparkColor, 0.4 + Math.random() * 0.24) // 20% shorter (was 0.5 + 0.3)
     }
     
     // Vector-style electric particles - 85% saturated, 15% bright
@@ -217,7 +217,7 @@ export class ExplosionEffects {
           1.0,
           useSaturated ? 0.45 + Math.random() * 0.12 : 0.58
         )
-        this.vectorParticlePool.emit(position, velocity, vectorColor, 1.0 + Math.random() * 0.5, 1) // Line shape
+        this.vectorParticlePool.emit(position, velocity, vectorColor, 0.8 + Math.random() * 0.4, 1) // 20% shorter (was 1.0 + 0.5) Line shape
       }
     }
     
@@ -267,7 +267,7 @@ export class ExplosionEffects {
         (Math.random() - 0.5) * 2
       )
       
-      deathPool.emit(position, velocity, particleColor, 1.0 + Math.random() * 0.6)
+      deathPool.emit(position, velocity, particleColor, 0.8 + Math.random() * 0.48) // 20% shorter (was 1.0 + 0.6)
     }
     
     // ✨ ENHANCED SPARK PARTICLES! ✨ - With saturated colors, prevents white-out
@@ -286,7 +286,7 @@ export class ExplosionEffects {
       sparkColor.getHSL(hsl)
       const useSaturated = Math.random() < 0.85
       sparkColor.setHSL(hsl.h, 1.0, useSaturated ? 0.45 + Math.random() * 0.12 : 0.58)
-      sparkPool.emit(position, velocity, sparkColor, 0.6 + Math.random() * 0.4)
+      sparkPool.emit(position, velocity, sparkColor, 0.48 + Math.random() * 0.32) // 20% shorter (was 0.6 + 0.4)
     }
     
     // 🎆 VECTOR-STYLE DEATH PARTICLES! 🎆 - With saturated colors, prevents white-out
@@ -328,7 +328,7 @@ export class ExplosionEffects {
         const hsl = { h: 0, s: 0, l: 0 }
         particleColor.getHSL(hsl)
         nebulaColor.setHSL(hsl.h, 0.7, 0.6)
-        this.specializedPools.nebulaPool.emit(position, velocity, nebulaColor, 2.0 + Math.random() * 1.0)
+        this.specializedPools.nebulaPool.emit(position, velocity, nebulaColor, 1.6 + Math.random() * 0.8) // 20% shorter (was 2.0 + 1.0)
       }
     }
     
@@ -350,7 +350,7 @@ export class ExplosionEffects {
           1.0, // Full saturation
           useSaturated ? 0.4 + Math.random() * 0.12 : 0.55
         )
-        this.specializedPools.stardustPool.emit(position, velocity, stardustColor, 1.0 + Math.random() * 0.5)
+        this.specializedPools.stardustPool.emit(position, velocity, stardustColor, 0.8 + Math.random() * 0.4) // 20% shorter (was 1.0 + 0.5)
       }
     }
   }
@@ -371,7 +371,7 @@ export class ExplosionEffects {
       
       const useSaturated = Math.random() < 0.85
       const sparkColor = new THREE.Color().setHSL(0.15, 1.0, useSaturated ? 0.45 : 0.55)
-      sparkPool.emit(position, velocity, sparkColor, 0.3)
+      sparkPool.emit(position, velocity, sparkColor, 0.24) // 20% shorter (was 0.3)
     }
     
     // Impact flash - saturated colors, prevents white-out
@@ -386,7 +386,7 @@ export class ExplosionEffects {
       
       const useSaturated = Math.random() < 0.85
       const flashColor = new THREE.Color().setHSL(0.55, 1.0, useSaturated ? 0.4 : 0.52)
-      impactPool.emit(position, velocity, flashColor, 0.2)
+      impactPool.emit(position, velocity, flashColor, 0.16) // 20% shorter (was 0.2)
     }
     
     this.screenEffects.addScreenShake(0.1, 0.1)

@@ -9,4 +9,5 @@ export const DEBUG_MODE = false
 export * from './game.config'
 export * from './enemy.config'
 export * from './visual.config'
+export * from './balance.config'
 

@@ -3,18 +3,18 @@ import { Enemy } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { AudioManager } from '../audio/AudioManager'
+import { BALANCE_CONFIG } from '../config'
 
 export class ScanDrone extends Enemy {
   private scanBeamMesh: THREE.Mesh
   private alertState: boolean = false
   private patrolTarget: THREE.Vector3
-  private patrolRadius: number = 3
+  private patrolRadius: number = BALANCE_CONFIG.SCAN_DRONE.PATROL_RANGE
 
   private fireTimer: number = 0
-  private fireRate: number = 1.5 // Fire every 1.5 seconds when alerted
+  private fireRate: number = BALANCE_CONFIG.SCAN_DRONE.FIRE_RATE
   private sceneManager: any = null // Will be set by EnemyManager
   private projectiles: any[] = []
-  private audioManager: AudioManager | null = null
   
   // 📡 Scan sound timer
   private scanSoundTimer: number = 0
@@ -24,16 +24,30 @@ export class ScanDrone extends Enemy {
   private movementOffset: number = Math.random() * Math.PI * 2 // Random starting phase
   private swayAmount: number = 0.2 // Amount of perpendicular sway (less than DataMite)
   private swaySpeed: number = 2.0 // Speed of sway oscillation
+  
+  // 💀 DEATH ANIMATION STATE 💀
+  private isDying: boolean = false
+  private deathTimer: number = 0
+  private deathDuration: number = 0.8
+  private gridDistortion: number = 0
+  private electricArcs: THREE.Line[] = []
 
   constructor(x: number, y: number) {
     super(x, y)
-    this.health = 4
-    this.maxHealth = 4
-    this.speed = 1.5
-    this.damage = 15 // INCREASED collision damage!
-    this.xpValue = 5
-    this.radius = 1.1 // 2x larger hitbox (was 0.55)
+    
+    // 🎮 LOAD STATS FROM BALANCE CONFIG 🎮
+    const stats = BALANCE_CONFIG.SCAN_DRONE
+    this.health = stats.HEALTH
+    this.maxHealth = stats.HEALTH
+    this.speed = stats.SPEED
+    this.damage = stats.DAMAGE
+    this.xpValue = stats.XP_VALUE
+    this.radius = stats.RADIUS
     this.patrolTarget = new THREE.Vector3(x, y, 0)
+    
+    // 💥 DEATH DAMAGE 💥
+    this.deathDamageRadius = stats.DEATH_RADIUS
+    this.deathDamageAmount = stats.DEATH_DAMAGE
   }
 
   setSceneManager(sceneManager: any): void {
@@ -283,6 +297,252 @@ export class ScanDrone extends Enemy {
     }
   }
 
+  // Override takeDamage to trigger custom death
+  takeDamage(damage: number): void {
+    if (this.isDying) return
+    
+    this.health -= damage
+    
+    // Visual feedback
+    const hexBody = this.mesh.children[0] as THREE.Mesh
+    if (hexBody) {
+      const material = hexBody.material as THREE.MeshBasicMaterial
+      const originalColor = material.color.clone()
+      material.color.setHSL(0.1, 1.0, 0.7)
+      setTimeout(() => {
+        material.color.copy(originalColor)
+      }, 100)
+    }
+
+    if (this.health <= 0 && !this.isDying) {
+      this.startDeathAnimation()
+    }
+  }
+
+  private startDeathAnimation(): void {
+    this.isDying = true
+    this.deathTimer = 0
+    this.alive = true
+    this.gridDistortion = 0
+    
+    // 🎵 PLAY DEATH SOUND! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemyDeathSound('ScanDrone')
+    }
+  }
+
+  private updateDeathAnimation(deltaTime: number): void {
+    if (!this.isDying) return
+    
+    this.deathTimer += deltaTime
+    const progress = this.deathTimer / this.deathDuration
+    
+    // Phase 1: Grid flicker and distortion (0-0.25s)
+    if (progress < 0.25) {
+      const phaseProgress = progress / 0.25
+      this.gridDistortion = phaseProgress * 0.5
+      
+      // Flicker wireframe
+      const hexWireframe = this.mesh.children[1] as THREE.Mesh
+      if (hexWireframe) {
+        const material = hexWireframe.material as THREE.MeshBasicMaterial
+        material.opacity = 0.5 + Math.sin(progress * 50) * 0.5
+      }
+      
+      // Distort hex body
+      const hexBody = this.mesh.children[0] as THREE.Mesh
+      if (hexBody) {
+        hexBody.scale.x = 1 + Math.sin(progress * 30) * this.gridDistortion
+        hexBody.scale.y = 1 + Math.cos(progress * 30) * this.gridDistortion
+      }
+    }
+    // Phase 2: Grid collapse inward (0.25-0.5s)
+    else if (progress < 0.5) {
+      const phaseProgress = (progress - 0.25) / 0.25
+      
+      // Collapse wireframe
+      const hexWireframe = this.mesh.children[1] as THREE.Mesh
+      if (hexWireframe) {
+        hexWireframe.scale.setScalar(1 - phaseProgress * 0.8)
+        const material = hexWireframe.material as THREE.MeshBasicMaterial
+        material.opacity = 1 - phaseProgress
+      }
+      
+      // Create electric arcs
+      if (phaseProgress > 0.3 && this.electricArcs.length < 6) {
+        this.createElectricArc()
+      }
+    }
+    // Phase 3: Radar dish shatter, core overload (0.5-0.75s)
+    else if (progress < 0.75) {
+      const phaseProgress = (progress - 0.5) / 0.25
+      
+      // Hide radar dish
+      const dishGroup = this.mesh.children.find(child => child.type === 'Group')
+      if (dishGroup) {
+        dishGroup.visible = false
+      }
+      
+      // Core flash
+      const hexBody = this.mesh.children[0] as THREE.Mesh
+      if (hexBody) {
+        const material = hexBody.material as THREE.MeshBasicMaterial
+        material.color.setHSL(0.5, 1.0, 0.5 + phaseProgress * 0.5)
+        material.opacity = 1 - phaseProgress * 0.5
+      }
+      
+      // Screen flash
+      if (this.effectsSystem && phaseProgress > 0.8) {
+        this.effectsSystem.addScreenFlash(0.1, new THREE.Color(0x00FFFF))
+      }
+    }
+    // Phase 4: Final discharge (0.75-1.0s)
+    else {
+      // Radial lightning bolts
+      if (this.effectsSystem && progress < 0.9) {
+        const dischargeCount = Math.floor((progress - 0.75) * 20)
+        if (dischargeCount > this.electricArcs.length) {
+          this.createRadialLightning()
+        }
+      }
+      
+      // Fade out
+      this.mesh.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          const material = child.material as THREE.MeshBasicMaterial
+          if (material) {
+            material.opacity = Math.max(0, 1 - (progress - 0.75) * 4)
+          }
+        }
+      })
+      
+      if (progress >= 1.0) {
+        this.completeDeath()
+      }
+    }
+  }
+
+  private createElectricArc(): void {
+    if (!this.effectsSystem) return
+    
+    const startAngle = Math.random() * Math.PI * 2
+    const endAngle = startAngle + (Math.random() - 0.5) * Math.PI * 0.5
+    const radius = 0.5
+    
+    const points = [
+      new THREE.Vector3(
+        this.position.x + Math.cos(startAngle) * radius,
+        this.position.y + Math.sin(startAngle) * radius,
+        0
+      ),
+      new THREE.Vector3(
+        this.position.x + Math.cos(endAngle) * radius * 0.3,
+        this.position.y + Math.sin(endAngle) * radius * 0.3,
+        0
+      )
+    ]
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints(points)
+    const material = new THREE.LineBasicMaterial({
+      color: 0x00FFFF,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    })
+    
+    const arc = new THREE.Line(geometry, material)
+    if (this.mesh.parent) {
+      this.mesh.parent.add(arc)
+    }
+    
+    this.electricArcs.push(arc)
+    
+    // Remove after short time
+    setTimeout(() => {
+      if (arc.parent) {
+        arc.parent.remove(arc)
+      }
+      const index = this.electricArcs.indexOf(arc)
+      if (index > -1) {
+        this.electricArcs.splice(index, 1)
+      }
+    }, 200)
+  }
+
+  private createRadialLightning(): void {
+    if (!this.effectsSystem) return
+    
+    const count = 8
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2
+      const distance = 2.0
+      
+      const velocity = new THREE.Vector3(
+        Math.cos(angle) * distance,
+        Math.sin(angle) * distance,
+        0
+      )
+      
+      const cyanColor = new THREE.Color(0x00FFFF)
+      this.effectsSystem.createSparkle(
+        this.position,
+        velocity,
+        cyanColor,
+        0.6
+      )
+    }
+  }
+
+  private completeDeath(): void {
+    // Clean up arcs
+    this.electricArcs.forEach(arc => {
+      if (arc.parent) {
+        arc.parent.remove(arc)
+      }
+    })
+    this.electricArcs = []
+    
+    // Final VFX
+    if (this.effectsSystem) {
+      const deathColor = new THREE.Color().setHSL(0.1, 0.9, 0.7)
+      this.effectsSystem.createElectricDeath(this.position, 'ScanDrone')
+      this.effectsSystem.createExplosion(this.position, 1.5, deathColor)
+      this.effectsSystem.addDistortionWave(this.position, 1.2)
+    }
+    
+    this.alive = false
+    this.isDying = false
+    this.createDeathEffect()
+  }
+
+  // Override update to handle death animation
+  update(deltaTime: number, player: Player): void {
+    if (this.isDying) {
+      this.updateDeathAnimation(deltaTime)
+      return
+    }
+    
+    if (!this.alive) return
+    
+    // Store last position for trail calculation
+    this.lastPosition.copy(this.position)
+    
+    this.updateAI(deltaTime, player)
+    
+    // Update position
+    this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
+    this.mesh.position.set(this.position.x, this.position.y, 0)
+    
+    // Update projectiles
+    this.updateProjectiles(deltaTime)
+    
+    // Create trail effects
+    this.updateTrails(deltaTime)
+    
+    // Update visual effects
+    this.updateVisuals(deltaTime)
+  }
+
   updateAI(deltaTime: number, player: Player): void {
     const playerPos = player.getPosition()
     const distanceToPlayer = this.position.distanceTo(playerPos)
@@ -363,12 +623,13 @@ export class ScanDrone extends Enemy {
     const playerPos = player.getPosition()
     const direction = playerPos.clone().sub(this.position).normalize()
     
+    const stats = BALANCE_CONFIG.SCAN_DRONE
     // Create projectile - pass Vector3 position, direction, speed, damage
     const projectile = new EnemyProjectile(
       this.position.clone(),
       direction,
-      8, // Speed
-      8  // Damage
+      stats.BULLET_SPEED,
+      stats.BULLET_DAMAGE
     )
     
     this.projectiles.push(projectile)
@@ -405,6 +666,14 @@ export class ScanDrone extends Enemy {
       }
     }
     this.projectiles = []
+    
+    // Clean up electric arcs
+    this.electricArcs.forEach(arc => {
+      if (arc.parent) {
+        arc.parent.remove(arc)
+      }
+    })
+    this.electricArcs = []
     
     super.destroy()
   }

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { EffectsSystem } from '../graphics/EffectsSystem'
+import { BALANCE_CONFIG } from '../config'
 
 export class MedPack {
   private mesh: THREE.Mesh
@@ -9,14 +10,14 @@ export class MedPack {
   private effectsSystem: EffectsSystem | null = null
   private pulseTime: number = 0
   private rotationSpeed: number = 2.5 // Faster for "fizz"
-  private healthRestore: number = 25 // Restore 25 health
+  private healthRestore: number = BALANCE_CONFIG.PICKUPS.MED_PACK.HEAL_AMOUNT
   private crossMesh: THREE.Mesh
   private glowMesh: THREE.Mesh
   
   // 🧲 MAGNETISM SYSTEM 🧲
-  private static readonly MAGNET_RADIUS = 4.0        // Distance at which magnetism kicks in
-  private static readonly MAGNET_STRENGTH = 12.0     // Acceleration towards player
-  private static readonly MAX_MAGNET_SPEED = 18.0    // Max speed when being pulled
+  private static readonly MAGNET_RADIUS = BALANCE_CONFIG.PICKUPS.MAGNET_RADIUS
+  private static readonly MAGNET_STRENGTH = BALANCE_CONFIG.PICKUPS.MAGNET_STRENGTH
+  private static readonly MAX_MAGNET_SPEED = BALANCE_CONFIG.PICKUPS.MAX_MAGNET_SPEED
   private velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
   private isMagnetized: boolean = false
 
@@ -80,12 +81,12 @@ export class MedPack {
     const horizontalBar = new THREE.Mesh(horizontalGeometry, horizontalMaterial)
     this.mesh.add(horizontalBar)
     
-    // 💚 WHITE INNER CROSS - Bright center highlight! 💚
+    // 💚 MID-GREEN INNER CROSS - Bright center highlight! 💚
     const innerVerticalGeometry = new THREE.BoxGeometry(0.075, 0.44, 0.075) // Scaled up
     const innerMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFFFFFF, // White inner
+      color: 0x66FF66, // Mid-green inner (not white!)
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending
     })
     const innerVertical = new THREE.Mesh(innerVerticalGeometry, innerMaterial)

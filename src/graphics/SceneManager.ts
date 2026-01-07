@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { EffectsSystem } from './EffectsSystem'
 import { AudioVisualReactiveSystem } from './AudioVisualReactiveSystem'
+import { EnergyBarrier } from './EnergyBarrier'
 import { DEBUG_MODE } from '../config'
 
 export class SceneManager {
@@ -13,6 +14,9 @@ export class SceneManager {
   private shakeIntensity: number = 0
   private shakeDuration: number = 0
   private shakeDecay: number = 0.9
+  
+  // 🔘 ENERGY BARRIER 🔘
+  private energyBarrier: EnergyBarrier
   
   // 🎬 MOTION GRAPHICS - Dynamic Camera Zoom! 🎬
   private baseFrustumSize: number = 30 // More zoomed out default
@@ -215,47 +219,19 @@ export class SceneManager {
     gridHelper.position.z = -1
     this.scene.add(gridHelper)
 
-    // Create boundary walls
-    this.createBoundaryWalls(worldSize)
+    // 🔘 Create circular energy barrier 🔘
+    this.energyBarrier = new EnergyBarrier(worldSize / 2)
+    this.scene.add(this.energyBarrier.getMesh())
+
+    // 🎯 Ensure barrier is visible and correctly positioned
+    this.energyBarrier.getMesh().position.z = -0.5
+    console.log('✅ Energy Barrier created and added to scene')
 
     // Add floating data particles within bounds
     this.createDataParticles(worldSize)
     
     // Add neural pathway lines within bounds
     this.createNeuralPathways(worldSize)
-  }
-
-  private createBoundaryWalls(worldSize: number): void {
-    const halfSize = worldSize / 2
-    const wallHeight = 2
-    const wallThickness = 0.5
-    
-    // Wall material - deep purple-blue (darkened 12%)
-    const wallMaterial = new THREE.MeshLambertMaterial({
-      color: 0x170938,
-      emissive: 0x0b041c,
-      transparent: true,
-      opacity: 0.8
-    })
-
-    // Create 4 walls
-    const walls = [
-      // North wall
-      { pos: [0, halfSize, wallHeight/2], size: [worldSize, wallThickness, wallHeight] },
-      // South wall  
-      { pos: [0, -halfSize, wallHeight/2], size: [worldSize, wallThickness, wallHeight] },
-      // East wall
-      { pos: [halfSize, 0, wallHeight/2], size: [wallThickness, worldSize, wallHeight] },
-      // West wall
-      { pos: [-halfSize, 0, wallHeight/2], size: [wallThickness, worldSize, wallHeight] }
-    ]
-
-    walls.forEach(wall => {
-      const geometry = new THREE.BoxGeometry(wall.size[0], wall.size[1], wall.size[2])
-      const mesh = new THREE.Mesh(geometry, wallMaterial)
-      mesh.position.set(wall.pos[0], wall.pos[1], wall.pos[2])
-      this.scene.add(mesh)
-    })
   }
 
   private createDataParticles(worldSize: number): void {
@@ -496,6 +472,11 @@ export class SceneManager {
     // Add chromatic aberration during intense shake
     this.chromaticAberration = this.shakeIntensity * 2
     
+    // 🔘 UPDATE ENERGY BARRIER 🔘
+    if (this.energyBarrier) {
+      this.energyBarrier.update(deltaTime)
+    }
+    
     // Smoothly move camera towards target with shake
     this.camera.position.x = THREE.MathUtils.lerp(
       this.camera.position.x, 
@@ -556,11 +537,11 @@ export class SceneManager {
         positions[i3 + 1] += Math.cos(time * 1.5 * swirlSpeed + i * 0.1) * 0.02 * (1 + intensity)
         positions[i3 + 2] += Math.sin(time * 3 * swirlSpeed + i * 0.05) * 0.01 * (1 + intensity)
         
-        // 🎨 COLOR SHIFTING - Reacts to background color! 🎨
-        const baseHue = (time * 0.1 + i * 0.01) % 1
-        // Blend with background color for reactive effect
-        const reactiveColor = new THREE.Color().setHSL(baseHue, 0.8, 0.7)
-        reactiveColor.lerp(bgColor, intensity * 0.3) // Blend with background based on intensity
+        // 🎨 STATIC DARK COLOR - Only react to background, no ambient pulse! 🎨
+        // Use the base background color only - no automatic color shifting!
+        const reactiveColor = bgColor.clone()
+        // Keep colors very dim to avoid ambient glow
+        reactiveColor.multiplyScalar(0.3) // Dim particles to 30% of background color
         
         colors[i3] = reactiveColor.r
         colors[i3 + 1] = reactiveColor.g
@@ -574,36 +555,34 @@ export class SceneManager {
       this.backgroundParticles.rotation.z += deltaTime * (0.1 + intensity * 0.3)
     }
     
-    // 🎨 Animate neural pathways - AUDIO-REACTIVE! 🎨
+    // 🎨 Animate neural pathways - ONLY intensity reactive, no ambient pulse! 🎨
     for (let i = 0; i < this.neuralLines.length; i++) {
       const line = this.neuralLines[i]
       const material = line.material as THREE.LineBasicMaterial
       
-      // 💫 INTENSITY-BOOSTED PULSING - More visible when intense! 💫
-      material.opacity = (0.2 + Math.sin(time * 2 + i * 0.5) * 0.3) * (1 + intensity * 0.5)
+      // 💫 ONLY react to intensity, NO automatic pulsing! 💫
+      material.opacity = 0.15 * intensity // Only visible when there's action
       
-      // 🎨 COLOR SHIFTING - Reacts to background! 🎨
-      const baseHue = (time * 0.1 + i * 0.1) % 1
-      const reactiveColor = new THREE.Color().setHSL(baseHue, 0.8, 0.6)
-      reactiveColor.lerp(bgColor, intensity * 0.4) // Blend with background
+      // 🎨 STATIC COLOR - Only react to background, no ambient cycling! 🎨
+      const reactiveColor = bgColor.clone()
+      reactiveColor.multiplyScalar(0.5) // Dim to 50%
       material.color.copy(reactiveColor)
       
       // 🌪️ FASTER ROTATION with intensity! 🌪️
       line.rotation.z += deltaTime * (0.2 + i * 0.05) * (1 + intensity * 1.5)
     }
     
-    // 🎵 Animate data streams - AUDIO-REACTIVE! 🎵
+    // 🎵 Animate data streams - ONLY intensity reactive! 🎵
     for (let i = 0; i < this.dataStreams.length; i++) {
       const stream = this.dataStreams[i]
       const material = stream.material as THREE.LineBasicMaterial
       
-      // 💫 INTENSITY-BOOSTED FLOWING - More visible when intense! 💫
-      material.opacity = (0.1 + Math.sin(time * 4 + i * 0.8) * 0.4) * (1 + intensity * 0.6)
+      // 💫 ONLY react to intensity, NO automatic pulsing! 💫
+      material.opacity = 0.1 * intensity // Only visible during action
       
-      // 🎨 COLOR CYCLING - Reacts to background! 🎨
-      const baseHue = (time * 0.2 + i * 0.125) % 1
-      const reactiveColor = new THREE.Color().setHSL(baseHue, 1.0, 0.5)
-      reactiveColor.lerp(bgColor, intensity * 0.3) // Blend with background
+      // 🎨 STATIC COLOR - Only use background color! 🎨
+      const reactiveColor = bgColor.clone()
+      reactiveColor.multiplyScalar(0.4) // Dim to 40%
       material.color.copy(reactiveColor)
       
       // 🌪️ FASTER MOVEMENT with intensity! 🌪️
@@ -612,14 +591,14 @@ export class SceneManager {
       stream.position.y = Math.cos(time * 0.3 * moveSpeed + i) * 1
     }
     
-    // Animate glitch effect
+    // Animate glitch effect - DISABLED ambient glitches, only intensity-based
     if (this.glitchEffect) {
       const material = this.glitchEffect.material as THREE.MeshBasicMaterial
       
-      // Random glitch flashes
-      if (Math.random() < 0.02) { // 2% chance per frame
-        material.opacity = 0.1
-        material.color.setHSL(Math.random(), 1.0, 0.5)
+      // Only glitch during high intensity, NO random ambient flashes
+      if (intensity > 0.7 && Math.random() < 0.01) { // Only during action
+        material.opacity = 0.05 * intensity
+        material.color.copy(bgColor)
       } else {
         material.opacity *= 0.9 // Fade out
       }

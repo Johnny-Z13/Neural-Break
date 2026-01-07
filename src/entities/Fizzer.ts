@@ -3,6 +3,7 @@ import { Enemy } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { AudioManager } from '../audio/AudioManager'
+import { BALANCE_CONFIG } from '../config'
 
 /**
  * ⚡ FIZZER - CHAOS INCARNATE ⚡
@@ -15,7 +16,6 @@ import { AudioManager } from '../audio/AudioManager'
  */
 export class Fizzer extends Enemy {
   private sceneManager: any = null
-  private audioManager: AudioManager | null = null
   private projectiles: EnemyProjectile[] = []
   
   // ⚡ ERRATIC MOVEMENT STATE ⚡
@@ -27,11 +27,11 @@ export class Fizzer extends Enemy {
   
   // 🔫 FIRING STATE 🔫
   private fireTimer: number = 0
-  private fireRate: number = 0.8 // Fast firing
+  private fireRate: number = BALANCE_CONFIG.FIZZER.FIRE_RATE
   private burstCount: number = 0
   private burstTimer: number = 0
-  private maxBurst: number = 3
-  private burstDelay: number = 0.08
+  private maxBurst: number = BALANCE_CONFIG.FIZZER.BURST_COUNT
+  private burstDelay: number = BALANCE_CONFIG.FIZZER.BURST_DELAY
   
   // ✨ VISUAL STATE ✨
   private glowIntensity: number = 0
@@ -40,16 +40,29 @@ export class Fizzer extends Enemy {
   private trailColors: Float32Array
   private trailIndex: number = 0
   private maxTrailParticles: number = 30
+  
+  // 💀 DEATH ANIMATION STATE 💀
+  private isDying: boolean = false
+  private deathTimer: number = 0
+  private deathDuration: number = 0.8
+  private overloadIntensity: number = 0
+  private electricBolts: THREE.Line[] = []
 
   constructor(x: number, y: number) {
     super(x, y)
-    // ⚡ TINY BUT DEADLY! ⚡
-    this.health = 3
-    this.maxHealth = 3
-    this.speed = 8.0 // VERY FAST!
-    this.damage = 10
-    this.xpValue = 15 // Good reward for hitting this little menace
-    this.radius = 0.35 // Small hitbox - hard to hit!
+    
+    // 🎮 LOAD STATS FROM BALANCE CONFIG 🎮
+    const stats = BALANCE_CONFIG.FIZZER
+    this.health = stats.HEALTH
+    this.maxHealth = stats.HEALTH
+    this.speed = stats.SPEED
+    this.damage = stats.DAMAGE
+    this.xpValue = stats.XP_VALUE
+    this.radius = stats.RADIUS
+    
+    // 💥 DEATH DAMAGE 💥
+    this.deathDamageRadius = stats.DEATH_RADIUS
+    this.deathDamageAmount = stats.DEATH_DAMAGE
   }
 
   setSceneManager(sceneManager: any): void {
@@ -188,6 +201,249 @@ export class Fizzer extends Enemy {
     this.jitterAmount = 0.5 + Math.random() * 0.5
   }
 
+  // Override takeDamage to trigger custom death
+  takeDamage(damage: number): void {
+    if (this.isDying) return
+    
+    this.health -= damage
+    
+    // Visual feedback - electric flash
+    const core = this.mesh.children[0] as THREE.Mesh
+    if (core) {
+      const material = core.material as THREE.MeshBasicMaterial
+      const originalColor = material.color.clone()
+      material.color.setHex(0xFFFFFF)
+      setTimeout(() => {
+        material.color.copy(originalColor)
+      }, 80)
+    }
+
+    if (this.health <= 0 && !this.isDying) {
+      this.startDeathAnimation()
+    }
+  }
+
+  private startDeathAnimation(): void {
+    this.isDying = true
+    this.deathTimer = 0
+    this.alive = true
+    this.overloadIntensity = 0
+    this.velocity.multiplyScalar(0.3) // Slow down
+    
+    // 🎵 PLAY DEATH SOUND! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemyDeathSound('Fizzer')
+    }
+  }
+
+  private updateDeathAnimation(deltaTime: number): void {
+    if (!this.isDying) return
+    
+    this.deathTimer += deltaTime
+    const progress = this.deathTimer / this.deathDuration
+    
+    // Phase 1: Electric overload buildup (0-0.25s)
+    if (progress < 0.25) {
+      const phaseProgress = progress / 0.25
+      this.overloadIntensity = phaseProgress
+      
+      // Increase glow intensity
+      const core = this.mesh.children[0] as THREE.Mesh
+      if (core) {
+        const material = core.material as THREE.MeshBasicMaterial
+        material.color.setHSL(0.15, 1.0, 0.5 + phaseProgress * 0.5)
+        core.scale.setScalar(1 + phaseProgress * 2)
+      }
+      
+      // Rapid flickering
+      this.mesh.visible = Math.random() > 0.3
+      
+      // Create electric arcs
+      if (Math.random() < 0.5) {
+        this.createElectricBolt()
+      }
+    }
+    // Phase 2: Violent discharge (0.25-0.4s)
+    else if (progress < 0.4) {
+      const phaseProgress = (progress - 0.25) / 0.15
+      
+      // Rapid expansion
+      this.mesh.scale.setScalar(1 + phaseProgress * 3)
+      
+      // Create radial lightning
+      if (this.effectsSystem && phaseProgress < 0.3) {
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2
+          const distance = 2.0
+          const velocity = new THREE.Vector3(
+            Math.cos(angle) * distance,
+            Math.sin(angle) * distance,
+            0
+          )
+          const yellowColor = new THREE.Color(0xFFFF00)
+          this.effectsSystem.createSparkle(
+            this.position,
+            velocity,
+            yellowColor,
+            0.4
+          )
+        }
+        
+        // Electric screen flash
+        this.effectsSystem.addScreenFlash(0.15, new THREE.Color(0xFFFF00))
+      }
+      
+      // More electric bolts
+      if (Math.random() < 0.7) {
+        this.createElectricBolt()
+      }
+    }
+    // Phase 3: Fragmentation (0.4-0.6s)
+    else if (progress < 0.6) {
+      const phaseProgress = (progress - 0.4) / 0.2
+      
+      // Break apart into electric particles
+      if (this.effectsSystem && Math.random() < 0.4) {
+        const angle = Math.random() * Math.PI * 2
+        const speed = 1 + Math.random() * 2
+        const velocity = new THREE.Vector3(
+          Math.cos(angle) * speed,
+          Math.sin(angle) * speed,
+          (Math.random() - 0.5) * 1
+        )
+        const electricColor = new THREE.Color().setHSL(0.15, 1.0, 0.6)
+        this.effectsSystem.createSparkle(
+          this.position,
+          velocity,
+          electricColor,
+          0.3
+        )
+      }
+      
+      // Fade out
+      this.mesh.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          const material = child.material as THREE.MeshBasicMaterial
+          if (material) {
+            material.opacity = 1 - phaseProgress
+          }
+        }
+      })
+    }
+    // Phase 4: Final electric discharge (0.6-1.0s)
+    else {
+      const phaseProgress = (progress - 0.6) / 0.4
+      
+      // Create electric trails
+      if (this.effectsSystem && Math.random() < 0.3) {
+        const angle = Math.random() * Math.PI * 2
+        const distance = 1.5
+        const velocity = new THREE.Vector3(
+          Math.cos(angle) * distance,
+          Math.sin(angle) * distance,
+          0
+        )
+        const sparkColor = new THREE.Color(0xFFFF00)
+        this.effectsSystem.createSparkle(
+          this.position,
+          velocity,
+          sparkColor,
+          0.5
+        )
+      }
+      
+      if (progress >= 1.0) {
+        this.completeDeath()
+      }
+    }
+  }
+
+  private createElectricBolt(): void {
+    const angle = Math.random() * Math.PI * 2
+    const distance = 0.5 + Math.random() * 1.0
+    
+    const endPoint = new THREE.Vector3(
+      this.position.x + Math.cos(angle) * distance,
+      this.position.y + Math.sin(angle) * distance,
+      0
+    )
+    
+    const points = [this.position.clone(), endPoint]
+    const geometry = new THREE.BufferGeometry().setFromPoints(points)
+    const material = new THREE.LineBasicMaterial({
+      color: 0xFFFF00,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    })
+    
+    const bolt = new THREE.Line(geometry, material)
+    if (this.mesh.parent) {
+      this.mesh.parent.add(bolt)
+    }
+    
+    this.electricBolts.push(bolt)
+    
+    setTimeout(() => {
+      if (bolt.parent) {
+        bolt.parent.remove(bolt)
+      }
+      const index = this.electricBolts.indexOf(bolt)
+      if (index > -1) {
+        this.electricBolts.splice(index, 1)
+      }
+    }, 150)
+  }
+
+  private completeDeath(): void {
+    // Clean up electric bolts
+    this.electricBolts.forEach(bolt => {
+      if (bolt.parent) {
+        bolt.parent.remove(bolt)
+      }
+    })
+    this.electricBolts = []
+    
+    // Final VFX
+    if (this.effectsSystem) {
+      const deathColor = new THREE.Color(0xFFFF00)
+      this.effectsSystem.createElectricDeath(this.position, 'Fizzer')
+      this.effectsSystem.createExplosion(this.position, 1.0, deathColor)
+    }
+    
+    this.alive = false
+    this.isDying = false
+    this.createDeathEffect()
+  }
+
+  // Override update to handle death animation
+  update(deltaTime: number, player: Player): void {
+    // 🔴 ALWAYS update projectiles, even during/after death! 🔴
+    this.updateProjectiles(deltaTime)
+    
+    if (this.isDying) {
+      this.updateDeathAnimation(deltaTime)
+      return
+    }
+    
+    if (!this.alive) return
+    
+    // Store last position for trail calculation
+    this.lastPosition.copy(this.position)
+    
+    this.updateAI(deltaTime, player)
+    
+    // Update position
+    this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
+    this.mesh.position.set(this.position.x, this.position.y, 0)
+    
+    // Create trail effects
+    this.updateTrails(deltaTime)
+    
+    // Update visual effects
+    this.updateVisuals(deltaTime)
+  }
+
   updateAI(deltaTime: number, player: Player): void {
     const time = Date.now() * 0.001
     const playerPos = player.getPosition()
@@ -269,12 +525,23 @@ export class Fizzer extends Enemy {
     direction.y += (Math.random() - 0.5) * spread
     direction.normalize()
     
+    // 🔴 FIZZER BULLETS: 40% smaller, BRIGHT RED with extra glow! 🔴
+    const stats = BALANCE_CONFIG.FIZZER
     const projectile = new EnemyProjectile(
       this.position.clone(),
       direction,
-      12, // Fast bullets!
-      6   // Lower damage per bullet
+      stats.BULLET_SPEED,
+      stats.BULLET_DAMAGE,
+      0.6, // 40% smaller (60% of original size)
+      0xFF0000, // Pure bright red
+      0xFF0000, // Bright red emissive
+      0.7 // Stronger glow (was 0.4)
     )
+    
+    // Connect effects system for trails
+    if (this.effectsSystem) {
+      projectile.setEffectsSystem(this.effectsSystem)
+    }
     
     this.projectiles.push(projectile)
     if (this.sceneManager) {
@@ -301,16 +568,9 @@ export class Fizzer extends Enemy {
     }
   }
 
-  // 🧹 CLEANUP PROJECTILES ON DEATH 🧹
   destroy(): void {
-    // Remove all projectiles from scene
-    for (const projectile of this.projectiles) {
-      if (this.sceneManager) {
-        this.sceneManager.removeFromScene(projectile.getMesh())
-      }
-    }
-    this.projectiles = []
-    
+    // Don't immediately destroy projectiles - let them finish their trajectory!
+    // They will naturally expire based on their lifetime and continue to be updated
     super.destroy()
   }
 

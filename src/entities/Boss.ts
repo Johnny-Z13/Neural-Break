@@ -4,15 +4,15 @@ import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { SceneManager } from '../graphics/SceneManager'
 import { AudioManager } from '../audio/AudioManager'
+import { BALANCE_CONFIG } from '../config'
 
 export class Boss extends Enemy {
   private fireTimer: number = 0
-  private fireRate: number = 0.6 // REBALANCED - Fire every 0.6 seconds (was 0.4)
-  private projectileSpeed: number = 10 // Faster projectiles
-  private projectileDamage: number = 15 // More damage
+  private fireRate: number = BALANCE_CONFIG.BOSS.PHASE_1_FIRE_RATE
+  private projectileSpeed: number = BALANCE_CONFIG.BOSS.BULLET_SPEED
+  private projectileDamage: number = BALANCE_CONFIG.BOSS.BULLET_DAMAGE
   private projectiles: EnemyProjectile[] = []
   private sceneManager: SceneManager | null = null // Will be set from outside
-  private audioManager: AudioManager | null = null // Will be set from outside
   private armorPlates: THREE.Mesh[] = []
   private coreMesh: THREE.Mesh
   private energyRings: THREE.Mesh[] = []
@@ -32,49 +32,65 @@ export class Boss extends Enemy {
 
   constructor(x: number, y: number) {
     super(x, y)
-    this.health = 250 // REBALANCED - Still high but more manageable
-    this.maxHealth = 250
-    this.speed = 0.4 // Slow but menacing
-    this.damage = 40 // High collision damage
-    this.xpValue = 100 // BIG XP reward!
-    this.radius = 3.0 // 2X LARGER!
+    
+    // 🎮 LOAD STATS FROM BALANCE CONFIG 🎮
+    const stats = BALANCE_CONFIG.BOSS
+    this.health = stats.HEALTH
+    this.maxHealth = stats.HEALTH
+    this.speed = stats.SPEED
+    this.damage = stats.DAMAGE
+    this.xpValue = stats.XP_VALUE
+    this.radius = stats.RADIUS
   }
 
   initialize(): void {
-    // 👹 MASSIVE SCARY BOSS DESIGN - 2X BIGGER! 👹
+    // 🚀 MASSIVE DREADNOUGHT BOSS DESIGN - EPIC SCALE! 🚀
     
-    // Main core body - HUGE octahedron
-    const coreGeometry = new THREE.OctahedronGeometry(2.0, 2) // 2X!
-    const coreMaterial = new THREE.MeshLambertMaterial({
-      color: 0x8B0000, // Dark red
-      emissive: 0x440000, // Deep red glow
+    // Main hull - Large hexagonal prism (battle cruiser shape) - BIGGER!
+    const hullGeometry = new THREE.CylinderGeometry(3.5, 3.0, 5.5, 6) // 40% bigger (was 2.5, 2.2, 4.0)
+    const hullMaterial = new THREE.MeshLambertMaterial({
+      color: 0x2A0A0A, // Dark crimson
+      emissive: 0x440000,
       transparent: true,
       opacity: 0.95
     })
-    this.coreMesh = new THREE.Mesh(coreGeometry, coreMaterial)
+    this.coreMesh = new THREE.Mesh(hullGeometry, hullMaterial)
+    this.coreMesh.rotation.x = Math.PI / 2 // Rotate to face forward
     
-    // 🌟 WIREFRAME OUTLINE - Vector style! 🌟
-    const wireframeGeometry = new THREE.OctahedronGeometry(2.1, 2) // 2X!
-    const wireframeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFF0000,
+    // 🌟 HULL WIREFRAME - Sharp angular design! 🌟
+    const hullWireframeGeometry = new THREE.CylinderGeometry(3.6, 3.1, 5.6, 6) // 40% bigger
+    const hullWireframeMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFF1111,
       wireframe: true,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending
+    })
+    const hullWireframe = new THREE.Mesh(hullWireframeGeometry, hullWireframeMaterial)
+    hullWireframe.rotation.x = Math.PI / 2
+    this.coreMesh.add(hullWireframe)
+    
+    // 🔥 ENGINE CORE - Pulsing reactor! 🔥
+    const reactorGeometry = new THREE.SphereGeometry(2.1, 16, 16) // 40% bigger (was 1.5)
+    const reactorMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFF3300,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending
+    })
+    const reactor = new THREE.Mesh(reactorGeometry, reactorMaterial)
+    this.coreMesh.add(reactor)
+    
+    // Inner reactor core - white hot!
+    const innerReactorGeometry = new THREE.SphereGeometry(1.1, 12, 12) // 40% bigger (was 0.8)
+    const innerReactorMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFFFFF,
       transparent: true,
       opacity: 0.9,
       blending: THREE.AdditiveBlending
     })
-    const wireframe = new THREE.Mesh(wireframeGeometry, wireframeMaterial)
-    this.coreMesh.add(wireframe)
-    
-    // 🔥 INNER FIRE CORE - Pulsing energy! 🔥
-    const innerCoreGeometry = new THREE.SphereGeometry(1.2, 16, 16)
-    const innerCoreMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFF6600,
-      transparent: true,
-      opacity: 0.6,
-      blending: THREE.AdditiveBlending
-    })
-    const innerCore = new THREE.Mesh(innerCoreGeometry, innerCoreMaterial)
-    this.coreMesh.add(innerCore)
+    const innerReactor = new THREE.Mesh(innerReactorGeometry, innerReactorMaterial)
+    this.coreMesh.add(innerReactor)
     
     // Create container mesh
     const containerGeometry = new THREE.SphereGeometry(0.1, 4, 4)
@@ -83,50 +99,89 @@ export class Boss extends Enemy {
     this.mesh.position.copy(this.position)
     this.mesh.add(this.coreMesh)
     
-    // 🛡️ ARMOR PLATES - Protective layers! 🛡️ (2X bigger)
-    for (let i = 0; i < 8; i++) { // More plates!
-      const plateGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.2) // 2X!
-      const plateMaterial = new THREE.MeshLambertMaterial({
-        color: 0x4B0000,
-        emissive: 0x220000,
+    // 🛡️ COMMAND BRIDGE - Top section! 🛡️
+    const bridgeGeometry = new THREE.BoxGeometry(2.8, 2.1, 1.4) // 40% bigger (was 2.0, 1.5, 1.0)
+    const bridgeMaterial = new THREE.MeshLambertMaterial({
+      color: 0x3A0000,
+      emissive: 0x660000,
+      transparent: true,
+      opacity: 0.95
+    })
+    const bridge = new THREE.Mesh(bridgeGeometry, bridgeMaterial)
+    bridge.position.set(0, 0, 2.1) // Adjusted for larger hull
+    
+    // Bridge windows - glowing
+    for (let i = 0; i < 5; i++) {
+      const windowGeometry = new THREE.PlaneGeometry(0.25, 0.3)
+      const windowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFF6600,
         transparent: true,
-        opacity: 0.9
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending
       })
-      const plate = new THREE.Mesh(plateGeometry, plateMaterial)
-      
-      const angle = (i / 8) * Math.PI * 2
-      plate.position.set(
-        Math.cos(angle) * 2.6, // 2X!
-        Math.sin(angle) * 2.6,
-        0
-      )
-      plate.rotation.z = angle
-      
-      // Wireframe outline
-      const plateWireframe = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 1.2, 0.2),
-        new THREE.MeshBasicMaterial({
+      const window = new THREE.Mesh(windowGeometry, windowMaterial)
+      window.position.set((i - 2) * 0.4, 0, 0.51)
+      bridge.add(window)
+    }
+    
+    this.mesh.add(bridge)
+    
+    // 🛡️ ARMOR PLATES - Wing sections! 🛡️
+    for (let side = -1; side <= 1; side += 2) { // Left and right
+      for (let i = 0; i < 3; i++) {
+        const wingGeometry = new THREE.BoxGeometry(1.8, 0.4, 2.5)
+        const wingMaterial = new THREE.MeshLambertMaterial({
+          color: 0x330000,
+          emissive: 0x220000,
+          transparent: true,
+          opacity: 0.95
+        })
+        const wing = new THREE.Mesh(wingGeometry, wingMaterial)
+        
+        wing.position.set(
+          side * (3.0 + i * 0.3),
+          i * 0.5,
+          -0.5
+        )
+        wing.rotation.z = side * 0.2
+        
+        // Wing wireframe
+        const wingWireframeGeometry = new THREE.BoxGeometry(1.85, 0.45, 2.55)
+        const wingWireframeMaterial = new THREE.MeshBasicMaterial({
           color: 0xFF4400,
           wireframe: true,
           transparent: true,
           opacity: 0.7,
           blending: THREE.AdditiveBlending
         })
-      )
-      plate.add(plateWireframe)
-      
-      this.armorPlates.push(plate)
-      this.mesh.add(plate)
+        const wingWireframe = new THREE.Mesh(wingWireframeGeometry, wingWireframeMaterial)
+        wing.add(wingWireframe)
+        
+        // Wing lights
+        const lightGeometry = new THREE.SphereGeometry(0.15, 8, 8)
+        const lightMaterial = new THREE.MeshBasicMaterial({
+          color: 0xFF0000,
+          transparent: true,
+          opacity: 1.0,
+          blending: THREE.AdditiveBlending
+        })
+        const light = new THREE.Mesh(lightGeometry, lightMaterial)
+        light.position.set(0, 0, 1.3)
+        wing.add(light)
+        
+        this.armorPlates.push(wing)
+        this.mesh.add(wing)
+      }
     }
     
-    // ⚡ ENERGY RINGS - Rotating threat indicators! ⚡ (2X bigger)
-    for (let i = 0; i < 4; i++) { // More rings!
-      const ringRadius = 3.0 + i * 0.6 // 2X!
-      const ringGeometry = new THREE.RingGeometry(ringRadius - 0.2, ringRadius, 48)
+    // ⚡ ENERGY RINGS - Threat indicators! ⚡ - 50% SMALLER
+    for (let i = 0; i < 3; i++) {
+      const ringRadius = 2.25 + i * 0.4 // 50% smaller (was 4.5 + i * 0.8)
+      const ringGeometry = new THREE.RingGeometry(ringRadius - 0.15, ringRadius, 64) // 50% smaller
       const ringMaterial = new THREE.MeshBasicMaterial({
         color: 0xFF0000,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.5 - i * 0.1,
         side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending
       })
@@ -136,98 +191,105 @@ export class Boss extends Enemy {
       this.mesh.add(ring)
     }
     
-    // 🔫 WEAPON TURRETS - Visible gun barrels! 🔫 (2X bigger)
-    for (let i = 0; i < 12; i++) { // More turrets!
-      const turretGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.2, 8) // 2X!
+    // 🔫 WEAPON TURRETS - Heavy cannons! 🔫
+    const turretPositions = [
+      { x: 2.2, y: 0.8, z: 1.5 },   // Top right front
+      { x: -2.2, y: 0.8, z: 1.5 },  // Top left front
+      { x: 2.2, y: -0.8, z: 1.5 },  // Bottom right front
+      { x: -2.2, y: -0.8, z: 1.5 }, // Bottom left front
+      { x: 2.5, y: 0, z: 0 },       // Right mid
+      { x: -2.5, y: 0, z: 0 },      // Left mid
+      { x: 2.2, y: 0.8, z: -1.5 },  // Top right rear
+      { x: -2.2, y: 0.8, z: -1.5 }, // Top left rear
+      { x: 2.2, y: -0.8, z: -1.5 }, // Bottom right rear
+      { x: -2.2, y: -0.8, z: -1.5 },// Bottom left rear
+      { x: 0, y: 1.2, z: 1.0 },     // Top center
+      { x: 0, y: -1.2, z: 1.0 }     // Bottom center
+    ]
+    
+    for (const pos of turretPositions) {
+      const turretGeometry = new THREE.CylinderGeometry(0.25, 0.35, 1.0, 8)
       const turretMaterial = new THREE.MeshLambertMaterial({
-        color: 0x660000,
+        color: 0x550000,
         emissive: 0x330000,
         transparent: true,
         opacity: 0.95
       })
       const turret = new THREE.Mesh(turretGeometry, turretMaterial)
       
-      const angle = (i / 12) * Math.PI * 2
-      turret.position.set(
-        Math.cos(angle) * 2.2, // 2X!
-        Math.sin(angle) * 2.2,
-        0
-      )
-      turret.rotation.z = angle + Math.PI / 2
+      turret.position.set(pos.x, pos.y, pos.z)
       
-      // Glowing tip - BIGGER and BRIGHTER
-      const tipGeometry = new THREE.SphereGeometry(0.25, 8, 8) // 2X!
-      const tipMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFF6600,
+      // Point toward front
+      const angle = Math.atan2(pos.y, pos.x)
+      turret.rotation.z = angle
+      
+      // Glowing barrel tip - 50% SMALLER
+      const barrelTipGeometry = new THREE.SphereGeometry(0.1, 8, 8) // 50% smaller (was 0.2)
+      const barrelTipMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFF3300,
         transparent: true,
         opacity: 1.0,
         blending: THREE.AdditiveBlending
       })
-      const tip = new THREE.Mesh(tipGeometry, tipMaterial)
-      tip.position.y = 0.7 // 2X!
-      turret.add(tip)
+      const barrelTip = new THREE.Mesh(barrelTipGeometry, barrelTipMaterial)
+      barrelTip.position.y = 0.6
+      turret.add(barrelTip)
       
-      // Add glow ring around tip
-      const glowRingGeometry = new THREE.RingGeometry(0.2, 0.35, 16)
-      const glowRingMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFF4400,
+      // Muzzle glow ring - 50% SMALLER
+      const muzzleGlowGeometry = new THREE.RingGeometry(0.075, 0.125, 12) // 50% smaller (was 0.15, 0.25)
+      const muzzleGlowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFF6600,
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.8,
         side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending
       })
-      const glowRing = new THREE.Mesh(glowRingGeometry, glowRingMaterial)
-      glowRing.position.y = 0.7
-      turret.add(glowRing)
+      const muzzleGlow = new THREE.Mesh(muzzleGlowGeometry, muzzleGlowMaterial)
+      muzzleGlow.position.y = 0.6
+      turret.add(muzzleGlow)
       
       this.weaponTurrets.push(turret)
       this.mesh.add(turret)
     }
     
-    // 💀 DEATH'S HEAD - Scary center! 💀 (2X bigger)
-    const skullGeometry = new THREE.SphereGeometry(0.6, 12, 12) // 2X!
-    const skullMaterial = new THREE.MeshBasicMaterial({
-      color: 0x220000,
-      transparent: true,
-      opacity: 0.9
-    })
-    const skull = new THREE.Mesh(skullGeometry, skullMaterial)
-    this.coreMesh.add(skull)
-    
-    // Eye sockets - BIGGER and SCARIER
-    for (let i = 0; i < 2; i++) {
-      const eyeGeometry = new THREE.SphereGeometry(0.18, 8, 8) // 2X!
-      const eyeMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFF4400,
+    // 💀 ENGINE EXHAUSTS - Rear thrusters! 💀
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2
+      const exhaustGeometry = new THREE.CylinderGeometry(0.4, 0.5, 0.8, 8)
+      const exhaustMaterial = new THREE.MeshLambertMaterial({
+        color: 0x220000,
+        emissive: 0x110000,
         transparent: true,
-        opacity: 1.0,
-        blending: THREE.AdditiveBlending
+        opacity: 0.9
       })
-      const eye = new THREE.Mesh(eyeGeometry, eyeMaterial)
-      eye.position.set(i === 0 ? -0.3 : 0.3, 0.2, 0.55) // 2X!
-      skull.add(eye)
+      const exhaust = new THREE.Mesh(exhaustGeometry, exhaustMaterial)
       
-      // Eye glow
-      const eyeGlowGeometry = new THREE.SphereGeometry(0.25, 8, 8)
-      const eyeGlowMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFF0000,
+      exhaust.position.set(
+        Math.cos(angle) * 1.5,
+        Math.sin(angle) * 1.5,
+        -2.5
+      )
+      exhaust.rotation.x = Math.PI / 2
+      
+      // Thruster flame - 50% SMALLER
+      const flameGeometry = new THREE.SphereGeometry(0.175, 8, 8) // 50% smaller (was 0.35)
+      const flameMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFF6600,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.8,
         blending: THREE.AdditiveBlending
       })
-      const eyeGlow = new THREE.Mesh(eyeGlowGeometry, eyeGlowMaterial)
-      eye.add(eyeGlow)
+      const flame = new THREE.Mesh(flameGeometry, flameMaterial)
+      flame.position.z = -0.5
+      exhaust.add(flame)
+      
+      this.mesh.add(exhaust)
     }
+    
+    // 💥 Death damage properties 💥
+    this.deathDamageRadius = 8.0 // MASSIVE explosion radius
+    this.deathDamageAmount = 80 // Devastating damage
   }
-
-  setSceneManager(sceneManager: SceneManager): void {
-    this.sceneManager = sceneManager
-  }
-
-  setAudioManager(audioManager: AudioManager): void {
-    this.audioManager = audioManager
-  }
-
   updateAI(deltaTime: number, player: Player): void {
     // If dying, don't move - just play death animation
     if (this.isDying) {
@@ -270,94 +332,181 @@ export class Boss extends Enemy {
     }
   }
   
-  // 💀 EPIC BOSS DEATH ANIMATION 💀
+  // 💀 EPIC DREADNOUGHT DEATH ANIMATION 💀
   private updateDeathAnimation(deltaTime: number): void {
     this.deathTimer += deltaTime
     const progress = this.deathTimer / this.deathDuration
     
-    // Phase 1: Shake violently (0-30%)
-    if (progress < 0.3) {
-      const shake = (0.3 - progress) * 2
+    // Phase 1: Critical damage - systems failing (0-25%)
+    if (progress < 0.25) {
+      const shake = (0.25 - progress) * 3
       this.mesh.position.x = this.position.x + (Math.random() - 0.5) * shake
       this.mesh.position.y = this.position.y + (Math.random() - 0.5) * shake
       
-      // Flash colors wildly
-      const hue = (Date.now() * 0.01) % 1
-      const flashColor = new THREE.Color().setHSL(hue, 1.0, 0.5)
+      // Flash between red and orange
+      const flashPhase = (Date.now() * 0.01) % 1
+      const flashColor = new THREE.Color().setHSL(0.08 - flashPhase * 0.08, 1.0, 0.4 + flashPhase * 0.2)
       const coreMaterial = this.coreMesh.material as THREE.MeshLambertMaterial
       coreMaterial.color.copy(flashColor)
-      coreMaterial.emissive.copy(flashColor).multiplyScalar(0.5)
+      coreMaterial.emissive.copy(flashColor).multiplyScalar(0.7)
       
-      // Create sparks
-      if (this.effectsSystem && Math.random() < 0.3) {
+      // Sparks from multiple points
+      if (this.effectsSystem && Math.random() < 0.4) {
         const sparkPos = this.position.clone().add(new THREE.Vector3(
-          (Math.random() - 0.5) * 4,
-          (Math.random() - 0.5) * 4,
-          0
+          (Math.random() - 0.5) * 5,
+          (Math.random() - 0.5) * 5,
+          (Math.random() - 0.5) * 2
         ))
-        this.effectsSystem.createExplosion(sparkPos, 0.5, flashColor)
+        this.effectsSystem.createExplosion(sparkPos, 0.8, flashColor)
+        
+        // Electric arcs
+        const vel = new THREE.Vector3(
+          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.5) * 8,
+          0
+        )
+        this.effectsSystem.createSparkle(sparkPos, vel, new THREE.Color(0x00FFFF), 0.5)
+      }
+      
+      // Turrets start exploding
+      const turretsToDestroy = Math.floor(progress * 4 * this.weaponTurrets.length)
+      for (let i = 0; i < turretsToDestroy; i++) {
+        const turret = this.weaponTurrets[i]
+        if (turret && turret.visible) {
+          turret.visible = false
+          if (this.effectsSystem && Math.random() < 0.1) {
+            const worldPos = new THREE.Vector3()
+            turret.getWorldPosition(worldPos)
+            this.effectsSystem.createExplosion(worldPos, 1.0, new THREE.Color(0xFF6600))
+          }
+        }
       }
     }
     
-    // Phase 2: Explode armor plates (30-60%)
-    if (progress >= 0.3 && progress < 0.6) {
-      const plateProgress = (progress - 0.3) / 0.3
-      const platesToExplode = Math.floor(plateProgress * this.armorPlates.length)
+    // Phase 2: Wing sections explode (25-50%)
+    if (progress >= 0.25 && progress < 0.5) {
+      const wingProgress = (progress - 0.25) / 0.25
+      const wingsToExplode = Math.floor(wingProgress * this.armorPlates.length)
       
-      for (let i = 0; i < platesToExplode; i++) {
-        const plate = this.armorPlates[i]
-        if (plate.visible) {
-          plate.visible = false
+      for (let i = 0; i < wingsToExplode; i++) {
+        const wing = this.armorPlates[i]
+        if (wing.visible) {
+          wing.visible = false
           
-          // Explode this plate
+          // MASSIVE wing explosion
           if (this.effectsSystem) {
             const worldPos = new THREE.Vector3()
-            plate.getWorldPosition(worldPos)
+            wing.getWorldPosition(worldPos)
             const hue = i / this.armorPlates.length
             const color = new THREE.Color().setHSL(hue, 1.0, 0.6)
-            this.effectsSystem.createExplosion(worldPos, 1.5, color)
+            this.effectsSystem.createExplosion(worldPos, 2.5, color)
+            
+            // Wing debris
+            for (let j = 0; j < 12; j++) {
+              const vel = new THREE.Vector3(
+                (Math.random() - 0.5) * 15,
+                (Math.random() - 0.5) * 15,
+                (Math.random() - 0.5) * 5
+              )
+              this.effectsSystem.createSparkle(worldPos, vel, color, 1.2)
+            }
           }
           
-          if (this.audioManager) {
-            this.audioManager.playExplosionSound()
+          if (this.audioManager && i % 2 === 0) {
+            this.audioManager.playEnemyDeathSound('Boss')
           }
         }
       }
       
-      // Shrink core
-      const shrink = 1 - plateProgress * 0.3
-      this.coreMesh.scale.setScalar(shrink)
+      // Hull starts breaking apart
+      this.coreMesh.rotation.x += deltaTime * 2
+      this.coreMesh.rotation.z += deltaTime * 1.5
     }
     
-    // Phase 3: Core collapse and final explosion (60-100%)
-    if (progress >= 0.6) {
-      const collapseProgress = (progress - 0.6) / 0.4
+    // Phase 3: Core meltdown (50-75%)
+    if (progress >= 0.5 && progress < 0.75) {
+      const meltdownProgress = (progress - 0.5) / 0.25
       
-      // Core shrinks rapidly
-      const coreScale = (1 - collapseProgress) * 0.7
-      this.coreMesh.scale.setScalar(Math.max(0.1, coreScale))
+      // Violent shaking intensifies
+      const shake = meltdownProgress * 2
+      this.mesh.position.x = this.position.x + Math.sin(Date.now() * 0.03) * shake
+      this.mesh.position.y = this.position.y + Math.cos(Date.now() * 0.025) * shake
+      
+      // Core goes white hot
+      const coreMaterial = this.coreMesh.material as THREE.MeshLambertMaterial
+      const hotColor = new THREE.Color().lerpColors(
+        new THREE.Color(0xFF0000),
+        new THREE.Color(0xFFFFFF),
+        meltdownProgress
+      )
+      coreMaterial.emissive.copy(hotColor)
+      coreMaterial.opacity = 1.0 - meltdownProgress * 0.3
+      
+      // Continuous energy discharge
+      if (this.effectsSystem && Math.random() < 0.6) {
+        const angle = Math.random() * Math.PI * 2
+        const distance = 2 + Math.random() * 3
+        const dischargePos = this.position.clone().add(new THREE.Vector3(
+          Math.cos(angle) * distance,
+          Math.sin(angle) * distance,
+          (Math.random() - 0.5) * 2
+        ))
+        this.effectsSystem.createExplosion(dischargePos, 1.5, hotColor)
+      }
       
       // Spin faster
-      this.coreMesh.rotation.x += deltaTime * 20
-      this.coreMesh.rotation.y += deltaTime * 30
+      this.coreMesh.rotation.x += deltaTime * 8
+      this.coreMesh.rotation.y += deltaTime * 10
+      this.coreMesh.rotation.z += deltaTime * 6
       
-      // Energy builds up
+      // Scale pulses
+      const pulse = 1 + Math.sin(Date.now() * 0.02) * 0.3
+      this.coreMesh.scale.setScalar(pulse)
+    }
+    
+    // Phase 4: Critical explosion sequence (75-100%)
+    if (progress >= 0.75) {
+      const explosionProgress = (progress - 0.75) / 0.25
+      
+      // Rapid spinning
+      this.coreMesh.rotation.x += deltaTime * 20
+      this.coreMesh.rotation.y += deltaTime * 25
+      this.coreMesh.rotation.z += deltaTime * 15
+      
+      // Core shrinks and brightens
+      const coreScale = (1 - explosionProgress) * 1.2
+      this.coreMesh.scale.setScalar(Math.max(0.2, coreScale))
+      
+      // Pure white energy
       const coreMaterial = this.coreMesh.material as THREE.MeshLambertMaterial
       coreMaterial.emissive.setHex(0xFFFFFF)
+      coreMaterial.emissiveIntensity = 1 + explosionProgress * 2
       
-      // Create energy spirals
-      if (this.effectsSystem && Math.random() < 0.5) {
-        const spiralAngle = Date.now() * 0.01
-        const spiralPos = this.position.clone().add(new THREE.Vector3(
-          Math.cos(spiralAngle) * (1 - collapseProgress) * 3,
-          Math.sin(spiralAngle) * (1 - collapseProgress) * 3,
-          0
+      // Energy vortex
+      if (this.effectsSystem && Math.random() < 0.7) {
+        const vortexAngle = Date.now() * 0.015 + explosionProgress * Math.PI * 4
+        const vortexRadius = (1 - explosionProgress) * 4
+        const vortexPos = this.position.clone().add(new THREE.Vector3(
+          Math.cos(vortexAngle) * vortexRadius,
+          Math.sin(vortexAngle) * vortexRadius,
+          Math.sin(vortexAngle * 2) * 2
         ))
-        this.effectsSystem.createExplosion(spiralPos, 0.8, new THREE.Color(0xFFFFFF))
+        const vortexColor = new THREE.Color().setHSL((vortexAngle / (Math.PI * 2)) % 1, 1.0, 0.6)
+        this.effectsSystem.createExplosion(vortexPos, 1.2, vortexColor)
+      }
+      
+      // Multiple explosion bursts
+      if (Math.random() < 0.3 && this.effectsSystem) {
+        const burstPos = this.position.clone().add(new THREE.Vector3(
+          (Math.random() - 0.5) * 4,
+          (Math.random() - 0.5) * 4,
+          (Math.random() - 0.5) * 2
+        ))
+        this.effectsSystem.createExplosion(burstPos, 2.0, new THREE.Color(0xFFFFFF))
       }
     }
     
-    // FINAL EXPLOSION
+    // FINAL CATACLYSMIC EXPLOSION
     if (progress >= 1.0) {
       this.executeFinalDeath()
       this.alive = false
@@ -366,50 +515,90 @@ export class Boss extends Enemy {
   
   private executeFinalDeath(): void {
     if (this.effectsSystem) {
-      // MASSIVE central explosion
-      this.effectsSystem.createExplosion(this.position, 6.0, new THREE.Color(0xFF0000))
-      this.effectsSystem.addDistortionWave(this.position, 5.0)
+      // MASSIVE central supernova explosion (reduced intensity to avoid giant ring)
+      this.effectsSystem.createExplosion(this.position, 1.4, new THREE.Color(0xFFFFFF))
+      this.effectsSystem.addScreenFlash(0.5, new THREE.Color(0xFFFFFF))
+      this.effectsSystem.addDistortionWave(this.position, 2.0)
       
-      // Rainbow explosion ring
-      for (let i = 0; i < 16; i++) {
-        const hue = i / 16
-        const angle = (i / 16) * Math.PI * 2
-        const color = new THREE.Color().setHSL(hue, 1.0, 0.6)
-        const offset = new THREE.Vector3(
-          Math.cos(angle) * 3,
-          Math.sin(angle) * 3,
-          0
-        )
-        
-        // Delayed explosions
+      // Primary shockwave ring
+      for (let ring = 0; ring < 3; ring++) {
         setTimeout(() => {
-          if (this.effectsSystem) {
-            this.effectsSystem.createExplosion(
-              this.position.clone().add(offset),
-              2.5,
-              color
+          for (let i = 0; i < 24; i++) {
+            const angle = (i / 24) * Math.PI * 2
+            const hue = i / 24
+            const color = new THREE.Color().setHSL(hue, 1.0, 0.6)
+            const distance = 4 + ring * 2
+            const offset = new THREE.Vector3(
+              Math.cos(angle) * distance,
+              Math.sin(angle) * distance,
+              (Math.random() - 0.5) * 3
             )
+            
+            if (this.effectsSystem) {
+              this.effectsSystem.createExplosion(
+                this.position.clone().add(offset),
+                3.0,
+                color
+              )
+            }
           }
-        }, i * 50)
+        }, ring * 100)
       }
       
-      // Secondary explosion wave
-      for (let i = 0; i < 8; i++) {
+      // Secondary random explosions
+      for (let i = 0; i < 30; i++) {
         setTimeout(() => {
           if (this.effectsSystem) {
             const randOffset = new THREE.Vector3(
-              (Math.random() - 0.5) * 6,
-              (Math.random() - 0.5) * 6,
-              0
+              (Math.random() - 0.5) * 12,
+              (Math.random() - 0.5) * 12,
+              (Math.random() - 0.5) * 4
             )
+            const randColor = new THREE.Color().setHSL(Math.random(), 1.0, 0.5)
             this.effectsSystem.createExplosion(
               this.position.clone().add(randOffset),
+              2.5,
+              randColor
+            )
+            
+            // Debris particles
+            for (let j = 0; j < 5; j++) {
+              const vel = new THREE.Vector3(
+                (Math.random() - 0.5) * 20,
+                (Math.random() - 0.5) * 20,
+                (Math.random() - 0.5) * 10
+              )
+              this.effectsSystem.createSparkle(
+                this.position.clone().add(randOffset),
+                vel,
+                randColor,
+                1.5
+              )
+            }
+          }
+        }, i * 40)
+      }
+      
+      // Final expanding energy wave
+      setTimeout(() => {
+        if (this.effectsSystem) {
+          for (let i = 0; i < 48; i++) {
+            const angle = (i / 48) * Math.PI * 2
+            const distance = 8
+            const offset = new THREE.Vector3(
+              Math.cos(angle) * distance,
+              Math.sin(angle) * distance,
+              0
+            )
+            const color = new THREE.Color().setHSL((i / 48), 1.0, 0.7)
+            this.effectsSystem.createExplosion(
+              this.position.clone().add(offset),
               2.0,
-              new THREE.Color().setHSL(Math.random(), 1.0, 0.5)
+              color
             )
           }
-        }, 200 + i * 100)
-      }
+        }
+      }, 600)
       
       this.effectsSystem.createEnemyDeathParticles(
         this.position,
@@ -427,7 +616,7 @@ export class Boss extends Enemy {
     this.projectiles = []
     
     if (this.audioManager) {
-      this.audioManager.playExplosionSound()
+      this.audioManager.playEnemyDeathSound('Boss')
     }
   }
 
@@ -572,6 +761,14 @@ export class Boss extends Enemy {
     return this.projectiles.filter(p => p.isAlive())
   }
 
+  setSceneManager(sceneManager: SceneManager): void {
+    this.sceneManager = sceneManager
+  }
+
+  setAudioManager(audioManager: AudioManager): void {
+    this.audioManager = audioManager
+  }
+
   update(deltaTime: number, player: Player): void {
     if (!this.alive) return
 
@@ -626,11 +823,11 @@ export class Boss extends Enemy {
       
       innerMaterial.color.setHSL(fireHue, 1.0, 0.5)
       innerMaterial.opacity = 0.4 + Math.sin(time * 5) * 0.3
-      innerCore.scale.setScalar(1 + Math.sin(time * 4) * 0.2)
+      innerCore.scale.setScalar(1 + Math.sin(time * 4) * 0.08) // Reduced glitching (was 0.2)
     }
     
-    // 💀 PULSING SCALE - Breathing effect (minimal to avoid growth bug)! 💀
-    const pulse = 1 + Math.sin(this.pulseTime * 2) * 0.05
+    // 💀 PULSING SCALE - Subtle breathing effect (reduced glitching)! 💀
+    const pulse = 1 + Math.sin(this.pulseTime * 2) * 0.02 // Much smaller variation (was 0.05)
     this.mesh.scale.setScalar(pulse)
     
     // 🛡️ ROTATE ARMOR PLATES - Color cycling! 🛡️
@@ -684,7 +881,7 @@ export class Boss extends Enemy {
           : 0.8 + Math.sin(time * 8 + i) * 0.2
         
         const tipScale = this.attackPhase === 3 ? 0.8 : 1.0
-        tip.scale.setScalar(tipScale * (1 + Math.sin(time * (this.attackPhase === 3 ? 4 : 10) + i) * 0.2))
+        tip.scale.setScalar(tipScale * (1 + Math.sin(time * (this.attackPhase === 3 ? 4 : 10) + i) * 0.08)) // Reduced glitching (was 0.2)
       }
       
       // Glow ring
@@ -717,7 +914,7 @@ export class Boss extends Enemy {
           if (eyeGlow) {
             const eyeGlowMaterial = eyeGlow.material as THREE.MeshBasicMaterial
             eyeGlowMaterial.opacity = 0.3 + Math.sin(time * 6) * 0.2
-            eyeGlow.scale.setScalar(1 + Math.sin(time * 8) * 0.3)
+            eyeGlow.scale.setScalar(1 + Math.sin(time * 8) * 0.12) // Reduced glitching (was 0.3)
           }
         }
       }
@@ -762,6 +959,21 @@ export class Boss extends Enemy {
     if (this.audioManager) {
       this.audioManager.playEnemyDeathSound('Boss')
     }
+  }
+
+  /**
+   * 🧹 CLEANUP - Remove all projectiles from scene
+   */
+  destroy(): void {
+    // Remove all projectiles from scene
+    if (this.sceneManager) {
+      for (const projectile of this.projectiles) {
+        this.sceneManager.removeFromScene(projectile.getMesh())
+      }
+    }
+    this.projectiles = []
+    
+    console.log('🧹 Boss projectiles cleaned up')
   }
 }
 

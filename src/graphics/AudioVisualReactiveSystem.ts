@@ -18,8 +18,8 @@ export class AudioVisualReactiveSystem {
   private colorDecayRate: number = 0.95 // How fast colors fade back to base
   
   // 🎵 AUDIO REACTIVE PARAMETERS - All configurable! 🎵
-  private enemyDeathColorIntensity: number = 0.3 // How much enemy deaths affect color
-  private comboColorIntensity: number = 0.2 // How much combos affect color
+  private enemyDeathColorIntensity: number = 0.15 // How much enemy deaths affect color (reduced from 0.3)
+  private comboColorIntensity: number = 0.1 // How much combos affect color (reduced from 0.2)
   private audioPulseIntensity: number = 0.15 // How much audio affects visuals
   private visualResponseTime: number = 0.1 // How fast visuals respond to audio
   
@@ -55,12 +55,16 @@ export class AudioVisualReactiveSystem {
   
   // 🎨 INITIALIZE ENEMY COLOR MAP - Each enemy type has a color! 🎨
   private initializeEnemyColorMap(): void {
-    // Each enemy type gets a unique color that affects background
-    this.enemyColorMap.set('DataMite', new THREE.Color().setHSL(0.0, 0.9, 0.5)) // Red
-    this.enemyColorMap.set('ScanDrone', new THREE.Color().setHSL(0.1, 0.9, 0.6)) // Orange
-    this.enemyColorMap.set('ChaosWorm', new THREE.Color().setHSL(Math.random(), 0.9, 0.6)) // Rainbow
-    this.enemyColorMap.set('VoidSphere', new THREE.Color().setHSL(0.8, 1.0, 0.4)) // Purple
-    this.enemyColorMap.set('CrystalShardSwarm', new THREE.Color().setHSL(0.5, 1.0, 0.7)) // Cyan
+    // Each enemy type gets a unique DEEP, SATURATED color that affects background
+    // Keep lightness LOW (0.2-0.35) for deep colors, saturation HIGH (0.95-1.0)
+    this.enemyColorMap.set('DataMite', new THREE.Color().setHSL(0.0, 0.95, 0.25)) // Deep red
+    this.enemyColorMap.set('ScanDrone', new THREE.Color().setHSL(0.08, 0.95, 0.28)) // Deep orange
+    this.enemyColorMap.set('ChaosWorm', new THREE.Color().setHSL(Math.random(), 1.0, 0.30)) // Deep rainbow
+    this.enemyColorMap.set('VoidSphere', new THREE.Color().setHSL(0.8, 1.0, 0.20)) // Deep purple/violet
+    this.enemyColorMap.set('CrystalShardSwarm', new THREE.Color().setHSL(0.5, 1.0, 0.25)) // Deep cyan
+    this.enemyColorMap.set('Fizzer', new THREE.Color().setHSL(0.15, 1.0, 0.27)) // Deep yellow-green
+    this.enemyColorMap.set('UFO', new THREE.Color().setHSL(0.55, 0.95, 0.22)) // Deep cyan-blue
+    this.enemyColorMap.set('Boss', new THREE.Color().setHSL(0.0, 1.0, 0.20)) // Deep crimson
   }
   
   // 🎯 ON ENEMY DEATH - React to enemy death with color shift! 🎯
@@ -74,10 +78,10 @@ export class AudioVisualReactiveSystem {
     // Blend with current target color
     this.targetBackgroundColor.add(colorShift)
     
-    // Clamp color values to dark tones (max ~12% brightness to keep backgrounds dark)
-    this.targetBackgroundColor.r = Math.min(0.12, Math.max(0, this.targetBackgroundColor.r))
-    this.targetBackgroundColor.g = Math.min(0.12, Math.max(0, this.targetBackgroundColor.g))
-    this.targetBackgroundColor.b = Math.min(0.12, Math.max(0, this.targetBackgroundColor.b))
+    // Clamp color values to VERY dark tones (max ~6% brightness to keep backgrounds DEEP)
+    this.targetBackgroundColor.r = Math.min(0.06, Math.max(0, this.targetBackgroundColor.r))
+    this.targetBackgroundColor.g = Math.min(0.06, Math.max(0, this.targetBackgroundColor.g))
+    this.targetBackgroundColor.b = Math.min(0.06, Math.max(0, this.targetBackgroundColor.b))
     
     // Boost gameplay intensity
     this.gameplayIntensity = Math.min(1.0, this.gameplayIntensity + this.intensityBoostPerKill * intensity)
@@ -99,13 +103,18 @@ export class AudioVisualReactiveSystem {
   
   // 🎵 ON COMBO - React to combos with color and effects! 🎵
   onCombo(comboCount: number): void {
-    // Calculate combo color shift (green/cyan for good combos)
+    // Calculate combo color shift (green/cyan for good combos) - DEEP colors only!
     const comboHue = 0.5 + (comboCount / 20) * 0.1 // Shift from cyan to green
-    const comboColor = new THREE.Color().setHSL(comboHue, 1.0, 0.4)
+    const comboColor = new THREE.Color().setHSL(comboHue, 1.0, 0.22) // Deep combo color (was 0.4)
     const colorShift = comboColor.clone().multiplyScalar(this.comboColorIntensity * (comboCount / 10))
     
     // Blend with target color
     this.targetBackgroundColor.add(colorShift)
+    
+    // Clamp combo colors too
+    this.targetBackgroundColor.r = Math.min(0.06, Math.max(0, this.targetBackgroundColor.r))
+    this.targetBackgroundColor.g = Math.min(0.06, Math.max(0, this.targetBackgroundColor.g))
+    this.targetBackgroundColor.b = Math.min(0.06, Math.max(0, this.targetBackgroundColor.b))
     
     // Boost intensity
     this.gameplayIntensity = Math.min(1.0, this.gameplayIntensity + this.intensityBoostPerCombo * comboCount)

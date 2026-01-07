@@ -3,6 +3,7 @@ import { Enemy } from './Enemy'
 import { Player } from './Player'
 import { AudioManager } from '../audio/AudioManager'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
+import { BALANCE_CONFIG } from '../config'
 
 /**
  * 🐛 CHAOS WORM - MASSIVE RAINBOW SERPENT 🐛
@@ -13,7 +14,7 @@ import { EnemyProjectile } from '../weapons/EnemyProjectile'
  */
 export class ChaosWorm extends Enemy {
   private segments: THREE.Mesh[] = []
-  private segmentCount: number = 12 // More segments for bigger worm
+  private segmentCount: number = BALANCE_CONFIG.CHAOS_WORM.SEGMENT_COUNT
   private particleSystem: THREE.Points
   private particleGeometry: THREE.BufferGeometry
   private particlePositions: Float32Array
@@ -22,21 +23,20 @@ export class ChaosWorm extends Enemy {
   private particleLifetimes: Float32Array
   private particleCount: number = 400 // More particles!
   private waveOffset: number = 0
-  private audioManager: AudioManager | null = null
   private sceneManager: any = null
   
   // 💀 DEATH ANIMATION STATE 💀
   private isDying: boolean = false
   private deathTimer: number = 0
-  private deathDuration: number = 2.0 // 2 second death sequence
+  private deathDuration: number = BALANCE_CONFIG.CHAOS_WORM.DEATH_DURATION
   private explodedSegments: Set<number> = new Set()
   private segmentVelocities: THREE.Vector3[] = []
   
   // 💥 DEATH BULLETS - RUN AWAY! 💥
   private deathProjectiles: EnemyProjectile[] = []
-  private static readonly BULLETS_PER_SEGMENT = 6     // Bullets spawned per exploding segment
-  private static readonly DEATH_BULLET_SPEED = 8      // How fast death bullets travel
-  private static readonly DEATH_BULLET_DAMAGE = 15    // Damage per death bullet
+  private static readonly BULLETS_PER_SEGMENT = BALANCE_CONFIG.CHAOS_WORM.BULLETS_PER_SEGMENT
+  private static readonly DEATH_BULLET_SPEED = BALANCE_CONFIG.CHAOS_WORM.DEATH_BULLET_SPEED
+  private static readonly DEATH_BULLET_DAMAGE = BALANCE_CONFIG.CHAOS_WORM.DEATH_BULLET_DAMAGE
   
   // 🔴 HIT FLASH STATE 🔴
   private isFlashing: boolean = false
@@ -46,13 +46,15 @@ export class ChaosWorm extends Enemy {
 
   constructor(x: number, y: number) {
     super(x, y)
-    // 🔥 MASSIVE HEALTH - NEEDS LOTS OF BULLETS! 🔥
-    this.health = 150
-    this.maxHealth = 150
-    this.speed = 2.0 // Fast worm
-    this.damage = 25 // Collision damage
-    this.xpValue = 35 // Big reward
-    this.radius = 2.5 // Larger hitbox to cover worm body
+    
+    // 🎮 LOAD STATS FROM BALANCE CONFIG 🎮
+    const stats = BALANCE_CONFIG.CHAOS_WORM
+    this.health = stats.HEALTH
+    this.maxHealth = stats.HEALTH
+    this.speed = stats.SPEED
+    this.damage = stats.DAMAGE
+    this.xpValue = stats.XP_VALUE
+    this.radius = stats.RADIUS
     this.trailInterval = 0.1 // Slower trail for performance (parent default is 0.05)
   }
   
@@ -246,9 +248,6 @@ export class ChaosWorm extends Enemy {
       }
     }
     
-    // 💥 UPDATE DEATH PROJECTILES 💥
-    this.updateDeathProjectiles(deltaTime)
-    
     // 🦴 ANIMATE BREAKING SEGMENTS 🦴
     const time = Date.now() * 0.001
     for (let i = 0; i < this.segments.length; i++) {
@@ -288,6 +287,9 @@ export class ChaosWorm extends Enemy {
         material.emissive.copy(color).multiplyScalar(0.5)
       }
     }
+    
+    // 💥 UPDATE DEATH PROJECTILES 💥
+    this.updateDeathProjectiles(deltaTime)
     
     // Final explosion when all segments gone
     if (progress >= 1.0) {
@@ -431,7 +433,7 @@ export class ChaosWorm extends Enemy {
   
   // 💥💥💥 DEATH NOVA - Final burst of bullets in all directions! 💥💥💥
   private spawnFinalDeathNova(): void {
-    const bulletCount = 16 // Big final burst!
+    const bulletCount = BALANCE_CONFIG.CHAOS_WORM.FINAL_NOVA_BULLETS
     
     for (let i = 0; i < bulletCount; i++) {
       const angle = (i / bulletCount) * Math.PI * 2

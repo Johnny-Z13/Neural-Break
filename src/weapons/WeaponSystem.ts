@@ -6,6 +6,7 @@ import { SceneManager } from '../graphics/SceneManager'
 import { InputManager } from '../core/InputManager'
 import { AudioManager } from '../audio/AudioManager'
 import { EffectsSystem } from '../graphics/EffectsSystem'
+import { BALANCE_CONFIG } from '../config'
 
 // 🎯 WEAPON TYPES 🎯
 export enum WeaponType {
@@ -20,19 +21,19 @@ export class WeaponSystem {
   private sceneManager: SceneManager
   private audioManager: AudioManager
   private fireTimer: number = 0
-  private fireRate: number = 0.2 // Faster firing for ASTEROIDS-style gameplay
-  private damage: number = 2
-  private projectileSpeed: number = 15
-  private range: number = 15
+  private fireRate: number = BALANCE_CONFIG.WEAPONS.BASE_FIRE_RATE
+  private damage: number = BALANCE_CONFIG.WEAPONS.BASE_DAMAGE
+  private projectileSpeed: number = BALANCE_CONFIG.WEAPONS.BASE_PROJECTILE_SPEED
+  private range: number = BALANCE_CONFIG.WEAPONS.BASE_RANGE
   private lastFiringDirection: THREE.Vector3 = new THREE.Vector3(0, 1, 0) // Default up (matches player initial facing)
   private effectsSystem: EffectsSystem | null = null
   
   // 🔥 HEAT SYSTEM 🔥
   private heat: number = 0 // 0-100
   private isOverheated: boolean = false
-  private coolingRate: number = 25 // Heat points per second
-  private heatPerShot: number = 1.8 // Reduced from 2.5 for slower heat build-up
-  private overheatThreshold: number = 100
+  private coolingRate: number = BALANCE_CONFIG.WEAPONS.HEAT_COOLDOWN_RATE
+  private heatPerShot: number = BALANCE_CONFIG.WEAPONS.HEAT_PER_SHOT
+  private overheatThreshold: number = BALANCE_CONFIG.WEAPONS.HEAT_MAX
   private heatChangeCallback: ((heat: number, isOverheated: boolean) => void) | null = null
   
   // 🎯 WEAPON TYPE SYSTEM 🎯
@@ -123,7 +124,7 @@ export class WeaponSystem {
     // Calculate weapon stats based on power-up level
     const bulletCount = 1 + powerUpLevel // 1 bullet at level 0, 11 at level 10
     const speedMultiplier = 1 + powerUpLevel * 0.1 // +10% per level (was 15%, adjusted)
-    const damageMultiplier = 1 + powerUpLevel * 0.15 // +15% per level
+    const damageMultiplier = 1 + powerUpLevel * BALANCE_CONFIG.PLAYER.POWER_UP_DAMAGE_MULTIPLIER
     const sizeMultiplier = 1 + powerUpLevel * 0.1 // +10% per level
     
     // Calculate spread pattern
@@ -283,6 +284,18 @@ export class WeaponSystem {
     this.lastFiringDirection = new THREE.Vector3(0, 1, 0) // Reset to default up
     
     console.log('🧹 WeaponSystem cleaned up and reset')
+  }
+
+  /**
+   * 🧹 Clear all active projectiles (for level transitions)
+   * Unlike cleanup(), this doesn't reset firing state
+   */
+  clearAllProjectiles(): void {
+    for (const projectile of this.projectiles) {
+      this.sceneManager.removeFromScene(projectile.getMesh())
+    }
+    this.projectiles = []
+    console.log('🧹 All projectiles cleared')
   }
 
   // Upgrade methods for future expansion

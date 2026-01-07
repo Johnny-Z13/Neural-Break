@@ -12,6 +12,7 @@ Neural Break is a top-down survival shooter where players must survive for 30 mi
 - **Multiple Enemy Types**: DataMites, ScanDrones, ChaosWorms, VoidSpheres, CrystalShardSwarms, Fizzers, UFOs, and Bosses
 - **XP Progression**: Level up and improve your neural coherence
 - **Speedrun Optimization**: Designed for competitive play and replayability
+- **🎮 Full Gamepad Support**: Native Xbox/PlayStation controller support with haptic feedback!
 
 ## 🚀 Quick Start
 
@@ -46,9 +47,19 @@ Preview the production build locally.
 
 ## 🎯 Controls
 
+### Keyboard
 - **WASD**: Movement
 - **Space**: Fire weapon
 - **Shift**: Dash (when available)
+
+### Gamepad (Xbox/PlayStation)
+- **Left Stick**: Analog movement
+- **D-Pad**: Digital movement
+- **A (Xbox) / X (PlayStation)**: Fire weapon
+- **B (Xbox) / Circle (PlayStation)**: Dash
+- **Right Trigger / Left Trigger**: Fire weapon (alternative)
+- **Right Bumper**: Dash (alternative)
+- **Vibration**: Haptic feedback for hits, kills, and explosions
 
 ## 🏗️ Architecture
 
@@ -77,6 +88,7 @@ src/
 ├── main.ts                 # Entry point and game initialization
 ├── config/                 # Configuration modules
 │   ├── index.ts           # Centralized config exports
+│   ├── balance.config.ts  # ⭐ MASTER BALANCE CONFIG - All gameplay values
 │   ├── game.config.ts     # Game-specific configuration
 │   ├── enemy.config.ts    # Enemy configuration
 │   └── visual.config.ts   # Visual effects configuration
@@ -200,6 +212,17 @@ ISC License
 Active development - see commit history for latest updates and features.
 
 ### Recent Improvements
+- ✅ **🐛 FIXED: UFO Spawns Use LevelManager!** - Removed hardcoded spawn rates, configs now work as expected!
+- ✅ **🐛 FIXED: Power-Ups Now Spawn!** - Critical bug fix: spawn logic was broken, now working perfectly!
+- ✅ **🎁 Generous Power-Up Spawns** - 2x more pickups, regular intervals, fully configurable in balance.config!
+- ✅ **🧹 Clean Level Transitions** - Zero enemies persist, invulnerable cleared, power-ups carry over correctly!
+- ✅ **🎯 Enemy Hit Feedback** - ALL enemies flash RED + satisfying "ping" sound when hit (but not killed)!
+- ✅ **🎆 Level Transition Fireworks** - Staggered enemy deaths (0.1s) create spectacular cascading explosions!
+- ✅ **🏆 Consistent Notifications** - "LEVEL COMPLETE" matches INVULNERABLE style, perfectly centered
+- ✅ **💥 Enhanced Death Sequences** - ALL enemies trigger death animations during transitions
+- ✅ **Objective-Based Level System** - Clear goals, dramatic transitions, satisfying progression
+- ✅ **Full Gamepad Support** - Xbox/PlayStation controllers with vibration feedback
+- ✅ **Centralized Balance System** - All gameplay values in one config file
 - ✅ Modularized UI screens (StartScreen, LeaderboardScreen, GameOverScreen)
 - ✅ Refactored EffectsSystem into focused modules
 - ✅ Split enemy classes into individual files
@@ -220,3 +243,82 @@ The codebase follows best practices for maintainability:
 - **Type Safety**: Full TypeScript coverage with proper interfaces
 - **Configuration Management**: Centralized config for easy tuning
 - **Debug Mode**: Conditional logging and debug features via DEBUG_MODE flag
+
+---
+
+## ⚖️ Game Balance & Tuning
+
+**All gameplay values are now in ONE file**: `src/config/balance.config.ts`
+
+### Quick Balance Editing
+
+1. Open `src/config/balance.config.ts`
+2. Find the section (Player, Enemies, Weapons, Pickups, etc.)
+3. Edit values
+4. Save - game auto-reloads!
+
+**No more hunting for magic numbers!**
+
+### What You Can Tune
+
+- **Player**: Speed, health, dash, power-ups, shields
+- **Weapons**: Damage, fire rate, heat system, projectile speed
+- **Enemies**: Health, speed, damage, fire rates, death effects (ALL 8 enemy types)
+  - DataMite, ScanDrone, Fizzer, UFO, ChaosWorm, VoidSphere, CrystalSwarm, Boss
+- **Pickups**: Spawn rates, heal amounts, magnetism
+- **Scoring**: Points, multipliers, bonuses
+- **Level Scaling**: Difficulty progression, enemy scaling
+- **World**: Size, boundaries, spawn zones
+- **Visual Effects**: Screen shake, zoom, particles
+
+### Balance System Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│   balance.config.ts (Master Config)         │
+│                                              │
+│  ┌────────────────────────────────────┐    │
+│  │ PLAYER • WEAPONS • PICKUPS         │    │
+│  │ 8 ENEMY TYPES • SCORING • LEVELS   │    │
+│  │ WORLD • FEEDBACK                   │    │
+│  └────────────────────────────────────┘    │
+└─────────────────┬───────────────────────────┘
+                  │ Imported by
+         ┌────────┴────────┬────────────┬─────────┐
+         │                 │            │         │
+    ┌────▼────┐    ┌──────▼─────┐ ┌────▼────┐ ┌─▼──────┐
+    │ Player  │    │  Enemies   │ │ Weapons │ │Pickups │
+    │  .ts    │    │  (8 types) │ │  .ts    │ │  .ts   │
+    └─────────┘    └────────────┘ └─────────┘ └────────┘
+         │                 │            │         │
+         └─────────────────┴────────────┴─────────┘
+                           │
+                    ┌──────▼───────┐
+                    │   Game Loop  │
+                    └──────────────┘
+```
+
+**One file controls everything!**
+
+### Documentation
+
+- **`BALANCE_TUNING_GUIDE.md`** - Complete guide to tuning the game
+- **`src/config/balance.config.ts`** - Master config file with comments
+
+### Example: Make Game Easier
+
+```typescript
+// In balance.config.ts
+PLAYER: {
+  BASE_HEALTH: 150,        // Was 100
+  BASE_SPEED: 7.5,         // Was 6.25
+  DASH_COOLDOWN: 2.0,      // Was 3.0
+}
+
+WEAPONS: {
+  BASE_DAMAGE: 15,         // Was 10
+  BASE_FIRE_RATE: 0.1,     // Was 0.15 (faster firing)
+}
+```
+
+Save and the game instantly updates!

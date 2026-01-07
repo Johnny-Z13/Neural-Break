@@ -3,6 +3,7 @@ import { Enemy } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { AudioManager } from '../audio/AudioManager'
+import { BALANCE_CONFIG } from '../config'
 
 /**
  * 🌀 VOID SPHERE - MASSIVE COSMIC HORROR 🌀
@@ -24,26 +25,38 @@ export class VoidSphere extends Enemy {
   private sceneManager: any = null
   private projectiles: EnemyProjectile[] = []
   private fireTimer: number = 0
-  private fireRate: number = 0.8 // Fire faster than ScanDrone!
+  private fireRate: number = BALANCE_CONFIG.VOID_SPHERE.FIRE_RATE
   private burstCount: number = 0
   private burstTimer: number = 0
-  private maxBurst: number = 5 // Fire 5 bullets in a burst
-  private burstDelay: number = 0.12 // Time between burst shots
-  private audioManager: AudioManager | null = null
+  private maxBurst: number = BALANCE_CONFIG.VOID_SPHERE.BURST_COUNT
+  private burstDelay: number = BALANCE_CONFIG.VOID_SPHERE.BURST_DELAY
   
   // 💫 AMBIENT PULSE SOUND TIMER 💫
   private ambientPulseTimer: number = 0
   private ambientPulseInterval: number = 2.0
+  
+  // 💀 DEATH ANIMATION STATE 💀
+  private isDying: boolean = false
+  private deathTimer: number = 0
+  private deathDuration: number = 1.5
+  private implosionScale: number = 1.0
+  private voidRingsCollapsed: boolean[] = []
 
   constructor(x: number, y: number) {
     super(x, y)
-    // 🔥 MASSIVE HEALTH - NEEDS LOTS OF BULLETS! 🔥
-    this.health = 250
-    this.maxHealth = 250
-    this.speed = 0.6 // Slower because it's huge
-    this.damage = 50 // DEVASTATING collision damage!
-    this.xpValue = 50 // Big reward for killing this beast
-    this.radius = 3.2 // 4x bigger radius (was 0.8)
+    
+    // 🎮 LOAD STATS FROM BALANCE CONFIG 🎮
+    const stats = BALANCE_CONFIG.VOID_SPHERE
+    this.health = stats.HEALTH
+    this.maxHealth = stats.HEALTH
+    this.speed = stats.SPEED
+    this.damage = stats.DAMAGE
+    this.xpValue = stats.XP_VALUE
+    this.radius = stats.RADIUS
+    
+    // 💥 DEATH DAMAGE 💥
+    this.deathDamageRadius = stats.DEATH_RADIUS
+    this.deathDamageAmount = stats.DEATH_DAMAGE
   }
   
   setSceneManager(sceneManager: any): void {
@@ -238,6 +251,198 @@ export class VoidSphere extends Enemy {
     }
   }
 
+  // Override takeDamage to trigger custom death
+  takeDamage(damage: number): void {
+    if (this.isDying) return
+    
+    this.health -= damage
+    
+    // Visual feedback - void pulses darker
+    const core = this.mesh.children[0] as THREE.Mesh
+    if (core) {
+      const material = core.material as THREE.MeshBasicMaterial
+      const originalOpacity = material.opacity
+      material.opacity = Math.min(1.0, originalOpacity + 0.2)
+      setTimeout(() => {
+        material.opacity = originalOpacity
+      }, 150)
+    }
+
+    if (this.health <= 0 && !this.isDying) {
+      this.startDeathAnimation()
+    }
+  }
+
+  private startDeathAnimation(): void {
+    this.isDying = true
+    this.deathTimer = 0
+    this.alive = true
+    this.implosionScale = 1.0
+    this.voidRingsCollapsed = new Array(this.ringCount).fill(false)
+    
+    // 🎵 PLAY DEATH SOUND! 🎵
+    if (this.audioManager) {
+      this.audioManager.playEnemyDeathSound('VoidSphere')
+    }
+  }
+
+  private updateDeathAnimation(deltaTime: number): void {
+    if (!this.isDying) return
+    
+    this.deathTimer += deltaTime
+    const progress = this.deathTimer / this.deathDuration
+    
+    // Phase 1: Rings collapse inward (0-0.27s)
+    if (progress < 0.27) {
+      const phaseProgress = progress / 0.27
+      
+      // Collapse rings one by one from outside in
+      const ringsToCollapse = Math.floor(phaseProgress * this.ringCount)
+      for (let i = 0; i < ringsToCollapse; i++) {
+        const ringIndex = this.ringCount - 1 - i
+        if (!this.voidRingsCollapsed[ringIndex] && this.voidRings.length > ringIndex) {
+          const ring = this.voidRings[ringIndex]
+          ring.scale.setScalar(0.1)
+          const material = ring.material as THREE.MeshBasicMaterial
+          material.opacity = 0
+          this.voidRingsCollapsed[ringIndex] = true
+        }
+      }
+      
+      // Main sphere starts shrinking
+      this.implosionScale = 1.0 - phaseProgress * 0.3
+      this.mesh.scale.setScalar(this.implosionScale)
+    }
+    // Phase 2: Extreme implosion - singularity (0.27-0.4s)
+    else if (progress < 0.4) {
+      const phaseProgress = (progress - 0.27) / 0.13
+      
+      // Rapid shrink to singularity
+      this.implosionScale = 0.7 - phaseProgress * 0.65
+      this.mesh.scale.setScalar(this.implosionScale)
+      
+      // Distortion intensifies
+      if (this.distortionField) {
+        const material = this.distortionField.material as THREE.MeshBasicMaterial
+        material.opacity = 0.3 + phaseProgress * 0.7
+      }
+      
+      // Dark flash effect
+      if (this.effectsSystem && phaseProgress > 0.5) {
+        // Negative exposure flash
+        this.effectsSystem.addScreenFlash(0.15, new THREE.Color(0x000000))
+      }
+    }
+    // Phase 3: Violent void burst (0.4-0.67s)
+    else if (progress < 0.67) {
+      const phaseProgress = (progress - 0.4) / 0.27
+      
+      // Explode outward
+      this.implosionScale = 0.05 + phaseProgress * 3.0
+      this.mesh.scale.setScalar(this.implosionScale)
+      
+      // Purple void energy burst
+      if (this.effectsSystem && phaseProgress < 0.2) {
+        const purpleColor = new THREE.Color(0x7F00FF)
+        this.effectsSystem.createExplosion(this.position, 3.0, purpleColor)
+        
+        // Void tendrils
+        for (let i = 0; i < 20; i++) {
+          const angle = (i / 20) * Math.PI * 2
+          const speed = 2 + Math.random() * 3
+          const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            (Math.random() - 0.5) * 2
+          )
+          this.effectsSystem.createSparkle(
+            this.position,
+            velocity,
+            purpleColor,
+            0.6
+          )
+        }
+      }
+      
+      // Fade out
+      const core = this.mesh.children[0] as THREE.Mesh
+      if (core) {
+        const material = core.material as THREE.MeshBasicMaterial
+        material.opacity = 1 - phaseProgress
+      }
+    }
+    // Phase 4: Distortion waves ripple outward (0.67-1.0s)
+    else {
+      const phaseProgress = (progress - 0.67) / 0.33
+      
+      // Create expanding distortion waves
+      if (this.effectsSystem) {
+        const waveCount = Math.floor(phaseProgress * 5)
+        if (waveCount > 0 && Math.random() < 0.3) {
+          this.effectsSystem.addDistortionWave(
+            this.position,
+            2.5 + phaseProgress * 2.0
+          )
+        }
+      }
+      
+      // Fade everything
+      this.mesh.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          const material = child.material as THREE.MeshBasicMaterial
+          if (material) {
+            material.opacity = Math.max(0, 1 - phaseProgress * 2)
+          }
+        }
+      })
+      
+      if (progress >= 1.0) {
+        this.completeDeath()
+      }
+    }
+  }
+
+  private completeDeath(): void {
+    // Final VFX
+    if (this.effectsSystem) {
+      const deathColor = new THREE.Color(0x5000FF)
+      this.effectsSystem.createExplosion(this.position, 3.0, deathColor)
+      this.effectsSystem.addDistortionWave(this.position, 2.5)
+    }
+    
+    this.alive = false
+    this.isDying = false
+    this.createDeathEffect()
+  }
+
+  // Override update to handle death animation
+  update(deltaTime: number, player: Player): void {
+    if (this.isDying) {
+      this.updateDeathAnimation(deltaTime)
+      return
+    }
+    
+    if (!this.alive) return
+    
+    // Store last position for trail calculation
+    this.lastPosition.copy(this.position)
+    
+    this.updateAI(deltaTime, player)
+    
+    // Update position
+    this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
+    this.mesh.position.set(this.position.x, this.position.y, 0)
+    
+    // Update projectiles
+    this.updateProjectiles(deltaTime)
+    
+    // Create trail effects
+    this.updateTrails(deltaTime)
+    
+    // Update visual effects
+    this.updateVisuals(deltaTime)
+  }
+
   updateAI(deltaTime: number, player: Player): void {
     // Slow, menacing approach
     const playerPos = player.getPosition()
@@ -312,11 +517,12 @@ export class VoidSphere extends Enemy {
       0
     ).normalize()
     
+    const stats = BALANCE_CONFIG.VOID_SPHERE
     const projectile = new EnemyProjectile(
       firePos,
       spreadDirection,
-      10, // Speed - fast!
-      15  // Damage - hurts!
+      stats.BULLET_SPEED,
+      stats.BULLET_DAMAGE
     )
     
     // Set custom color for void projectiles

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>High Score Test</title>
+</head>
+<body>
+    <h1>High Score System Test</h1>
+    <button onclick="testSave()">Test Save Score</button>
+    <button onclick="testLoad()">Test Load Scores</button>
+    <button onclick="clearScores()">Clear All Scores</button>
+    <pre id="output"></pre>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function testSave() {
+            const testEntry = {
+                name: 'TEST',
+                score: 10000,
+                survivedTime: 120,
+                level: 5,
+                date: '1/5/26',
+                location: 'TEST'
+            };
+            
+            const scores = JSON.parse(localStorage.getItem('neural_break_high_scores') || '[]');
+            scores.push(testEntry);
+            scores.sort((a, b) => b.score - a.score);
+            localStorage.setItem('neural_break_high_scores', JSON.stringify(scores.slice(0, 10)));
+            
+            output.textContent = 'Score saved!\n' + JSON.stringify(testEntry, null, 2);
+        }
+        
+        function testLoad() {
+            const scores = localStorage.getItem('neural_break_high_scores');
+            output.textContent = scores ? JSON.stringify(JSON.parse(scores), null, 2) : 'No scores found';
+        }
+        
+        function clearScores() {
+            localStorage.removeItem('neural_break_high_scores');
+            output.textContent = 'Scores cleared!';
+        }
+    </script>
+</body>
+</html>
