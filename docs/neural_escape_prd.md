@@ -169,6 +169,28 @@ A cyberpunk survival game where you play as a human consciousness trapped inside
     - **XP Value:** 1 each
     - **Implementation Notes:** Particle system integration, swarm AI
 
+#### Special Enemies (Conditional Spawns)
+
+11. **Fizzer** ⚡
+    - **Appearance:** Small electric green/cyan orb with crackling spikes and orbiting sparks
+    - **Health:** 3 hits (small but hard to hit!)
+    - **Speed:** VERY FAST (8.0) - erratic movement that changes every ~150ms
+    - **Behavior:** Spawns when player achieves x5, x8, or x11 multiplier without taking damage. Moves chaotically with sinusoidal overlay, fires rapid 3-bullet bursts
+    - **Spawn Condition:** High multiplier streak reward/challenge
+    - **Damage:** 10 collision, 6 per bullet
+    - **XP Value:** 15
+    - **Implementation Notes:** Chaos enemy that rewards skilled play with more challenge. Resets spawn counter when player takes damage.
+
+12. **UFO** 🛸
+    - **Appearance:** Classic flying saucer with metallic body, glowing cockpit dome, running lights, and jet trails
+    - **Health:** 40 hits
+    - **Speed:** 3.5 (moderate - relies on intelligent movement)
+    - **Behavior:** Late-game enemy (Level 5+). Moves in organic bezier-curved paths, sometimes orbits player. Charges up laser beam (1.5s) then fires devastating continuous laser (0.8s duration)
+    - **Spawn Rate:** 50 seconds at level 5, decreasing to 20 seconds by level 10
+    - **Damage:** 20 collision, **10% player health via laser beam** (reduced for testing - TODO: balance pass)
+    - **XP Value:** 25
+    - **Implementation Notes:** Laser uses line-circle intersection for hit detection. Visual charging indicator warns player. Intelligent pathfinding with bezier control points.
+
 ### Weapon & Ability System
 
 #### Starting Abilities (Choose 1)
@@ -519,12 +541,21 @@ Expansion Ready
 /src
   /core          # Core game systems
   /entities      # Player, enemies, projectiles
+    - Player.ts         # Player entity
+    - Enemy.ts          # Base enemy class
+    - DataMite.ts       # Basic swarm enemy
+    - ScanDrone.ts      # Surveillance with radar & bullets
+    - ChaosWorm.ts      # Segmented chaos serpent
+    - VoidSphere.ts     # Area denial with projectiles
+    - CrystalShardSwarm.ts # Multi-crystal formation
+    - Fizzer.ts         # ⚡ Chaos reward enemy (high multiplier spawn)
+    - UFO.ts            # 🛸 Late-game intelligent craft with laser
+    - Boss.ts           # End-level boss
   /weapons       # Modular weapon definitions
-  /ui            # React components
-  /audio         # Sound management
-  /graphics      # Three.js scene management
-  /data          # JSON config files
-  /utils         # Helper functions
+  /ui            # UI screens and components
+  /audio         # Sound management with procedural synth
+  /graphics      # Three.js scene management & effects
+  /data          # High score services
 ```
 
 ### Data-Driven Design
