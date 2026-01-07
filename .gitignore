@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Vite
+.vite/
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
