@@ -23,51 +23,51 @@
 
 export const BALANCE_CONFIG = {
   // ═══════════════════════════════════════════════════════════════════
-  // PLAYER CONFIGURATION
+  // PLAYER CONFIGURATION (BALANCED - Easier but not overpowered)
   // ═══════════════════════════════════════════════════════════════════
   PLAYER: {
     // Core Stats
-    BASE_SPEED: 6.25,              // Movement speed (units/sec)
-    BASE_HEALTH: 100,              // Starting health
-    MAX_HEALTH: 100,               // Maximum health
+    BASE_SPEED: 7.0,               // Movement speed (was 6.25) - slightly faster
+    BASE_HEALTH: 130,              // Starting health (was 100) - 30% more
+    MAX_HEALTH: 130,               // Maximum health (was 100)
     
     // Dash Ability
-    DASH_SPEED: 30,                // Speed during dash
-    DASH_DURATION: 0.4,            // How long dash lasts (seconds)
-    DASH_COOLDOWN: 3.0,            // Time between dashes (seconds)
+    DASH_SPEED: 32,                // Speed during dash (was 30) - slightly faster
+    DASH_DURATION: 0.45,           // How long dash lasts (was 0.4) - slightly longer
+    DASH_COOLDOWN: 2.5,            // Time between dashes (was 3.0) - moderate cooldown
     DASH_INVULNERABLE: true,       // Invincible during dash?
     
     // Power-Up System
     MAX_POWER_UP_LEVEL: 10,        // Max weapon power level
-    POWER_UP_DAMAGE_MULTIPLIER: 0.5, // Damage increase per level (50%)
+    POWER_UP_DAMAGE_MULTIPLIER: 0.6, // Damage increase per level (was 0.5) - 60% per level
     
     // Speed System
     MAX_SPEED_LEVEL: 20,           // Max speed boost level
     SPEED_BOOST_PER_LEVEL: 0.05,   // Speed increase per level (5%)
     
     // Invulnerability Pickup
-    INVULNERABLE_DURATION: 5.0,    // How long invulnerability lasts (seconds)
+    INVULNERABLE_DURATION: 7.0,    // How long invulnerability lasts (was 5.0) - longer!
     
     // Shield Pickup
     SHIELD_ABSORBS_ONE_HIT: true,  // Does shield block 1 hit or all damage?
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // WEAPON SYSTEM
+  // WEAPON SYSTEM (BALANCED)
   // ═══════════════════════════════════════════════════════════════════
   WEAPONS: {
     // Base Weapon Stats (Level 0)
-    BASE_DAMAGE: 10,               // Base bullet damage
-    BASE_FIRE_RATE: 0.15,          // Time between shots (seconds)
-    BASE_PROJECTILE_SPEED: 20,     // Bullet speed (units/sec)
-    BASE_RANGE: 35,                // Max bullet distance
+    BASE_DAMAGE: 12,               // Base bullet damage (was 10) - 20% more damage
+    BASE_FIRE_RATE: 0.12,          // Time between shots (was 0.15) - 25% faster
+    BASE_PROJECTILE_SPEED: 22,     // Bullet speed (was 20) - slightly faster
+    BASE_RANGE: 38,                // Max bullet distance (was 35) - slightly longer
     
     // Heat System
     HEAT_ENABLED: true,            // Enable weapon overheating?
-    HEAT_PER_SHOT: 1,              // Heat added per shot
-    HEAT_COOLDOWN_RATE: 75,        // Heat removed per second
+    HEAT_PER_SHOT: 0.8,            // Heat added per shot (was 1) - slightly less heat
+    HEAT_COOLDOWN_RATE: 85,        // Heat removed per second (was 75) - faster cooling
     HEAT_MAX: 100,                 // Max heat before overheat
-    OVERHEAT_COOLDOWN: 1.0,        // Forced cooldown time (seconds)
+    OVERHEAT_COOLDOWN: 0.8,        // Forced cooldown time (was 1.0) - slightly shorter
     
     // Weapon Types
     BULLETS: {
@@ -88,12 +88,12 @@ export const BALANCE_CONFIG = {
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: DATA MITE (Basic small enemy)
+  // ENEMY: DATA MITE (Basic small enemy) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   DATA_MITE: {
     HEALTH: 1,                     // Dies in 1 hit
-    SPEED: 2.0,                    // Movement speed
-    DAMAGE: 10,                    // Collision damage to player
+    SPEED: 1.5,                    // Movement speed (was 2.0) - slower!
+    DAMAGE: 5,                     // Collision damage to player (was 10) - 50% less!
     XP_VALUE: 1,                   // XP awarded on kill
     RADIUS: 0.42,                  // Collision radius
     DEATH_DAMAGE: 0,               // No death explosion
@@ -101,19 +101,19 @@ export const BALANCE_CONFIG = {
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: SCAN DRONE (Ranged attacker)
+  // ENEMY: SCAN DRONE (Ranged attacker) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   SCAN_DRONE: {
-    HEALTH: 4,                     // Takes a few hits
-    SPEED: 1.5,                    // Moderate speed
-    DAMAGE: 15,                    // Collision damage
+    HEALTH: 3,                     // Takes a few hits (was 4) - easier to kill!
+    SPEED: 1.2,                    // Moderate speed (was 1.5) - slower!
+    DAMAGE: 8,                     // Collision damage (was 15) - less damage!
     XP_VALUE: 5,                   // Better reward
     RADIUS: 1.1,                   // Medium size
     
     // Shooting Behavior
-    FIRE_RATE: 2.0,                // Time between shots (seconds)
-    BULLET_SPEED: 8.0,             // Projectile speed
-    BULLET_DAMAGE: 15,             // Bullet damage
+    FIRE_RATE: 3.0,                // Time between shots (was 2.0) - slower firing!
+    BULLET_SPEED: 6.0,             // Projectile speed (was 8.0) - easier to dodge!
+    BULLET_DAMAGE: 10,             // Bullet damage (was 15) - less damage!
     DETECTION_RANGE: 15,           // Aggro range
     PATROL_RANGE: 8,               // Patrol radius
     
@@ -122,52 +122,52 @@ export const BALANCE_CONFIG = {
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: FIZZER (Fast agile enemy)
+  // ENEMY: FIZZER (Fast agile enemy) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   FIZZER: {
-    HEALTH: 3,                     // Low health
-    SPEED: 8.0,                    // VERY FAST!
-    DAMAGE: 10,                    // Collision damage
+    HEALTH: 2,                     // Low health (was 3) - easier to kill!
+    SPEED: 6.0,                    // VERY FAST! (was 8.0) - slower!
+    DAMAGE: 6,                     // Collision damage (was 10) - less damage!
     XP_VALUE: 15,                  // Good reward for difficulty
     RADIUS: 0.35,                  // Small = hard to hit
     
     // Shooting Behavior (Burst fire)
-    FIRE_RATE: 2.5,                // Time between bursts
-    BURST_COUNT: 3,                // Shots per burst
-    BURST_DELAY: 0.15,             // Time between burst shots
-    BULLET_SPEED: 12.0,            // Fast bullets
-    BULLET_DAMAGE: 8,              // Lower individual damage
+    FIRE_RATE: 3.5,                // Time between bursts (was 2.5) - less frequent!
+    BURST_COUNT: 2,                // Shots per burst (was 3) - fewer shots!
+    BURST_DELAY: 0.2,              // Time between burst shots (was 0.15) - slower!
+    BULLET_SPEED: 9.0,             // Fast bullets (was 12.0) - easier to dodge!
+    BULLET_DAMAGE: 6,              // Lower individual damage (was 8) - less damage!
     
     DEATH_DAMAGE: 15,              // Electric explosion!
     DEATH_RADIUS: 2.0,             // Small explosion radius
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: UFO (Hit-and-run attacker)
+  // ENEMY: UFO (Hit-and-run attacker) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   UFO: {
-    HEALTH: 40,                    // Sturdy craft
-    SPEED: 3.5,                    // Fast movement
-    DAMAGE: 20,                    // Collision damage
+    HEALTH: 30,                    // Sturdy craft (was 40) - easier to kill!
+    SPEED: 2.8,                    // Fast movement (was 3.5) - slower!
+    DAMAGE: 12,                    // Collision damage (was 20) - less damage!
     XP_VALUE: 25,                  // Good reward
     RADIUS: 1.2,                   // Medium size
     
     // Shooting Behavior
-    FIRE_RATE: 1.5,                // Time between shots
-    BULLET_SPEED: 10.0,            // Projectile speed
-    BULLET_DAMAGE: 20,             // Bullet damage
+    FIRE_RATE: 2.0,                // Time between shots (was 1.5) - less frequent!
+    BULLET_SPEED: 8.0,             // Projectile speed (was 10.0) - easier to dodge!
+    BULLET_DAMAGE: 14,             // Bullet damage (was 20) - less damage!
     
     DEATH_DAMAGE: 25,              // Alien tech explosion
     DEATH_RADIUS: 3.0,             // Medium explosion
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: CHAOS WORM (Segmented boss)
+  // ENEMY: CHAOS WORM (Segmented boss) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   CHAOS_WORM: {
-    HEALTH: 150,                   // MASSIVE health pool
-    SPEED: 2.0,                    // Moderate speed
-    DAMAGE: 25,                    // High collision damage
+    HEALTH: 100,                   // MASSIVE health pool (was 150) - easier!
+    SPEED: 1.5,                    // Moderate speed (was 2.0) - slower!
+    DAMAGE: 15,                    // High collision damage (was 25) - less damage!
     XP_VALUE: 35,                  // Big reward
     RADIUS: 2.5,                   // Large hitbox
     SEGMENT_COUNT: 12,             // Number of body segments
@@ -181,66 +181,66 @@ export const BALANCE_CONFIG = {
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: VOID SPHERE (Tank)
+  // ENEMY: VOID SPHERE (Tank) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   VOID_SPHERE: {
-    HEALTH: 250,                   // HUGE health pool
-    SPEED: 0.6,                    // Slow but deadly
-    DAMAGE: 50,                    // DEVASTATING collision
+    HEALTH: 150,                   // HUGE health pool (was 250) - much easier!
+    SPEED: 0.5,                    // Slow but deadly (was 0.6) - slower!
+    DAMAGE: 30,                    // DEVASTATING collision (was 50) - less damage!
     XP_VALUE: 50,                  // Massive reward
     RADIUS: 3.2,                   // Huge hitbox (4x normal)
     
     // Shooting Behavior (Burst)
-    FIRE_RATE: 3.0,                // Time between bursts
-    BURST_COUNT: 5,                // Shots per burst
-    BURST_DELAY: 0.2,              // Time between burst shots
-    BULLET_SPEED: 6.0,             // Slow heavy bullets
-    BULLET_DAMAGE: 25,             // High damage per bullet
+    FIRE_RATE: 4.0,                // Time between bursts (was 3.0) - less frequent!
+    BURST_COUNT: 4,                // Shots per burst (was 5) - fewer shots!
+    BURST_DELAY: 0.25,             // Time between burst shots (was 0.2) - slower!
+    BULLET_SPEED: 5.0,             // Slow heavy bullets (was 6.0) - easier to dodge!
+    BULLET_DAMAGE: 15,             // High damage per bullet (was 25) - less damage!
     
     DEATH_DAMAGE: 50,              // MASSIVE implosion
     DEATH_RADIUS: 8.0,             // Huge explosion radius
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: CRYSTAL SHARD SWARM (Orbital attacker)
+  // ENEMY: CRYSTAL SHARD SWARM (Orbital attacker) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   CRYSTAL_SWARM: {
-    HEALTH: 120,                   // High health
-    SPEED: 1.8,                    // Fast
-    DAMAGE: 40,                    // High collision damage
+    HEALTH: 80,                    // High health (was 120) - easier to kill!
+    SPEED: 1.4,                    // Fast (was 1.8) - slower!
+    DAMAGE: 25,                    // High collision damage (was 40) - less damage!
     XP_VALUE: 45,                  // Big reward
     RADIUS: 4.5,                   // Large orbital radius
     SHARD_COUNT: 6,                // Number of orbiting shards
     ORBIT_SPEED: 1.5,              // Rotation speed
     
     // Shooting Behavior (Burst from shards)
-    FIRE_RATE: 2.5,                // Time between bursts
-    BURST_COUNT: 3,                // Shots per burst
-    BURST_DELAY: 0.15,             // Time between burst shots
-    BULLET_SPEED: 10.0,            // Projectile speed
-    BULLET_DAMAGE: 15,             // Damage per bullet
-    SHARDS_THAT_FIRE: 2,           // How many shards fire at once
+    FIRE_RATE: 3.5,                // Time between bursts (was 2.5) - less frequent!
+    BURST_COUNT: 2,                // Shots per burst (was 3) - fewer shots!
+    BURST_DELAY: 0.2,              // Time between burst shots (was 0.15) - slower!
+    BULLET_SPEED: 8.0,             // Projectile speed (was 10.0) - easier to dodge!
+    BULLET_DAMAGE: 10,             // Damage per bullet (was 15) - less damage!
+    SHARDS_THAT_FIRE: 1,           // How many shards fire at once (was 2) - less threats!
     
     DEATH_DAMAGE: 30,              // Crystal explosion
     DEATH_RADIUS: 5.0,             // Large explosion
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: BOSS (Level boss)
+  // ENEMY: BOSS (Level boss) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   BOSS: {
-    HEALTH: 250,                   // Boss health
-    SPEED: 0.4,                    // Slow but menacing
-    DAMAGE: 40,                    // High collision damage
+    HEALTH: 180,                   // Boss health (was 250) - easier!
+    SPEED: 0.3,                    // Slow but menacing (was 0.4) - slower!
+    DAMAGE: 25,                    // High collision damage (was 40) - less damage!
     XP_VALUE: 100,                 // Huge reward
     RADIUS: 4.0,                   // Large ship
     
     // Shooting Behavior (Multi-phase)
-    PHASE_1_FIRE_RATE: 1.0,        // Aggressive firing
-    PHASE_2_FIRE_RATE: 0.8,        // Faster when damaged
+    PHASE_1_FIRE_RATE: 1.5,        // Aggressive firing (was 1.0) - slower!
+    PHASE_2_FIRE_RATE: 1.2,        // Faster when damaged (was 0.8) - still slower!
     PHASE_3_FIRE_RATE: 99,         // No firing (ring phase)
-    BULLET_SPEED: 8.0,             // Projectile speed
-    BULLET_DAMAGE: 25,             // High damage
+    BULLET_SPEED: 6.5,             // Projectile speed (was 8.0) - easier to dodge!
+    BULLET_DAMAGE: 18,             // High damage (was 25) - less damage!
     
     // Phase Thresholds
     PHASE_2_HEALTH_PCT: 0.66,      // Enter phase 2 at 66% health
@@ -256,30 +256,30 @@ export const BALANCE_CONFIG = {
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // PICKUP CONFIGURATION
+  // PICKUP CONFIGURATION (BALANCED - Not too generous!)
   // ═══════════════════════════════════════════════════════════════════
   PICKUPS: {
     // Power-Up (Weapon boost)
     POWER_UP: {
-      SPAWNS_PER_LEVEL: 3,         // How many spawn per level
-      SPAWN_INTERVAL_MIN: 10,      // Min time between spawns (seconds)
-      SPAWN_INTERVAL_MAX: 15,      // Max time between spawns
+      SPAWNS_PER_LEVEL: 2,         // How many spawn per level - LIMITED!
+      SPAWN_INTERVAL_MIN: 30,      // Min time between spawns - RARE!
+      SPAWN_INTERVAL_MAX: 45,      // Max time between spawns
     },
     
     // Speed-Up (Movement boost)
     SPEED_UP: {
-      SPAWNS_PER_LEVEL: 2,
-      SPAWN_INTERVAL_MIN: 15,
-      SPAWN_INTERVAL_MAX: 25,
+      SPAWNS_PER_LEVEL: 2,         // Limited spawns
+      SPAWN_INTERVAL_MIN: 25,      // Less frequent
+      SPAWN_INTERVAL_MAX: 35,
     },
     
     // Med Pack (Health restore)
     MED_PACK: {
-      SPAWNS_PER_LEVEL: 2,
-      SPAWN_INTERVAL_MIN: 20,
+      SPAWNS_PER_LEVEL: 3,         // Moderate amount
+      SPAWN_INTERVAL_MIN: 20,      // Reasonable frequency
       SPAWN_INTERVAL_MAX: 30,
       HEALTH_THRESHOLD: 0.8,       // Only spawn if player < 80% health
-      HEAL_AMOUNT: 30,             // Health restored
+      HEAL_AMOUNT: 35,             // Health restored
     },
     
     // Shield (One-hit protection)
@@ -322,16 +322,16 @@ export const BALANCE_CONFIG = {
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // LEVEL PROGRESSION
+  // LEVEL PROGRESSION (INCREASED DIFFICULTY - MORE SCALING)
   // ═══════════════════════════════════════════════════════════════════
   LEVELS: {
     TOTAL_LEVELS: 10,              // Number of levels
     
-    // Difficulty Scaling (per level)
-    ENEMY_HEALTH_SCALE: 1.1,       // 10% more health per level
-    ENEMY_SPEED_SCALE: 1.05,       // 5% faster per level
-    ENEMY_DAMAGE_SCALE: 1.1,       // 10% more damage per level
-    SPAWN_RATE_SCALE: 0.9,         // 10% faster spawns per level
+    // Difficulty Scaling (per level) - INCREASED SCALING!
+    ENEMY_HEALTH_SCALE: 1.08,      // 8% more health per level (was 1.05)
+    ENEMY_SPEED_SCALE: 1.04,       // 4% faster per level (was 1.02)
+    ENEMY_DAMAGE_SCALE: 1.08,      // 8% more damage per level (was 1.05)
+    SPAWN_RATE_SCALE: 0.92,        // 8% faster spawns per level (was 0.95)
     
     // Level Duration
     LEVEL_DURATION: 120,           // Seconds per level (2 minutes)

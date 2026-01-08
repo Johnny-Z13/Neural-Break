@@ -311,9 +311,9 @@ export class UIManager {
     this.queueNotification(notification, 2000, 8) // High priority - level events
   }
 
-  // 🏆 LEVEL COMPLETE NOTIFICATION 🏆
+  // LEVEL COMPLETE NOTIFICATION
   showLevelCompleteNotification(): void {
-    const notification = this.createNotification('🏆 LEVEL COMPLETE! 🏆', 'notification-level-up')
+    const notification = this.createNotification('LEVEL COMPLETE!', 'notification-level-up')
     notification.style.color = '#FFD700' // Gold
     notification.style.textShadow = '0 0 40px rgba(255, 215, 0, 1.0), 0 0 80px rgba(255, 215, 0, 0.6), 3px 3px 0 #886600'
     notification.style.fontSize = 'clamp(1.2rem, 3.2vw, 2.0rem)' // Same as INVULNERABLE
