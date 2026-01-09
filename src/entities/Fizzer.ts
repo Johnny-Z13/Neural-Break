@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Enemy } from './Enemy'
+import { Enemy, EnemyState, SpawnConfig, DeathConfig } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { AudioManager } from '../audio/AudioManager'
@@ -418,7 +418,7 @@ export class Fizzer extends Enemy {
 
   // Override update to handle death animation
   update(deltaTime: number, player: Player): void {
-    // 🔴 ALWAYS update projectiles, even during/after death! 🔴
+    // Update projectiles (they get cleaned up on death via destroy())
     this.updateProjectiles(deltaTime)
     
     if (this.isDying) {
@@ -510,9 +510,6 @@ export class Fizzer extends Enemy {
         }
       }
     }
-    
-    // Update projectiles
-    this.updateProjectiles(deltaTime)
   }
 
   private fireAtPlayer(player: Player): void {
@@ -569,8 +566,22 @@ export class Fizzer extends Enemy {
   }
 
   destroy(): void {
-    // Don't immediately destroy projectiles - let them finish their trajectory!
-    // They will naturally expire based on their lifetime and continue to be updated
+    // 🧹 CLEANUP: Remove all projectiles from scene when Fizzer dies 🧹
+    for (const projectile of this.projectiles) {
+      if (this.sceneManager) {
+        this.sceneManager.removeFromScene(projectile.getMesh())
+      }
+    }
+    this.projectiles = []
+    
+    // Clean up electric bolts
+    this.electricBolts.forEach(bolt => {
+      if (bolt.parent) {
+        bolt.parent.remove(bolt)
+      }
+    })
+    this.electricBolts = []
+    
     super.destroy()
   }
 

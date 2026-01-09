@@ -30,6 +30,9 @@ export class EnemyManager {
   // 🎯 SPAWNING CONTROL (for transitions)
   private spawningPaused: boolean = false
   
+  // 🎲 SPAWN RANDOMNESS (add variety to spawn times)
+  private spawnVariance: number = 0.2  // ±20% variance on spawn rates
+  
   // 🔷 SPATIAL GRID FOR COLLISION DETECTION 🔷
   private spatialGrid: Map<string, Enemy[]> = new Map()
   private gridCellSize: number = 4.0 // Cell size for spatial partitioning
@@ -47,6 +50,16 @@ export class EnemyManager {
 
   setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager
+  }
+
+  /**
+   * 🎲 Apply random variance to spawn rate for unpredictability
+   * Returns the spawn rate with ±20% variance
+   */
+  private getRandomizedSpawnRate(baseRate: number): number {
+    if (baseRate === Infinity) return Infinity
+    const variance = baseRate * this.spawnVariance
+    return baseRate + (Math.random() - 0.5) * 2 * variance
   }
 
   update(deltaTime: number, gameTime: number): void {
@@ -75,49 +88,57 @@ export class EnemyManager {
     }
     
     // Spawn Data Mites - CRITICAL: This should spawn immediately on level 1!
-    if (this.spawnTimer >= levelConfig.miteSpawnRate) {
-      if (DEBUG_MODE) console.log('✅ Spawning DataMite! Timer:', this.spawnTimer, 'Rate:', levelConfig.miteSpawnRate)
+    // 🎲 With randomness for variety!
+    const miteRate = this.getRandomizedSpawnRate(levelConfig.miteSpawnRate)
+    if (this.spawnTimer >= miteRate) {
+      if (DEBUG_MODE) console.log('✅ Spawning DataMite! Timer:', this.spawnTimer, 'Rate:', miteRate)
       this.spawnDataMite()
       this.spawnTimer = 0
     } else {
       // Debug: Log spawn progress
       if (DEBUG_MODE && Math.random() < 0.01) { // 1% chance per frame to avoid spam
-        console.log('⏳ DataMite spawn progress:', this.spawnTimer.toFixed(2), '/', levelConfig.miteSpawnRate)
+        console.log('⏳ DataMite spawn progress:', this.spawnTimer.toFixed(2), '/', miteRate)
       }
     }
 
-    // Spawn Scan Drones
-    if (levelConfig.droneSpawnRate !== Infinity && this.scanDroneTimer >= levelConfig.droneSpawnRate) {
+    // Spawn Scan Drones (🎲 with randomness)
+    const droneRate = this.getRandomizedSpawnRate(levelConfig.droneSpawnRate)
+    if (levelConfig.droneSpawnRate !== Infinity && this.scanDroneTimer >= droneRate) {
       this.spawnScanDrone()
       this.scanDroneTimer = 0
     }
 
-    // Spawn CHAOS WORMS
-    if (levelConfig.wormSpawnRate !== Infinity && this.chaosWormTimer >= levelConfig.wormSpawnRate) {
+    // Spawn CHAOS WORMS (🎲 with randomness)
+    const wormRate = this.getRandomizedSpawnRate(levelConfig.wormSpawnRate)
+    if (levelConfig.wormSpawnRate !== Infinity && this.chaosWormTimer >= wormRate) {
       this.spawnChaosWorm()
       this.chaosWormTimer = 0
     }
 
-    // Spawn VOID SPHERES
-    if (levelConfig.voidSpawnRate !== Infinity && this.voidSphereTimer >= levelConfig.voidSpawnRate) {
+    // Spawn VOID SPHERES (🎲 with randomness)
+    const voidRate = this.getRandomizedSpawnRate(levelConfig.voidSpawnRate)
+    if (levelConfig.voidSpawnRate !== Infinity && this.voidSphereTimer >= voidRate) {
       this.spawnVoidSphere()
       this.voidSphereTimer = 0
     }
 
-    // Spawn CRYSTAL SHARD SWARMS
-    if (levelConfig.crystalSpawnRate !== Infinity && this.crystalSwarmTimer >= levelConfig.crystalSpawnRate) {
+    // Spawn CRYSTAL SHARD SWARMS (🎲 with randomness)
+    const crystalRate = this.getRandomizedSpawnRate(levelConfig.crystalSpawnRate)
+    if (levelConfig.crystalSpawnRate !== Infinity && this.crystalSwarmTimer >= crystalRate) {
       this.spawnCrystalShardSwarm()
       this.crystalSwarmTimer = 0
     }
 
-    // Spawn BOSS
-    if (levelConfig.bossSpawnRate !== Infinity && this.bossTimer >= levelConfig.bossSpawnRate) {
+    // Spawn BOSS (🎲 with randomness)
+    const bossRate = this.getRandomizedSpawnRate(levelConfig.bossSpawnRate)
+    if (levelConfig.bossSpawnRate !== Infinity && this.bossTimer >= bossRate) {
       this.spawnBoss()
       this.bossTimer = 0
     }
 
-    // 🛸 Spawn UFO - Uses levelConfig spawn rate (no more hardcoded magic numbers!)
-    if (levelConfig.ufoSpawnRate !== Infinity && this.ufoTimer >= levelConfig.ufoSpawnRate) {
+    // 🛸 Spawn UFO (🎲 with randomness)
+    const ufoRate = this.getRandomizedSpawnRate(levelConfig.ufoSpawnRate)
+    if (levelConfig.ufoSpawnRate !== Infinity && this.ufoTimer >= ufoRate) {
       this.spawnUFO()
       this.ufoTimer = 0
     }

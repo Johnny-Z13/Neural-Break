@@ -9,6 +9,7 @@ import { GameTimer } from './GameTimer'
 import { AudioManager } from '../audio/AudioManager'
 import { GameStateType, GameStats, ScoreManager, KILL_POINTS } from './GameState'
 import { GameScreens } from '../ui/GameScreens'
+import { PauseScreen } from '../ui/screens/PauseScreen'
 import { Enemy, DataMite, ScanDrone, ChaosWorm, VoidSphere, CrystalShardSwarm, Fizzer, UFO, Boss } from '../entities'
 import { LevelManager } from './LevelManager'
 import { PowerUpManager } from './PowerUpManager'
@@ -42,6 +43,8 @@ export class Game {
   private combo: number = 0
   private comboTimer: number = 0
   private lastDamageTaken: number = 0
+  private isTestMode: boolean = false // Unlimited health test mode
+  private isPaused: boolean = false
   
   // 💀 DEATH ANIMATION STATE 💀
   private isDeathAnimationPlaying: boolean = false
@@ -188,7 +191,247 @@ export class Game {
     this.gameState = GameStateType.START_SCREEN
     // Stop ambient soundscape on start screen
     this.audioManager.stopAmbientSoundscape()
-    GameScreens.showStartScreen(() => this.startNewGame())
+    GameScreens.showStartScreen(() => this.startNewGame(), () => this.startTestMode())
+  }
+  
+  private showPauseMenu(): void {
+    if (DEBUG_MODE) console.log('🛑 Game paused')
+    this.isPaused = true
+    
+    // Stop game loop to freeze gameplay
+    this.isRunning = false
+    
+    const pauseScreen = PauseScreen.create(
+      this.audioManager,
+      () => this.resumeGame(),
+      () => this.endGame()
+    )
+    
+    document.body.appendChild(pauseScreen)
+  }
+  
+  private resumeGame(): void {
+    if (DEBUG_MODE) console.log('▶️ Game resumed')
+    this.isPaused = false
+    
+    // Restart game loop
+    this.start()
+  }
+  
+  private endGame(): void {
+    if (DEBUG_MODE) console.log('🛑 Ending game and returning to start screen')
+    this.isPaused = false
+    
+    // Clean up everything
+    this.cleanupGameObjects()
+    
+    // Return to start screen
+    setTimeout(() => {
+      this.showStartScreen()
+    }, 100)
+  }
+  
+  private startTestMode(): void {
+    if (DEBUG_MODE) console.log('🧪 startTestMode() called')
+    
+    // COMPLETE CLEANUP FIRST! 🧹
+    this.cleanupGameObjects()
+    
+    // Small delay to ensure cleanup is complete and old game loop has stopped
+    setTimeout(() => {
+      // Ensure game loop is stopped before starting test mode
+      this.isRunning = false
+      if (DEBUG_MODE) console.log('🧪 Starting initializeTestMode()...')
+      this.initializeTestMode()
+    }, 100)
+  }
+  
+  private initializeTestMode(): void {
+    if (DEBUG_MODE) console.log('🧪 Starting test mode...')
+    
+    // Reset game state - CRITICAL: Must be PLAYING for updates to work!
+    this.gameState = GameStateType.PLAYING
+    this.isTestMode = true // Enable unlimited health
+    if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (TEST MODE):', this.gameState)
+    
+    // Show HUD when game starts
+    this.uiManager.setHUDVisibility(true)
+    
+    this.gameStats = this.createEmptyStats()
+    this.combo = 0
+    this.comboTimer = 0
+    this.scoreMultiplier = 1
+    this.multiplierTimer = 0
+    this.lastKillTime = 0
+    this.lastMultiplierShown = 0
+    this.recentEnemyDeaths = []
+    this.lastScore = 0
+    this.lastHighScoreMoment = 0
+    
+    // Start the level manager with TEST level
+    this.levelManager.startTestLevel()
+    
+    // Reset player
+    if (this.player) {
+      this.player.cleanupFragments()
+    }
+    
+    if (DEBUG_MODE) console.log('👤 Creating player...')
+    this.player = new Player()
+    if (DEBUG_MODE) console.log('✅ Player object created')
+    
+    this.player.initialize(this.audioManager)
+    if (DEBUG_MODE) console.log('✅ Player initialized')
+    
+    // Enable test mode on player (unlimited health)
+    this.player.setTestMode(true)
+    if (DEBUG_MODE) console.log('✅ Test mode enabled on player')
+    
+    // Set shield notification callbacks
+    this.player.setShieldCallbacks(
+      () => this.uiManager.showShieldActivated(),
+      () => this.uiManager.showShieldDeactivated()
+    )
+    if (DEBUG_MODE) console.log('✅ Shield callbacks connected')
+    
+    // Set invulnerable notification callbacks
+    this.player.setInvulnerableCallbacks(
+      () => this.uiManager.showInvulnerableActivated(),
+      () => this.uiManager.showInvulnerableDeactivated()
+    )
+    if (DEBUG_MODE) console.log('✅ Invulnerable callbacks connected')
+    
+    const playerMesh = this.player.getMesh()
+    if (DEBUG_MODE) console.log('🔍 Player mesh retrieved:', playerMesh)
+    
+    if (!playerMesh) {
+      console.error('❌ CRITICAL: Player mesh is null after initialization!')
+    } else {
+      if (DEBUG_MODE) console.log('✅ Player mesh exists')
+      
+      // Force visibility
+      playerMesh.visible = true
+      playerMesh.position.z = 0
+      
+      if (DEBUG_MODE) console.log('➕ Adding player mesh to scene...')
+      this.sceneManager.addToScene(playerMesh)
+      if (DEBUG_MODE) console.log('✅ Player mesh added to scene')
+    }
+    
+    // Set camera to follow player immediately - CRITICAL for visibility!
+    const playerPos = this.player.getPosition()
+    if (DEBUG_MODE) console.log('📷 Setting camera target to player position:', playerPos)
+    this.sceneManager.setCameraTarget(playerPos)
+    
+    // Set player effects system
+    this.player.setEffectsSystem(this.sceneManager.getEffectsSystem())
+    
+    // Set player zoom compensation callback
+    this.player.setZoomCompensationCallback(() => this.sceneManager.getZoomCompensationScale())
+    
+    // Reset weapon system
+    this.weaponSystem = new WeaponSystem()
+    this.weaponSystem.initialize(this.player, this.sceneManager, this.audioManager)
+    
+    // 🎆 CONNECT EFFECTS SYSTEM! 🎆
+    const effectsSystem = this.sceneManager.getEffectsSystem()
+    this.weaponSystem.setEffectsSystem(effectsSystem)
+    this.player.setEffectsSystem(effectsSystem)
+    
+    // 🎯 SET UP WEAPON TYPE CHANGE CALLBACK 🎯
+    this.weaponSystem.setWeaponTypeChangeCallback((weaponType: WeaponType) => {
+      this.uiManager.updateWeaponType(weaponType)
+    })
+
+    // 🔥 SET UP HEAT SYSTEM CALLBACK 🔥
+    let lastOverheatState = false
+    this.weaponSystem.setHeatChangeCallback((heat, isOverheated) => {
+      this.uiManager.updateHeat(heat, isOverheated)
+      
+      if (isOverheated) {
+        if (!lastOverheatState) {
+          this.uiManager.showOverheatedNotification()
+        }
+        this.multiplierTimer = Math.max(0, this.multiplierTimer - 0.5)
+      }
+      lastOverheatState = isOverheated
+    })
+    
+    // Initialize weapon type display
+    this.uiManager.updateWeaponType(this.weaponSystem.getCurrentWeaponType())
+    
+    // Reset enemy manager
+    this.enemyManager = new EnemyManager()
+    this.enemyManager.initialize(this.sceneManager, this.player)
+    this.enemyManager.setLevelManager(this.levelManager)
+    this.enemyManager.setEffectsSystem(effectsSystem)
+    this.enemyManager.setAudioManager(this.audioManager)
+    
+    // Reset power-up manager
+    this.powerUpManager = new PowerUpManager()
+    this.powerUpManager.initialize(this.sceneManager, this.player)
+    this.powerUpManager.setLevelManager(this.levelManager)
+    this.powerUpManager.setEffectsSystem(effectsSystem)
+    
+    // Reset med pack manager
+    this.medPackManager = new MedPackManager()
+    this.medPackManager.initialize(this.sceneManager, this.player)
+    this.medPackManager.setLevelManager(this.levelManager)
+    this.medPackManager.setEffectsSystem(effectsSystem)
+    
+    // Reset speed-up manager
+    this.speedUpManager = new SpeedUpManager()
+    this.speedUpManager.initialize(this.sceneManager, this.player)
+    this.speedUpManager.setLevelManager(this.levelManager)
+    this.speedUpManager.setEffectsSystem(effectsSystem)
+    
+    // Reset shield manager
+    this.shieldManager = new ShieldManager()
+    this.shieldManager.initialize(this.sceneManager, this.player)
+    this.shieldManager.setLevelManager(this.levelManager)
+    this.shieldManager.setEffectsSystem(effectsSystem)
+    
+    // Reset invulnerable manager
+    this.invulnerableManager = new InvulnerableManager()
+    this.invulnerableManager.setSceneManager(this.sceneManager)
+    
+    // Reset player power-up level, speed level, and shield
+    this.player.resetPowerUpLevel()
+    this.player.resetSpeedUpLevel()
+    this.player.resetShield()
+    
+    // 🧪 TEST MODE BOOSTS - Give player enhanced abilities for testing! 🧪
+    if (DEBUG_MODE) console.log('🚀 Applying test mode boosts...')
+    
+    // Add +5 weapon power-ups
+    for (let i = 0; i < 5; i++) {
+      this.player.collectPowerUp()
+    }
+    if (DEBUG_MODE) console.log('✅ Applied +5 weapon power-ups')
+    
+    // Add +20 speed-ups (max speed boost)
+    for (let i = 0; i < 20; i++) {
+      this.player.collectSpeedUp()
+    }
+    if (DEBUG_MODE) console.log('✅ Applied +20 speed-ups (max speed)')
+    
+    // Initialize timer with a long time for TEST mode
+    this.gameTimer = new GameTimer(999999)
+    
+    // Show HUD with initial values
+    this.uiManager.setHUDVisibility(true)
+    
+    // Start ambient soundscape
+    this.audioManager.startAmbientSoundscape()
+    
+    // Start the game loop
+    this.lastFrameTime = performance.now()
+    this.start()
+    
+    // Start scene transition
+    this.sceneManager.startTransition('zoomIn')
+    
+    if (DEBUG_MODE) console.log('✅ Test mode initialization complete!')
   }
 
   private startNewGame(): void {
@@ -211,7 +454,8 @@ export class Game {
     
     // Reset game state - CRITICAL: Must be PLAYING for updates to work!
     this.gameState = GameStateType.PLAYING
-    if (DEBUG_MODE) console.log('✅ Game state set to PLAYING:', this.gameState)
+    this.isTestMode = false // Ensure test mode is disabled
+    if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (NORMAL MODE):', this.gameState)
     
     // Show HUD when game starts
     this.uiManager.setHUDVisibility(true)
@@ -244,6 +488,10 @@ export class Game {
     
     this.player.initialize(this.audioManager)
     if (DEBUG_MODE) console.log('✅ Player initialized')
+    
+    // Ensure test mode is disabled for normal gameplay
+    this.player.setTestMode(false)
+    if (DEBUG_MODE) console.log('✅ Test mode disabled on player (normal game)')
     
     // Set shield notification callbacks
     this.player.setShieldCallbacks(
@@ -534,6 +782,20 @@ export class Game {
     // 🎮 UPDATE GAMEPAD STATE (must be called every frame)
     this.inputManager.update()
     
+    // 🛑 CHECK FOR PAUSE (ESC key) - Only during active gameplay
+    if (this.gameState === GameStateType.PLAYING && !this.isPaused && !this.isDeathAnimationPlaying && !this.isLevelTransitioning) {
+      if (this.inputManager.isKeyPressed('escape')) {
+        this.showPauseMenu()
+        return
+      }
+    }
+    
+    // 🛑 If paused, skip all updates except scene manager
+    if (this.isPaused) {
+      this.sceneManager.update(deltaTime) // Keep background effects running
+      return
+    }
+    
     // 💀 Allow updates during death animation 💀
     if (this.isDeathAnimationPlaying) {
       this.updateDeathAnimation(deltaTime)
@@ -545,6 +807,17 @@ export class Game {
       this.updateLevelTransition(deltaTime)
       // Still update scene manager for effects during transition
       this.sceneManager.update(deltaTime)
+      
+      // 🎆 KEEP ENEMIES UPDATING FOR DEATH ANIMATIONS & PROJECTILES 🎆
+      if (this.enemyManager) {
+        this.enemyManager.update(deltaTime, this.levelManager.getTotalElapsedTime())
+      }
+      
+      // 🚀 KEEP PROJECTILES MOVING DURING TRANSITION 🚀
+      if (this.weaponSystem && this.enemyManager) {
+        this.weaponSystem.update(deltaTime, this.enemyManager.getEnemies(), this.inputManager)
+      }
+      
       return
     }
     
@@ -1331,30 +1604,37 @@ export class Game {
     const enemies = this.enemyManager.getEnemies()
     const effectsSystem = this.sceneManager.getEffectsSystem()
     
-    // Stagger deaths by 0.1s for fireworks effect! 🎆
-    enemies.forEach((enemy, index) => {
+    // 🎆 STAGGER DEATHS WITHIN 1 SECOND - Random timing for variety! 🎆
+    // Each enemy gets a random death time between 0-1000ms
+    enemies.forEach((enemy) => {
+      const randomDelay = Math.random() * 1000 // Random time within 1 second
+      
       setTimeout(() => {
-        // Kill enemy with massive damage - triggers proper death sequence with VFX!
-        // This will play:
-        // - Death animation (if enemy has one)
-        // - Death particles and effects
-        // - Death sound
-        // - All the juicy VFX you've created!
-        enemy.takeDamage(999999)
-        
-        // Add extra cyan glow effect for level transition
-        effectsSystem.createExplosion(
-          enemy.getPosition(),
-          2.0,
-          new THREE.Color(0, 1, 1) // Cyan glow overlay
-        )
-        
-        // Play special transition sound
-        this.audioManager.playEnemyDeathSound(enemy.constructor.name)
-      }, index * 100) // 0.1s stagger per enemy = FIREWORKS! 🎆
+        // Only kill if still alive (might have died naturally)
+        if (enemy.isAlive()) {
+          // Kill enemy with massive damage - triggers proper death sequence with VFX!
+          // This will play:
+          // - Death animation (if enemy has one)
+          // - Death particles and effects
+          // - Death sound
+          // - All the juicy VFX you've created!
+          enemy.takeDamage(999999)
+          
+          // Add extra cyan glow effect for level transition
+          effectsSystem.createExplosion(
+            enemy.getPosition(),
+            2.0,
+            new THREE.Color(0, 1, 1) // Cyan glow overlay
+          )
+          
+          // Play special transition sound
+          this.audioManager.playEnemyDeathSound(enemy.constructor.name)
+        }
+      }, randomDelay)
     })
     
     // Note: Don't force clear here - let death animations play out naturally
+    // Projectiles will continue their journey during the clearing phase
     // The EnemyManager will clean up dead enemies automatically
   }
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Enemy } from './Enemy'
+import { Enemy, EnemyState, SpawnConfig, DeathConfig } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { SceneManager } from '../graphics/SceneManager'

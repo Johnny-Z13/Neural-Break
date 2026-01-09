@@ -5,12 +5,22 @@ import { StarfieldManager } from '../../graphics/StarfieldManager'
  * NEURAL BREAK - Start Screen
  * 80s Arcade / Cyberpunk Aesthetic
  * Uses unified design system CSS variables
+ * 
+ * 🎮 Supports keyboard and gamepad navigation!
  */
 export class StartScreen {
+  private static selectedButtonIndex = 0
+  private static keyboardListener: ((e: KeyboardEvent) => void) | null = null
+  private static gamepadInterval: number | null = null
+  private static lastGamepadInput = 0
+  private static gamepadDeadzone = 0.5
+  private static inputCooldown = 200 // ms between inputs
+
   static create(
     audioManager: AudioManager | null,
     onStartGame: () => void,
-    onShowLeaderboard: () => void
+    onShowLeaderboard: () => void,
+    onStartTestMode?: () => void
   ): HTMLElement {
     // Start the shared starfield background
     StarfieldManager.getInstance().start()
@@ -151,39 +161,26 @@ export class StartScreen {
           </div>
         </div>
 
-        <!-- INSERT COIN / PRESS START -->
-        <div class="press-start" style="
-          font-size: clamp(0.9rem, 2.5vw, 1.5rem);
-          color: var(--color-yellow, #FFFF00);
-          text-shadow: 0 0 20px var(--color-yellow, #FFFF00), 2px 2px 0 var(--color-orange, #FF6600);
-          letter-spacing: 0.15em;
-          margin-bottom: var(--space-md, 1rem);
-          animation: blink 0.8s step-end infinite;
-        ">
-          ▶ PRESS START ◀
-        </div>
-        
         <!-- BUTTONS -->
-        <div class="button-container" style="display: flex; flex-direction: column; gap: var(--space-sm, 0.8rem); align-items: center; margin-bottom: var(--space-md, 1rem);">
-          <button id="startButton" class="arcade-button arcade-button-primary" style="
-            background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
-            border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
-            color: var(--color-cyan, #00FFFF);
+        <div class="button-container" style="display: flex; flex-direction: column; gap: var(--space-md, 1.2rem); align-items: center; margin-bottom: var(--space-md, 1rem);">
+          
+          <!-- START GAME BUTTON (Clickable Flashing Text) -->
+          <button id="startButton" class="arcade-button arcade-button-start press-start" style="
+            background: transparent;
+            border: none;
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            color: var(--color-yellow, #FFFF00);
+            text-shadow: 0 0 20px var(--color-yellow, #FFFF00), 2px 2px 0 var(--color-orange, #FF6600);
+            letter-spacing: 0.15em;
+            cursor: pointer;
             font-family: inherit;
-            font-size: clamp(0.9rem, 2vw, 1.2rem);
             font-weight: bold;
             padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
-            cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
-            box-shadow: 
-              0 0 20px var(--color-cyan-glow, rgba(0, 255, 255, 0.5)),
-              inset 0 0 20px rgba(0, 255, 255, 0.1),
-              var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666);
+            animation: blink 0.8s step-end infinite;
             transition: all 0.1s step-end;
           ">
-            ★ START GAME ★
+            ▶ PRESS START ◀
           </button>
           
           <button id="leaderboardButton" class="arcade-button arcade-button-secondary" style="
@@ -204,6 +201,27 @@ export class StartScreen {
             transition: all 0.1s step-end;
           ">
             ◆ HIGH SCORES ◆
+          </button>
+          
+          <!-- TEST MODE BUTTON -->
+          <button id="testButton" class="arcade-button arcade-button-secondary" style="
+            background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+            border: var(--border-thick, 4px) solid var(--color-orange, #FF6600);
+            color: var(--color-orange, #FF6600);
+            font-family: inherit;
+            font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+            font-weight: bold;
+            padding: var(--space-xs, 0.5rem) var(--space-md, 1rem);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 10px var(--color-orange, #FF6600);
+            box-shadow: 
+              0 0 15px var(--color-orange-glow, rgba(255, 102, 0, 0.4)),
+              var(--shadow-pixel, 4px 4px 0) var(--color-orange-dark, #663300);
+            transition: all 0.1s step-end;
+          ">
+            ◆ TEST MODE ◆
           </button>
         </div>
       </div>
@@ -234,17 +252,22 @@ export class StartScreen {
             <span class="key-cap">S</span>
             <span class="key-cap">D</span>
           </div>
-          <span style="color: var(--color-cyan, #00FFFF); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-cyan, #00FFFF);">MOVE</span>
+          <span style="color: var(--color-cyan, #00FFFF); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-cyan, #00FFFF);">MOVE/MENU</span>
         </div>
         
         <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.2rem;">
           <span class="key-cap key-space" style="border-color: var(--color-orange, #FF6600); color: var(--color-orange, #FF6600);">SPACE</span>
-          <span style="color: var(--color-orange, #FF6600); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-orange, #FF6600);">FIRE</span>
+          <span style="color: var(--color-orange, #FF6600); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-orange, #FF6600);">FIRE/SELECT</span>
         </div>
         
         <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.2rem;">
           <span class="key-cap key-shift" style="border-color: var(--color-green, #00FF00); color: var(--color-green, #00FF00);">SHIFT</span>
           <span style="color: var(--color-green, #00FF00); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-green, #00FF00);">DASH</span>
+        </div>
+        
+        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.2rem;">
+          <span class="key-cap" style="border-color: var(--color-yellow, #FFFF00); color: var(--color-yellow, #FFFF00);">🎮</span>
+          <span style="color: var(--color-yellow, #FFFF00); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-yellow, #FFFF00);">GAMEPAD</span>
         </div>
       </div>
       
@@ -297,6 +320,11 @@ export class StartScreen {
       @keyframes subtitlePulse {
         0%, 100% { opacity: 0.8; transform: scale(1); }
         50% { opacity: 1; transform: scale(1.02); }
+      }
+      
+      @keyframes blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
       }
       
       @keyframes dangerPulse {
@@ -352,24 +380,26 @@ export class StartScreen {
       .key-space { width: 60px; }
       .key-shift { width: 50px; }
       
-      #startButton:hover {
-        background: #003333 !important;
-        box-shadow: 
-          0 0 40px rgba(0, 255, 255, 0.8),
-          inset 0 0 30px rgba(0, 255, 255, 0.2),
-          4px 4px 0 var(--color-cyan, #00FFFF) !important;
-        transform: translate(-2px, -2px);
+      #startButton:hover,
+      #startButton.selected {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: scale(1.1);
+        text-shadow: 
+          0 0 30px var(--color-yellow, #FFFF00),
+          0 0 60px var(--color-yellow, #FFFF00),
+          3px 3px 0 var(--color-orange, #FF6600) !important;
       }
       
       #startButton:active {
-        transform: translate(2px, 2px);
-        box-shadow: 
-          0 0 20px rgba(0, 255, 255, 0.6),
-          inset 0 0 20px rgba(0, 255, 255, 0.1),
-          0 0 0 var(--color-cyan-dark, #006666) !important;
+        transform: scale(1.05);
+        text-shadow: 
+          0 0 20px var(--color-yellow, #FFFF00),
+          2px 2px 0 var(--color-orange, #FF6600);
       }
       
-      #leaderboardButton:hover {
+      #leaderboardButton:hover,
+      #leaderboardButton.selected {
         background: #330033 !important;
         box-shadow: 
           0 0 30px rgba(255, 0, 255, 0.6),
@@ -382,6 +412,22 @@ export class StartScreen {
         box-shadow: 
           0 0 15px rgba(255, 0, 255, 0.4),
           0 0 0 var(--color-magenta-dark, #660066) !important;
+      }
+      
+      #testButton:hover,
+      #testButton.selected {
+        background: #332200 !important;
+        box-shadow: 
+          0 0 30px rgba(255, 102, 0, 0.6),
+          4px 4px 0 var(--color-orange, #FF6600) !important;
+        transform: translate(-2px, -2px);
+      }
+      
+      #testButton:active {
+        transform: translate(2px, 2px);
+        box-shadow: 
+          0 0 15px rgba(255, 102, 0, 0.4),
+          0 0 0 var(--color-orange-dark, #663300) !important;
       }
       
       .enemy-card {
@@ -445,10 +491,16 @@ export class StartScreen {
     `
     document.head.appendChild(style)
 
-    // Add event listeners
+    // Get button references
     const startButton = startScreen.querySelector('#startButton') as HTMLButtonElement
+    const leaderboardButton = startScreen.querySelector('#leaderboardButton') as HTMLButtonElement
+    const testButton = startScreen.querySelector('#testButton') as HTMLButtonElement
+    const buttons = [startButton, leaderboardButton, testButton]
+
+    // Mouse event listeners
     startButton.addEventListener('mouseenter', () => {
-      if (audioManager) audioManager.playButtonHoverSound()
+      StartScreen.selectedButtonIndex = 0
+      StartScreen.updateButtonSelection(buttons, audioManager)
     })
     startButton.addEventListener('click', () => {
       if (audioManager) audioManager.playButtonPressSound()
@@ -459,16 +511,154 @@ export class StartScreen {
       }, 50)
     })
 
-    const leaderboardButton = startScreen.querySelector('#leaderboardButton') as HTMLButtonElement
     leaderboardButton.addEventListener('mouseenter', () => {
-      if (audioManager) audioManager.playButtonHoverSound()
+      StartScreen.selectedButtonIndex = 1
+      StartScreen.updateButtonSelection(buttons, audioManager)
     })
     leaderboardButton.addEventListener('click', () => {
       if (audioManager) audioManager.playButtonPressSound()
       onShowLeaderboard()
     })
 
+    testButton.addEventListener('mouseenter', () => {
+      StartScreen.selectedButtonIndex = 2
+      StartScreen.updateButtonSelection(buttons, audioManager)
+    })
+    testButton.addEventListener('click', () => {
+      if (audioManager) audioManager.playButtonPressSound()
+      StartScreen.stopStarfield()
+      StartScreen.cleanup()
+      setTimeout(() => {
+        if (onStartTestMode) onStartTestMode()
+      }, 50)
+    })
+
+    // 🎮 KEYBOARD NAVIGATION
+    StartScreen.keyboardListener = (e: KeyboardEvent) => {
+      const key = e.code.toLowerCase()
+      
+      // Navigate up/down
+      if (key === 'arrowup' || key === 'keyw') {
+        e.preventDefault()
+        StartScreen.selectedButtonIndex = Math.max(0, StartScreen.selectedButtonIndex - 1)
+        StartScreen.updateButtonSelection(buttons, audioManager)
+      } else if (key === 'arrowdown' || key === 'keys') {
+        e.preventDefault()
+        StartScreen.selectedButtonIndex = Math.min(buttons.length - 1, StartScreen.selectedButtonIndex + 1)
+        StartScreen.updateButtonSelection(buttons, audioManager)
+      } 
+      // Select button
+      else if (key === 'space' || key === 'enter') {
+        e.preventDefault()
+        if (audioManager) audioManager.playButtonPressSound()
+        
+        if (StartScreen.selectedButtonIndex === 0) {
+          StartScreen.stopStarfield()
+          StartScreen.cleanup()
+          setTimeout(() => {
+            onStartGame()
+          }, 50)
+        } else if (StartScreen.selectedButtonIndex === 1) {
+          onShowLeaderboard()
+        } else if (StartScreen.selectedButtonIndex === 2) {
+          StartScreen.stopStarfield()
+          StartScreen.cleanup()
+          setTimeout(() => {
+            if (onStartTestMode) onStartTestMode()
+          }, 50)
+        }
+      }
+    }
+    
+    document.addEventListener('keydown', StartScreen.keyboardListener)
+
+    // 🎮 GAMEPAD NAVIGATION
+    StartScreen.gamepadInterval = window.setInterval(() => {
+      const gamepads = navigator.getGamepads()
+      const gamepad = gamepads[0] // Use first connected gamepad
+      
+      if (!gamepad) return
+      
+      const now = Date.now()
+      if (now - StartScreen.lastGamepadInput < StartScreen.inputCooldown) return
+      
+      // D-pad or left stick navigation
+      const dpadUp = gamepad.buttons[12]?.pressed
+      const dpadDown = gamepad.buttons[13]?.pressed
+      const leftStickY = gamepad.axes[1] || 0
+      
+      if (dpadUp || leftStickY < -StartScreen.gamepadDeadzone) {
+        StartScreen.selectedButtonIndex = Math.max(0, StartScreen.selectedButtonIndex - 1)
+        StartScreen.updateButtonSelection(buttons, audioManager)
+        StartScreen.lastGamepadInput = now
+      } else if (dpadDown || leftStickY > StartScreen.gamepadDeadzone) {
+        StartScreen.selectedButtonIndex = Math.min(buttons.length - 1, StartScreen.selectedButtonIndex + 1)
+        StartScreen.updateButtonSelection(buttons, audioManager)
+        StartScreen.lastGamepadInput = now
+      }
+      
+      // A button (Xbox) / X button (PlayStation) to select
+      const aButton = gamepad.buttons[0]?.pressed
+      if (aButton) {
+        if (now - StartScreen.lastGamepadInput < StartScreen.inputCooldown) return
+        
+        if (audioManager) audioManager.playButtonPressSound()
+        
+        if (StartScreen.selectedButtonIndex === 0) {
+          StartScreen.stopStarfield()
+          StartScreen.cleanup()
+          setTimeout(() => {
+            onStartGame()
+          }, 50)
+        } else if (StartScreen.selectedButtonIndex === 1) {
+          onShowLeaderboard()
+        } else if (StartScreen.selectedButtonIndex === 2) {
+          StartScreen.stopStarfield()
+          StartScreen.cleanup()
+          setTimeout(() => {
+            if (onStartTestMode) onStartTestMode()
+          }, 50)
+        }
+        
+        StartScreen.lastGamepadInput = now
+      }
+    }, 50) // Check gamepad every 50ms
+
+    // Initialize button selection
+    StartScreen.updateButtonSelection(buttons, audioManager, true)
+
+    // 🎵 RESUME AUDIO CONTEXT ON FIRST INTERACTION 🎵
+    // Add one-time listeners to ensure audio works on first interaction
+    const resumeAudioOnce = () => {
+      if (audioManager) {
+        audioManager.resumeAudio().catch(e => console.warn('Audio resume failed:', e))
+      }
+    }
+    
+    // Resume on any interaction
+    startScreen.addEventListener('click', resumeAudioOnce, { once: true })
+    startScreen.addEventListener('keydown', resumeAudioOnce, { once: true })
+    window.addEventListener('gamepadbuttondown', resumeAudioOnce, { once: true })
+
     return startScreen
+  }
+
+  // 🎮 Update visual selection state of buttons
+  private static updateButtonSelection(
+    buttons: HTMLButtonElement[], 
+    audioManager: AudioManager | null,
+    silent: boolean = false
+  ): void {
+    buttons.forEach((button, index) => {
+      if (index === StartScreen.selectedButtonIndex) {
+        button.classList.add('selected')
+        if (!silent && audioManager) {
+          audioManager.playButtonHoverSound()
+        }
+      } else {
+        button.classList.remove('selected')
+      }
+    })
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -826,9 +1016,26 @@ export class StartScreen {
   }
 
   static cleanup(): void {
+    // Remove styles
     const styleEl = document.getElementById('start-screen-styles')
     if (styleEl) {
       styleEl.remove()
     }
+
+    // 🎮 Clean up keyboard listener
+    if (StartScreen.keyboardListener) {
+      document.removeEventListener('keydown', StartScreen.keyboardListener)
+      StartScreen.keyboardListener = null
+    }
+
+    // 🎮 Clean up gamepad polling
+    if (StartScreen.gamepadInterval !== null) {
+      clearInterval(StartScreen.gamepadInterval)
+      StartScreen.gamepadInterval = null
+    }
+
+    // Reset state
+    StartScreen.selectedButtonIndex = 0
+    StartScreen.lastGamepadInput = 0
   }
 }

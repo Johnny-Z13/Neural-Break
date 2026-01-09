@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Enemy } from './Enemy'
+import { Enemy, EnemyState, SpawnConfig, DeathConfig } from './Enemy'
 import { Player } from './Player'
 import { AudioManager } from '../audio/AudioManager'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
@@ -469,7 +469,7 @@ export class ChaosWorm extends Enemy {
   takeDamage(damage: number): void {
     this.health -= damage
     
-    // Flash all segments RED
+    // 🔴 VISUAL + AUDIO HIT FEEDBACK 🔴
     if (!this.isFlashing) {
       this.isFlashing = true
       this.flashTimer = 0
@@ -483,6 +483,11 @@ export class ChaosWorm extends Enemy {
         // Set to bright RED
         material.color.setRGB(1, 0, 0)
         material.emissive.setRGB(1, 0, 0)
+      }
+      
+      // 🔊 PLAY HIT SOUND!
+      if (this.audioManager) {
+        this.audioManager.playEnemyHitSound()
       }
     }
 

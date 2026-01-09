@@ -6,8 +6,16 @@ import { StarfieldManager } from '../../graphics/StarfieldManager'
  * NEURAL BREAK - Leaderboard Screen
  * 80s Arcade / Cyberpunk Aesthetic
  * Uses unified design system CSS variables
+ * 
+ * 🎮 Supports keyboard and gamepad navigation!
  */
 export class LeaderboardScreen {
+  private static keyboardListener: ((e: KeyboardEvent) => void) | null = null
+  private static gamepadInterval: number | null = null
+  private static lastGamepadInput = 0
+  private static gamepadDeadzone = 0.5
+  private static inputCooldown = 200 // ms between inputs
+
   static async create(
     audioManager: AudioManager | null,
     onBack: () => void
@@ -140,7 +148,7 @@ export class LeaderboardScreen {
         </div>
       </div>
       
-      <!-- INSERT COIN TEXT -->
+      <!-- CONTROLS HINT -->
       <div style="
         position: fixed;
         bottom: var(--space-md, 1rem);
@@ -150,10 +158,13 @@ export class LeaderboardScreen {
         font-size: clamp(0.5rem, 1.2vw, 0.7rem);
         text-shadow: 0 0 10px var(--color-yellow, #FFFF00);
         letter-spacing: 0.15em;
-        animation: blink 0.8s step-end infinite;
         z-index: 1;
+        text-align: center;
       ">
-        ▲ TOP NEURAL HACKERS ▲
+        <div style="margin-bottom: 0.3rem;">▲ TOP NEURAL HACKERS ▲</div>
+        <div style="font-size: 0.6em; color: var(--color-cyan, #00FFFF); text-shadow: 0 0 8px var(--color-cyan, #00FFFF);">
+          SPACE/ESC OR 🎮 TO RETURN
+        </div>
       </div>
     `
 
@@ -166,7 +177,13 @@ export class LeaderboardScreen {
         95% { opacity: 0.85; }
       }
       
-      #backButton:hover {
+      @keyframes blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+      }
+      
+      #backButton:hover,
+      #backButton.selected {
         background: #330000 !important;
         box-shadow: 
           0 0 30px rgba(255, 68, 68, 0.6),
@@ -253,8 +270,10 @@ export class LeaderboardScreen {
       // No-op: fullscreen functionality removed
     }
 
-    // Add back button event listener
+    // Get button reference
     const backButton = leaderboardScreen.querySelector('#backButton') as HTMLButtonElement
+    
+    // Mouse event listeners
     backButton.addEventListener('mouseenter', () => {
       if (audioManager) audioManager.playButtonHoverSound()
     })
@@ -264,6 +283,59 @@ export class LeaderboardScreen {
       LeaderboardScreen.cleanup()
       onBack()
     })
+
+    // 🎮 KEYBOARD NAVIGATION
+    LeaderboardScreen.keyboardListener = (e: KeyboardEvent) => {
+      const key = e.code.toLowerCase()
+      
+      // Select button (Space/Enter/Escape to go back)
+      if (key === 'space' || key === 'enter' || key === 'escape') {
+        e.preventDefault()
+        if (audioManager) audioManager.playButtonPressSound()
+        cleanupFullscreen()
+        LeaderboardScreen.cleanup()
+        onBack()
+      }
+    }
+    
+    document.addEventListener('keydown', LeaderboardScreen.keyboardListener)
+
+    // 🎮 GAMEPAD NAVIGATION
+    LeaderboardScreen.gamepadInterval = window.setInterval(() => {
+      const gamepads = navigator.getGamepads()
+      const gamepad = gamepads[0] // Use first connected gamepad
+      
+      if (!gamepad) return
+      
+      const now = Date.now()
+      if (now - LeaderboardScreen.lastGamepadInput < LeaderboardScreen.inputCooldown) return
+      
+      // A button (Xbox) / X button (PlayStation) or B button to go back
+      const aButton = gamepad.buttons[0]?.pressed // A/X - Select
+      const bButton = gamepad.buttons[1]?.pressed // B/Circle - Back
+      
+      if (aButton || bButton) {
+        if (audioManager) audioManager.playButtonPressSound()
+        cleanupFullscreen()
+        LeaderboardScreen.cleanup()
+        onBack()
+        LeaderboardScreen.lastGamepadInput = now
+      }
+    }, 50) // Check gamepad every 50ms
+
+    // Auto-select back button for visual feedback
+    backButton.classList.add('selected')
+
+    // 🎵 RESUME AUDIO CONTEXT ON FIRST INTERACTION 🎵
+    const resumeAudioOnce = () => {
+      if (audioManager) {
+        audioManager.resumeAudio().catch(e => console.warn('Audio resume failed:', e))
+      }
+    }
+    
+    leaderboardScreen.addEventListener('click', resumeAudioOnce, { once: true })
+    leaderboardScreen.addEventListener('keydown', resumeAudioOnce, { once: true })
+    window.addEventListener('gamepadbuttondown', resumeAudioOnce, { once: true })
 
     return leaderboardScreen
   }
@@ -396,9 +468,25 @@ export class LeaderboardScreen {
   }
 
   static cleanup(): void {
+    // Remove styles
     const styleEl = document.getElementById('leaderboard-styles')
     if (styleEl) {
       styleEl.remove()
     }
+
+    // 🎮 Clean up keyboard listener
+    if (LeaderboardScreen.keyboardListener) {
+      document.removeEventListener('keydown', LeaderboardScreen.keyboardListener)
+      LeaderboardScreen.keyboardListener = null
+    }
+
+    // 🎮 Clean up gamepad polling
+    if (LeaderboardScreen.gamepadInterval !== null) {
+      clearInterval(LeaderboardScreen.gamepadInterval)
+      LeaderboardScreen.gamepadInterval = null
+    }
+
+    // Reset state
+    LeaderboardScreen.lastGamepadInput = 0
   }
 }

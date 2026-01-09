@@ -20,7 +20,7 @@ export class GameScreens {
     this.sceneManager = sceneManager
   }
 
-  static showStartScreen(onStartGame: () => void): void {
+  static showStartScreen(onStartGame: () => void, onStartTestMode?: () => void): void {
     // Start the starfield for menu screens
     StarfieldManager.getInstance().start()
     
@@ -29,12 +29,12 @@ export class GameScreens {
       this.sceneManager,
       () => {
         this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)
-        this.showStartScreenContent(onStartGame)
+        this.showStartScreenContent(onStartGame, onStartTestMode)
       }
     )
   }
 
-  private static showStartScreenContent(onStartGame: () => void): void {
+  private static showStartScreenContent(onStartGame: () => void, onStartTestMode?: () => void): void {
     const startScreen = StartScreen.create(
       this.audioManager,
       () => {
@@ -46,8 +46,14 @@ export class GameScreens {
       () => {
         // Only cleanup styles, starfield persists between menu screens
         StartScreen.cleanup()
-        this.showLeaderboard(() => this.showStartScreen(onStartGame))
-      }
+        this.showLeaderboard(() => this.showStartScreen(onStartGame, onStartTestMode))
+      },
+      onStartTestMode ? () => {
+        this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)
+        setTimeout(() => {
+          onStartTestMode()
+        }, 50)
+      } : undefined
     )
     
     // Add the screen to DOM

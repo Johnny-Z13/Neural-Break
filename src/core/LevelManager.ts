@@ -55,27 +55,36 @@ export class LevelManager {
    * Each level defines:
    * - Kill objectives (how many of each enemy to kill)
    * - Spawn rates (how often enemies spawn)
+   * 
+   * ⏱️ TARGET: 100-120 seconds per level
+   * 🎯 ALL ENEMY TYPES BY LEVEL 5 (compressed progression)
+   * 🎲 Fizzers are OPTIONAL (multiplier-based spawns)
    */
   static getLevelConfig(level: number): LevelConfig {
+    // 🧪 TEST MODE - Return test configuration
+    if (level === 999) {
+      return this.getTestLevelConfig()
+    }
+    
     const configs: LevelConfig[] = [
       // ═══════════════════════════════════════════════════════
-      // LEVEL 1: TUTORIAL - Learn the basics (~90 seconds)
+      // LEVEL 1: BASICS - DataMites + ScanDrones (~100s)
       // ═══════════════════════════════════════════════════════
       {
         level: 1,
         name: "NEURAL INITIALIZATION",
         objectives: {
-          dataMites: 18,      // Increased from 12
-          scanDrones: 6,      // Increased from 4
+          dataMites: 25,      // ~80s of spawning @ 1.6s
+          scanDrones: 8,      // ~80s of spawning @ 10s
           chaosWorms: 0,
           voidSpheres: 0,
           crystalSwarms: 0,
-          fizzers: 0,
+          fizzers: 0,         // Optional (multiplier-based)
           ufos: 0,
           bosses: 0
         },
-        miteSpawnRate: 1.6,       // Faster (was 2.0)
-        droneSpawnRate: 6.5,      // Faster (was 8)
+        miteSpawnRate: 1.6,
+        droneSpawnRate: 10,       // Slightly slower for tutorial
         wormSpawnRate: Infinity,
         voidSpawnRate: Infinity,
         crystalSpawnRate: Infinity,
@@ -85,24 +94,24 @@ export class LevelManager {
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 2: CHAOS INTRODUCTION - First big enemy! (~2 min)
+      // LEVEL 2: WORM THREAT - ChaosWorm appears! (~100s)
       // ═══════════════════════════════════════════════════════
       {
         level: 2,
         name: "SYSTEM BREACH",
         objectives: {
-          dataMites: 28,      // Increased from 20
-          scanDrones: 12,     // Increased from 8
-          chaosWorms: 2,      // Increased from 1 - MORE variety
+          dataMites: 30,
+          scanDrones: 10,
+          chaosWorms: 2,      // 🆕 Big segmented enemy!
           voidSpheres: 0,
           crystalSwarms: 0,
-          fizzers: 1,         // 🆕 Introduce Fizzer earlier!
+          fizzers: 0,         // Optional (multiplier-based)
           ufos: 0,
           bosses: 0
         },
-        miteSpawnRate: 1.2,       // Faster (was 1.5)
-        droneSpawnRate: 4.8,      // Faster (was 6)
-        wormSpawnRate: 55,        // Faster (was 80)
+        miteSpawnRate: 1.3,
+        droneSpawnRate: 8,
+        wormSpawnRate: 50,        // 🆕 Spawns 2x during level
         voidSpawnRate: Infinity,
         crystalSpawnRate: Infinity,
         fizzerSpawnRate: Infinity,
@@ -111,211 +120,211 @@ export class LevelManager {
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 3: MULTIPLE THREATS - Fizzer + VoidSphere (~2-2.5 min)
+      // LEVEL 3: VOID + CRYSTAL - Tank + Orbital! (~110s)
       // ═══════════════════════════════════════════════════════
       {
         level: 3,
         name: "VOID CORRUPTION",
         objectives: {
-          dataMites: 35,      // Increased from 25
-          scanDrones: 15,     // Increased from 10
-          chaosWorms: 2,      // Increased from 1
-          voidSpheres: 1,     // 🆕 Introduce VoidSphere!
-          crystalSwarms: 1,   // 🆕 Introduce CrystalSwarm earlier!
-          fizzers: 2,         // Increased from 1
+          dataMites: 35,
+          scanDrones: 12,
+          chaosWorms: 2,
+          voidSpheres: 1,     // 🆕 Tank enemy (slow, tanky)
+          crystalSwarms: 1,   // 🆕 Orbital shards
+          fizzers: 0,         // Optional (multiplier-based)
           ufos: 0,
           bosses: 0
         },
-        miteSpawnRate: 1.0,       // Faster (was 1.3)
-        droneSpawnRate: 4.0,      // Faster (was 5)
-        wormSpawnRate: 50,        // Faster (was 70)
-        voidSpawnRate: 85,        // Faster (was 110)
-        crystalSpawnRate: 95,     // 🆕 Spawns once
+        miteSpawnRate: 1.2,
+        droneSpawnRate: 7,
+        wormSpawnRate: 45,
+        voidSpawnRate: 90,        // 🆕 Spawns once mid-level
+        crystalSpawnRate: 70,     // 🆕 Spawns mid-late
         fizzerSpawnRate: Infinity,
         ufoSpawnRate: Infinity,
         bossSpawnRate: Infinity
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 4: CRYSTALLINE SWARM - More variety (~2.5 min)
+      // LEVEL 4: UFO ARRIVAL - Flying saucer! (~110s)
       // ═══════════════════════════════════════════════════════
       {
         level: 4,
-        name: "CRYSTAL FORMATION",
+        name: "ALIEN INCURSION",
         objectives: {
-          dataMites: 42,      // Increased from 30
-          scanDrones: 18,     // Increased from 12
-          chaosWorms: 3,      // Increased from 2
-          voidSpheres: 2,     // Increased from 1
-          crystalSwarms: 2,   // Increased from 1
-          fizzers: 2,         // Increased from 1
-          ufos: 1,            // 🆕 Introduce UFO earlier!
+          dataMites: 40,
+          scanDrones: 15,
+          chaosWorms: 2,
+          voidSpheres: 1,
+          crystalSwarms: 1,
+          fizzers: 0,         // Optional (multiplier-based)
+          ufos: 2,            // 🆕 Alien craft with lasers!
           bosses: 0
         },
-        miteSpawnRate: 0.9,       // Faster (was 1.2)
-        droneSpawnRate: 3.6,      // Faster (was 4.5)
-        wormSpawnRate: 42,        // Faster (was 55)
-        voidSpawnRate: 70,        // Faster (was 95)
-        crystalSpawnRate: 75,     // Faster (was 100)
+        miteSpawnRate: 1.1,
+        droneSpawnRate: 6.5,
+        wormSpawnRate: 48,
+        voidSpawnRate: 85,
+        crystalSpawnRate: 75,
         fizzerSpawnRate: Infinity,
-        ufoSpawnRate: 110,        // 🆕 Spawns once
+        ufoSpawnRate: 55,         // 🆕 Spawns 2x during level
         bossSpawnRate: Infinity
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 5: ESCALATION - All enemies active! (~2.5 min)
+      // LEVEL 5: FIRST BOSS - All enemy types! (~120s) 🎯
       // ═══════════════════════════════════════════════════════
       {
         level: 5,
-        name: "ALIEN INCURSION",
+        name: "DREADNOUGHT",
         objectives: {
-          dataMites: 48,      // Increased from 32
-          scanDrones: 20,     // Increased from 14
-          chaosWorms: 3,      // Increased from 2
-          voidSpheres: 2,     // Increased from 1
-          crystalSwarms: 2,   // Increased from 1
-          fizzers: 3,         // Increased from 1
-          ufos: 2,            // Increased from 1
-          bosses: 0
+          dataMites: 45,
+          scanDrones: 18,
+          chaosWorms: 3,
+          voidSpheres: 1,
+          crystalSwarms: 2,
+          fizzers: 0,         // Optional (multiplier-based)
+          ufos: 2,
+          bosses: 1           // 🆕 First boss encounter!
         },
-        miteSpawnRate: 0.8,       // Faster (was 1.0)
-        droneSpawnRate: 3.2,      // Faster (was 4)
-        wormSpawnRate: 38,        // Faster (was 50)
-        voidSpawnRate: 65,        // Faster (was 85)
-        crystalSpawnRate: 65,     // Faster (was 90)
+        miteSpawnRate: 1.0,
+        droneSpawnRate: 6,
+        wormSpawnRate: 40,
+        voidSpawnRate: 100,       // Spawns once
+        crystalSpawnRate: 50,     // Spawns 2x
         fizzerSpawnRate: Infinity,
-        ufoSpawnRate: 85,         // Faster (was 120)
-        bossSpawnRate: Infinity
+        ufoSpawnRate: 55,
+        bossSpawnRate: 110        // 🆕 Boss spawns mid-level
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 6: ESCALATION - More of everything (~2.5 min)
+      // LEVEL 6: SWARM - High variety! (~110s)
       // ═══════════════════════════════════════════════════════
       {
         level: 6,
         name: "NEURAL OVERLOAD",
         objectives: {
-          dataMites: 55,      // Increased from 35
-          scanDrones: 24,     // Increased from 16
-          chaosWorms: 4,      // Increased from 3
-          voidSpheres: 3,     // Increased from 2
-          crystalSwarms: 2,   // Increased from 1
-          fizzers: 3,         // Increased from 2
-          ufos: 2,            // Increased from 1
-          bosses: 0
+          dataMites: 50,
+          scanDrones: 20,
+          chaosWorms: 3,
+          voidSpheres: 2,
+          crystalSwarms: 2,
+          fizzers: 0,         // Optional (multiplier-based)
+          ufos: 2,
+          bosses: 1
         },
-        miteSpawnRate: 0.7,       // Faster (was 0.9)
-        droneSpawnRate: 2.8,      // Faster (was 3.5)
-        wormSpawnRate: 35,        // Faster (was 45)
-        voidSpawnRate: 58,        // Faster (was 75)
-        crystalSpawnRate: 60,     // Faster (was 85)
+        miteSpawnRate: 0.9,
+        droneSpawnRate: 5,
+        wormSpawnRate: 35,
+        voidSpawnRate: 50,        // 🎲 2x VoidSpheres
+        crystalSpawnRate: 45,     // 🎲 More crystals
         fizzerSpawnRate: Infinity,
-        ufoSpawnRate: 75,         // Faster (was 110)
-        bossSpawnRate: Infinity
+        ufoSpawnRate: 50,
+        bossSpawnRate: 105        // Boss near end
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 7: HIGH INTENSITY - All enemy types + Boss! (~3 min)
+      // LEVEL 7: CHAOS - Worms everywhere! (~110s) 🎲
       // ═══════════════════════════════════════════════════════
       {
         level: 7,
         name: "DATA STORM",
         objectives: {
-          dataMites: 62,      // Increased from 40
-          scanDrones: 28,     // Increased from 18
-          chaosWorms: 4,      // Increased from 3
-          voidSpheres: 3,     // Increased from 2
-          crystalSwarms: 3,   // Increased from 2
-          fizzers: 4,         // Increased from 2
-          ufos: 3,            // Increased from 2
-          bosses: 1           // 🆕 Introduce Boss earlier!
+          dataMites: 55,
+          scanDrones: 22,
+          chaosWorms: 5,      // 🎲 SURPRISE! Worm overload
+          voidSpheres: 2,
+          crystalSwarms: 2,
+          fizzers: 0,         // Optional (multiplier-based)
+          ufos: 2,
+          bosses: 1
         },
-        miteSpawnRate: 0.6,       // Faster (was 0.8)
-        droneSpawnRate: 2.5,      // Faster (was 3.2)
-        wormSpawnRate: 32,        // Faster (was 40)
-        voidSpawnRate: 52,        // Faster (was 65)
-        crystalSpawnRate: 55,     // Faster (was 70)
+        miteSpawnRate: 0.85,
+        droneSpawnRate: 4.5,
+        wormSpawnRate: 22,        // 🎲 Worms spawn often!
+        voidSpawnRate: 55,
+        crystalSpawnRate: 50,
         fizzerSpawnRate: Infinity,
-        ufoSpawnRate: 68,         // Faster (was 90)
-        bossSpawnRate: 140        // 🆕 Spawns once mid-level
+        ufoSpawnRate: 52,
+        bossSpawnRate: 100
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 8: DOUBLE BOSSES - Multiple bosses! (~3 min)
+      // LEVEL 8: UFO SQUADRON - Flying saucer swarm! (~115s) 🎲
       // ═══════════════════════════════════════════════════════
       {
         level: 8,
-        name: "DREADNOUGHT ASSAULT",
+        name: "ALIEN ARMADA",
         objectives: {
-          dataMites: 70,      // Increased from 42
-          scanDrones: 32,     // Increased from 20
-          chaosWorms: 5,      // Increased from 3
-          voidSpheres: 3,     // Increased from 2
-          crystalSwarms: 3,   // Increased from 2
-          fizzers: 4,         // Increased from 2
-          ufos: 3,            // Increased from 2
-          bosses: 2           // Increased from 1
+          dataMites: 60,
+          scanDrones: 25,
+          chaosWorms: 3,
+          voidSpheres: 2,
+          crystalSwarms: 3,
+          fizzers: 0,         // Optional (multiplier-based)
+          ufos: 4,            // 🎲 SURPRISE! UFO swarm
+          bosses: 1
         },
-        miteSpawnRate: 0.55,      // Faster (was 0.7)
-        droneSpawnRate: 2.2,      // Faster (was 3.0)
-        wormSpawnRate: 28,        // Faster (was 38)
-        voidSpawnRate: 48,        // Faster (was 60)
-        crystalSpawnRate: 50,     // Faster (was 65)
+        miteSpawnRate: 0.8,
+        droneSpawnRate: 4.2,
+        wormSpawnRate: 38,
+        voidSpawnRate: 57,
+        crystalSpawnRate: 35,
         fizzerSpawnRate: Infinity,
-        ufoSpawnRate: 60,         // Faster (was 80)
-        bossSpawnRate: 100        // Faster spawning (was 160)
+        ufoSpawnRate: 28,         // 🎲 UFOs spawn frequently!
+        bossSpawnRate: 105
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 9: TRIPLE THREAT - Multiple bosses! (~3 min)
+      // LEVEL 9: DOUBLE BOSS - Boss rush! (~115s) 🎲
       // ═══════════════════════════════════════════════════════
       {
         level: 9,
         name: "DIGITAL APOCALYPSE",
         objectives: {
-          dataMites: 80,      // Increased from 45
-          scanDrones: 38,     // Increased from 22
-          chaosWorms: 6,      // Increased from 4
-          voidSpheres: 4,     // Increased from 2
-          crystalSwarms: 4,   // Increased from 2
-          fizzers: 5,         // Increased from 2
-          ufos: 4,            // Increased from 2
-          bosses: 3           // Increased from 2
+          dataMites: 65,
+          scanDrones: 28,
+          chaosWorms: 4,
+          voidSpheres: 3,
+          crystalSwarms: 3,
+          fizzers: 0,         // Optional (multiplier-based)
+          ufos: 3,
+          bosses: 2           // 🎲 SURPRISE! Two bosses
         },
-        miteSpawnRate: 0.5,       // Faster (was 0.6)
-        droneSpawnRate: 2.0,      // Faster (was 2.8)
-        wormSpawnRate: 25,        // Faster (was 35)
-        voidSpawnRate: 44,        // Faster (was 55)
-        crystalSpawnRate: 48,     // Faster (was 60)
+        miteSpawnRate: 0.75,
+        droneSpawnRate: 3.8,
+        wormSpawnRate: 32,
+        voidSpawnRate: 38,
+        crystalSpawnRate: 40,
         fizzerSpawnRate: Infinity,
-        ufoSpawnRate: 55,         // Faster (was 75)
-        bossSpawnRate: 85         // Faster (was 110)
+        ufoSpawnRate: 45,
+        bossSpawnRate: 55         // 🎲 Bosses spawn quickly!
       },
 
       // ═══════════════════════════════════════════════════════
-      // LEVEL 10: NEURAL BREAK - Final chaos (~3 min)
+      // LEVEL 10: NEURAL BREAK - TOTAL CHAOS! (~120s) 💥
       // ═══════════════════════════════════════════════════════
       {
         level: 10,
         name: "NEURAL BREAK",
         objectives: {
-          dataMites: 95,      // Increased from 50
-          scanDrones: 45,     // Increased from 25
-          chaosWorms: 7,      // Increased from 4
-          voidSpheres: 5,     // Increased from 3
-          crystalSwarms: 5,   // Increased from 3
-          fizzers: 6,         // Increased from 3
-          ufos: 5,            // Increased from 3
-          bosses: 4           // Increased from 3
+          dataMites: 70,
+          scanDrones: 30,
+          chaosWorms: 5,
+          voidSpheres: 3,
+          crystalSwarms: 4,
+          fizzers: 0,         // Optional (multiplier-based)
+          ufos: 4,
+          bosses: 3           // 🎲 Triple boss finale!
         },
-        miteSpawnRate: 0.4,       // Faster (was 0.5)
-        droneSpawnRate: 1.8,      // Faster (was 2.5)
-        wormSpawnRate: 22,        // Faster (was 32)
-        voidSpawnRate: 38,        // Faster (was 50)
-        crystalSpawnRate: 42,     // Faster (was 55)
+        miteSpawnRate: 0.7,
+        droneSpawnRate: 3.5,
+        wormSpawnRate: 25,
+        voidSpawnRate: 35,
+        crystalSpawnRate: 30,
         fizzerSpawnRate: Infinity,
-        ufoSpawnRate: 48,         // Faster (was 70)
-        bossSpawnRate: 70         // Faster (was 90)
+        ufoSpawnRate: 35,
+        bossSpawnRate: 40         // 💥 Bosses spawn rapidly!
       }
     ]
 
@@ -518,6 +527,55 @@ export class LevelManager {
 
   static getTotalLevels(): number {
     return LevelManager.TOTAL_LEVELS
+  }
+  
+  /**
+   * 🧪 TEST MODE - Endless level with all enemy types
+   * For testing and review purposes
+   */
+  startTestLevel(): void {
+    this.currentLevel = 999 // Special level number for test mode
+    this.totalElapsedTime = 0
+    this.currentProgress = {
+      dataMites: 0,
+      scanDrones: 0,
+      chaosWorms: 0,
+      voidSpheres: 0,
+      crystalSwarms: 0,
+      fizzers: 0,
+      ufos: 0,
+      bosses: 0
+    }
+    this.objectivesComplete = false
+  }
+  
+  /**
+   * 🧪 Get test level configuration with all enemies
+   */
+  static getTestLevelConfig(): LevelConfig {
+    return {
+      level: 999,
+      name: "TEST MODE - ALL ENEMIES",
+      objectives: {
+        dataMites: 99999,    // Effectively endless
+        scanDrones: 99999,
+        chaosWorms: 99999,
+        voidSpheres: 99999,
+        crystalSwarms: 99999,
+        fizzers: 99999,
+        ufos: 99999,
+        bosses: 99999
+      },
+      // Fast spawn rates to get all enemy types quickly
+      miteSpawnRate: 2.0,
+      droneSpawnRate: 8.0,
+      wormSpawnRate: 12.0,
+      voidSpawnRate: 15.0,
+      crystalSpawnRate: 10.0,
+      fizzerSpawnRate: 14.0,
+      ufoSpawnRate: 18.0,
+      bossSpawnRate: 25.0
+    }
   }
 
   // ═══════════════════════════════════════════════════════

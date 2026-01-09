@@ -84,6 +84,14 @@ export class AudioManager {
   }
 
   /**
+   * 🎮 PUBLIC API - Resume audio context for user interaction
+   * Call this on first user interaction (click, keypress, etc) to ensure audio works
+   */
+  async resumeAudio(): Promise<void> {
+    await this.ensureAudioReady()
+  }
+
+  /**
    * Queue a sound to play, handling async audio context
    */
   private queueSound(soundFn: () => void): void {
@@ -1050,68 +1058,99 @@ export class AudioManager {
   }
 
   /**
-   * 🚀 Thrust Sound - Powerful jet engine burst
+   * 🚀 Thrust Sound - POWERFUL JET ENGINE BURST! 💥
+   * Enhanced with sub-bass, dramatic sweep, and massive impact!
    */
   playThrustSound(): void {
     this.queueSound(() => {
       const ctx = this.audioContext!
       const now = ctx.currentTime
       
-      // Deep rumbling engine noise
-      const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate)
+      // 💥 MASSIVE SUB-BASS IMPACT 💥
+      const subBass = ctx.createOscillator()
+      subBass.type = 'sine'
+      subBass.frequency.setValueAtTime(40, now)
+      subBass.frequency.exponentialRampToValueAtTime(80, now + 0.08)
+      subBass.frequency.exponentialRampToValueAtTime(30, now + 0.5)
+      
+      const subBassGain = ctx.createGain()
+      subBassGain.gain.setValueAtTime(0, now)
+      subBassGain.gain.linearRampToValueAtTime(0.8, now + 0.015) // HUGE punch!
+      subBassGain.gain.setValueAtTime(0.6, now + 0.1)
+      subBassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+      
+      // Deep rumbling engine noise - MORE INTENSE!
+      const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate)
       const noiseData = noiseBuffer.getChannelData(0)
       
       for (let i = 0; i < noiseData.length; i++) {
-        // Create rumbling texture with layered frequencies
+        // Create rumbling texture with MORE layered frequencies
         const t = i / ctx.sampleRate
-        const rumble = Math.sin(t * 80 * Math.PI * 2) * 0.3 +
-                       Math.sin(t * 120 * Math.PI * 2) * 0.2 +
-                       (Math.random() * 2 - 1) * 0.5
-        const env = Math.pow(Math.sin(Math.PI * i / noiseData.length), 0.5) // Punchy envelope
+        const rumble = Math.sin(t * 60 * Math.PI * 2) * 0.4 +
+                       Math.sin(t * 100 * Math.PI * 2) * 0.3 +
+                       Math.sin(t * 150 * Math.PI * 2) * 0.25 +
+                       (Math.random() * 2 - 1) * 0.6 // More noise!
+        const env = Math.pow(Math.sin(Math.PI * i / noiseData.length), 0.4) // Punchier envelope
         noiseData[i] = rumble * env
       }
       
       const noise = ctx.createBufferSource()
       noise.buffer = noiseBuffer
       
-      // Low-pass filter for deep rumble
+      // Low-pass filter for deep rumble - MORE DRAMATIC SWEEP!
       const lowpass = ctx.createBiquadFilter()
       lowpass.type = 'lowpass'
-      lowpass.frequency.setValueAtTime(400, now)
-      lowpass.frequency.exponentialRampToValueAtTime(800, now + 0.1)
-      lowpass.frequency.exponentialRampToValueAtTime(300, now + 0.35)
-      lowpass.Q.value = 3
+      lowpass.frequency.setValueAtTime(300, now)
+      lowpass.frequency.exponentialRampToValueAtTime(1200, now + 0.12) // Bigger sweep!
+      lowpass.frequency.exponentialRampToValueAtTime(250, now + 0.45)
+      lowpass.Q.value = 4 // More resonance!
       
-      // Gain envelope - punchy attack
+      // Gain envelope - MASSIVE ATTACK!
       const noiseGain = ctx.createGain()
       noiseGain.gain.setValueAtTime(0, now)
-      noiseGain.gain.linearRampToValueAtTime(0.6, now + 0.02) // Fast attack
-      noiseGain.gain.setValueAtTime(0.5, now + 0.1)
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4)
+      noiseGain.gain.linearRampToValueAtTime(0.8, now + 0.02) // LOUDER!
+      noiseGain.gain.setValueAtTime(0.65, now + 0.12)
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
       
-      // Deep oscillator for engine tone
+      // Deep oscillator for engine tone - MORE POWER!
       const osc1 = ctx.createOscillator()
       osc1.type = 'sawtooth'
-      osc1.frequency.setValueAtTime(60, now)
-      osc1.frequency.exponentialRampToValueAtTime(100, now + 0.05)
-      osc1.frequency.exponentialRampToValueAtTime(50, now + 0.35)
+      osc1.frequency.setValueAtTime(50, now)
+      osc1.frequency.exponentialRampToValueAtTime(120, now + 0.06)
+      osc1.frequency.exponentialRampToValueAtTime(40, now + 0.45)
       
       const osc1Gain = ctx.createGain()
       osc1Gain.gain.setValueAtTime(0, now)
-      osc1Gain.gain.linearRampToValueAtTime(0.4, now + 0.02)
-      osc1Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
+      osc1Gain.gain.linearRampToValueAtTime(0.5, now + 0.02) // Louder!
+      osc1Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
       
-      // Higher harmonic for jet whistle
+      // Higher harmonic for jet whistle - MORE DRAMATIC!
       const osc2 = ctx.createOscillator()
       osc2.type = 'sine'
-      osc2.frequency.setValueAtTime(300, now)
-      osc2.frequency.exponentialRampToValueAtTime(600, now + 0.08)
-      osc2.frequency.exponentialRampToValueAtTime(200, now + 0.3)
+      osc2.frequency.setValueAtTime(400, now)
+      osc2.frequency.exponentialRampToValueAtTime(1000, now + 0.1) // Higher sweep!
+      osc2.frequency.exponentialRampToValueAtTime(200, now + 0.4)
       
       const osc2Gain = ctx.createGain()
       osc2Gain.gain.setValueAtTime(0, now)
-      osc2Gain.gain.linearRampToValueAtTime(0.15, now + 0.03)
-      osc2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
+      osc2Gain.gain.linearRampToValueAtTime(0.25, now + 0.03) // Louder!
+      osc2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
+      
+      // 🔥 EXTRA HIGH-FREQUENCY SIZZLE 🔥
+      const sizzle = ctx.createOscillator()
+      sizzle.type = 'triangle'
+      sizzle.frequency.setValueAtTime(2000, now)
+      sizzle.frequency.exponentialRampToValueAtTime(4000, now + 0.08)
+      sizzle.frequency.exponentialRampToValueAtTime(1500, now + 0.3)
+      
+      const sizzleGain = ctx.createGain()
+      sizzleGain.gain.setValueAtTime(0, now)
+      sizzleGain.gain.linearRampToValueAtTime(0.12, now + 0.02)
+      sizzleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28)
+      
+      // Connect sub-bass path
+      subBass.connect(subBassGain)
+      subBassGain.connect(this.sfxGainNode!)
       
       // Connect noise path
       noise.connect(lowpass)
@@ -1125,13 +1164,20 @@ export class AudioManager {
       osc2.connect(osc2Gain)
       osc2Gain.connect(this.sfxGainNode!)
       
+      sizzle.connect(sizzleGain)
+      sizzleGain.connect(this.sfxGainNode!)
+      
       // Start and stop
+      subBass.start(now)
+      subBass.stop(now + 0.5)
       noise.start(now)
-      noise.stop(now + 0.4)
+      noise.stop(now + 0.5)
       osc1.start(now)
-      osc1.stop(now + 0.35)
+      osc1.stop(now + 0.45)
       osc2.start(now)
-      osc2.stop(now + 0.3)
+      osc2.stop(now + 0.4)
+      sizzle.start(now)
+      sizzle.stop(now + 0.3)
     })
   }
 

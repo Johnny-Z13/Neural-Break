@@ -48,7 +48,7 @@ Preview the production build locally.
 ## 🎯 Controls
 
 ### Keyboard
-- **WASD**: Movement
+- **WASD / Arrow Keys**: Movement
 - **Space**: Fire weapon
 - **Shift**: Dash (when available)
 

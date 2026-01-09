@@ -2,7 +2,7 @@
  * 🎮 INPUT MANAGER - Keyboard, Mouse, and Gamepad Support
  * 
  * Supports:
- * - Keyboard (WASD + Space + Shift)
+ * - Keyboard (WASD + Arrow Keys + Space + Shift)
  * - Mouse (position and clicks)
  * - Gamepad (Xbox/PlayStation controllers)
  *   - Left stick: Movement
@@ -125,8 +125,8 @@ export class InputManager {
 
   // Movement input methods (Keyboard + Gamepad)
   isMovingUp(): boolean {
-    // Keyboard
-    if (this.keys.has('keyw')) {
+    // Keyboard (WASD + Arrow Keys)
+    if (this.keys.has('keyw') || this.keys.has('arrowup')) {
       this.lastInputMethod = 'keyboard'
       return true
     }
@@ -143,8 +143,8 @@ export class InputManager {
   }
 
   isMovingDown(): boolean {
-    // Keyboard
-    if (this.keys.has('keys')) {
+    // Keyboard (WASD + Arrow Keys)
+    if (this.keys.has('keys') || this.keys.has('arrowdown')) {
       this.lastInputMethod = 'keyboard'
       return true
     }
@@ -161,8 +161,8 @@ export class InputManager {
   }
 
   isMovingLeft(): boolean {
-    // Keyboard
-    if (this.keys.has('keya')) {
+    // Keyboard (WASD + Arrow Keys)
+    if (this.keys.has('keya') || this.keys.has('arrowleft')) {
       this.lastInputMethod = 'keyboard'
       return true
     }
@@ -179,8 +179,8 @@ export class InputManager {
   }
 
   isMovingRight(): boolean {
-    // Keyboard
-    if (this.keys.has('keyd')) {
+    // Keyboard (WASD + Arrow Keys)
+    if (this.keys.has('keyd') || this.keys.has('arrowright')) {
       this.lastInputMethod = 'keyboard'
       return true
     }
@@ -318,5 +318,10 @@ export class InputManager {
   
   vibrateExplosion(): void {
     this.vibrate(300, 1.0, 0.8)
+  }
+  
+  // 🔍 KEY CHECKING - Check if a specific key is currently pressed
+  isKeyPressed(keyCode: string): boolean {
+    return this.keys.has(keyCode.toLowerCase())
   }
 }

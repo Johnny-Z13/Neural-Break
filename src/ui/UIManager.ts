@@ -533,7 +533,6 @@ export class UIManager {
     
     const notification = this.createNotification(text, 'notification-powerup')
     notification.style.color = color
-    notification.style.top = '25%'
     
     this.queueNotification(notification, 1500, 4) // Lower priority - informational
   }

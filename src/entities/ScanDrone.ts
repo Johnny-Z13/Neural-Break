@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Enemy } from './Enemy'
+import { Enemy, EnemyState, SpawnConfig, DeathConfig } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { AudioManager } from '../audio/AudioManager'
@@ -26,9 +26,6 @@ export class ScanDrone extends Enemy {
   private swaySpeed: number = 2.0 // Speed of sway oscillation
   
   // 💀 DEATH ANIMATION STATE 💀
-  private isDying: boolean = false
-  private deathTimer: number = 0
-  private deathDuration: number = 0.8
   private gridDistortion: number = 0
   private electricArcs: THREE.Line[] = []
 
@@ -295,48 +292,58 @@ export class ScanDrone extends Enemy {
       const marker = new THREE.Line(markerGeometry, markerMaterial)
       this.mesh.add(marker)
     }
+    
+    // 🌟 START INVISIBLE FOR SPAWN ANIMATION 🌟
+    this.mesh.scale.setScalar(0.01)
   }
-
-  // Override takeDamage to trigger custom death
-  takeDamage(damage: number): void {
-    if (this.isDying) return
-    
-    this.health -= damage
-    
-    // Visual feedback
-    const hexBody = this.mesh.children[0] as THREE.Mesh
-    if (hexBody) {
-      const material = hexBody.material as THREE.MeshBasicMaterial
-      const originalColor = material.color.clone()
-      material.color.setHSL(0.1, 1.0, 0.7)
-      setTimeout(() => {
-        material.color.copy(originalColor)
-      }, 100)
-    }
-
-    if (this.health <= 0 && !this.isDying) {
-      this.startDeathAnimation()
-    }
-  }
-
-  private startDeathAnimation(): void {
-    this.isDying = true
-    this.deathTimer = 0
-    this.alive = true
-    this.gridDistortion = 0
-    
-    // 🎵 PLAY DEATH SOUND! 🎵
-    if (this.audioManager) {
-      this.audioManager.playEnemyDeathSound('ScanDrone')
+  
+  // 🎬 SPAWN CONFIGURATION 🎬
+  protected getSpawnConfig(): SpawnConfig {
+    return {
+      duration: 0.25,
+      invulnerable: true,
+      particles: {
+        count: 12,
+        colors: [0xFF6600, 0x00FFFF], // Alternate orange and cyan
+        speed: 3,
+        burstAtStart: true
+      },
+      screenFlash: {
+        intensity: 0.05,
+        color: 0xFF8800
+      }
     }
   }
+  
+  // 🎬 DEATH CONFIGURATION 🎬
+  protected getDeathConfig(): DeathConfig {
+    return {
+      duration: 0.8,
+      particles: {
+        count: 12,
+        colors: [0xFF6600, 0x00FFFF],
+        speed: 3
+      },
+      explosion: {
+        size: 1.5,
+        color: 0xFF8800
+      },
+      electricDeath: true
+    }
+  }
+  
+  // 🌟 SPAWN ANIMATION HOOK 🌟
+  protected onSpawnUpdate(progress: number): void {
+    // Elastic scale for punchy appearance
+    const elasticProgress = progress < 1 
+      ? 1 - Math.pow(1 - progress, 3) * Math.cos(progress * Math.PI * 2)
+      : 1
+    
+    this.mesh.scale.setScalar(Math.max(0.01, elasticProgress))
+  }
 
-  private updateDeathAnimation(deltaTime: number): void {
-    if (!this.isDying) return
-    
-    this.deathTimer += deltaTime
-    const progress = this.deathTimer / this.deathDuration
-    
+  // 💀 DEATH ANIMATION HOOK 💀
+  protected onDeathUpdate(progress: number): void {
     // Phase 1: Grid flicker and distortion (0-0.25s)
     if (progress < 0.25) {
       const phaseProgress = progress / 0.25
@@ -416,9 +423,6 @@ export class ScanDrone extends Enemy {
         }
       })
       
-      if (progress >= 1.0) {
-        this.completeDeath()
-      }
     }
   }
 
@@ -493,35 +497,13 @@ export class ScanDrone extends Enemy {
     }
   }
 
-  private completeDeath(): void {
-    // Clean up arcs
-    this.electricArcs.forEach(arc => {
-      if (arc.parent) {
-        arc.parent.remove(arc)
-      }
-    })
-    this.electricArcs = []
-    
-    // Final VFX
-    if (this.effectsSystem) {
-      const deathColor = new THREE.Color().setHSL(0.1, 0.9, 0.7)
-      this.effectsSystem.createElectricDeath(this.position, 'ScanDrone')
-      this.effectsSystem.createExplosion(this.position, 1.5, deathColor)
-      this.effectsSystem.addDistortionWave(this.position, 1.2)
-    }
-    
-    this.alive = false
-    this.isDying = false
-    this.createDeathEffect()
-  }
-
-  // Override update to handle death animation
+  // Override update to use parent lifecycle system
   update(deltaTime: number, player: Player): void {
-    if (this.isDying) {
-      this.updateDeathAnimation(deltaTime)
-      return
-    }
+    // Use parent's lifecycle state machine
+    super.update(deltaTime, player)
     
+    // Only do custom updates when alive
+    if (this.state !== EnemyState.ALIVE) return
     if (!this.alive) return
     
     // Store last position for trail calculation
@@ -544,6 +526,9 @@ export class ScanDrone extends Enemy {
   }
 
   updateAI(deltaTime: number, player: Player): void {
+    // Don't run AI during spawn/death
+    if (this.state !== EnemyState.ALIVE) return
+    
     const playerPos = player.getPosition()
     const distanceToPlayer = this.position.distanceTo(playerPos)
 
@@ -679,6 +664,9 @@ export class ScanDrone extends Enemy {
   }
 
   protected updateVisuals(deltaTime: number): void {
+    // 🎬 Don't run normal visuals during spawn/death animations! 🎬
+    if (this.state !== EnemyState.ALIVE) return
+    
     const time = Date.now() * 0.001
     
     // ═══════════════════════════════════════════════════════════════

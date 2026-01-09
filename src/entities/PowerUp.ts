@@ -33,12 +33,12 @@ export class PowerUp {
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
-    // 💚 GREEN GLOWING BASE 💚
+    // 💚 VIBRANT GREEN GLOWING BASE 💚
     const glowGeometry = new THREE.CircleGeometry(0.56, 32) // Scaled up from 0.45
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // GREEN glow
+      color: 0x00DD44, // VIBRANT MID-DEEP GREEN glow
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.8, // More opaque for stronger glow
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     })
@@ -46,24 +46,24 @@ export class PowerUp {
     glow.position.z = -0.01
     this.mesh.add(glow)
     
-    // 💫 OUTER GLOW RING 💫
+    // 💫 OUTER GLOW RING - LIGHTER GREEN 💫
     const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32) // Scaled up from 0.5, 0.65
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // GREEN
+      color: 0x44FF66, // LIGHTER GREEN for outer ring
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     })
     const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial)
     this.mesh.add(outerRing)
     
-    // 🟢 INNER RING 🟢
+    // 🟢 INNER RING - DEEP VIBRANT GREEN 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32) // Scaled up from 0.35, 0.42
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // Green
+      color: 0x00EE33, // VIBRANT DEEP GREEN
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.95,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     })
@@ -73,13 +73,15 @@ export class PowerUp {
     // ✨ 'P' LETTER - WEAPON POWER! ✨
     this.createLetterP()
     
-    // 💫 ENERGY PARTICLES - Now 12 particles for more "fizz"! 💫
+    // 💫 ENERGY PARTICLES - Lighter green, more special! 💫
     for (let i = 0; i < 12; i++) {
-      const particleGeometry = new THREE.CircleGeometry(0.05, 6) // Scaled up
+      const particleGeometry = new THREE.CircleGeometry(0.06, 8) // Slightly larger, more segments
+      // Alternate between vibrant green and lighter green for variety
+      const isLighter = i % 2 === 0
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00FF00, // GREEN particles
+        color: isLighter ? 0x66FF88 : 0x22EE44, // LIGHTER GREEN & VIBRANT GREEN mix
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.85,
         blending: THREE.AdditiveBlending
       })
       const particle = new THREE.Mesh(particleGeometry, particleMaterial)
@@ -155,7 +157,7 @@ export class PowerUp {
     // Gentle rotation animation
     this.mesh.rotation.z += deltaTime * this.rotationSpeed
 
-    // ✨ ANIMATE PARTICLES - Orbiting around pickup with more speed! ✨
+    // ✨ ANIMATE PARTICLES - Orbiting with lighter green glow! ✨
     const children = this.mesh.children
     const particleCount = 12
     for (let i = 4; i < 4 + particleCount; i++) { // Skip glow, rings, and letter group
@@ -170,7 +172,10 @@ export class PowerUp {
           0
         )
         const particleMaterial = child.material as THREE.MeshBasicMaterial
-        particleMaterial.opacity = 0.7 + Math.sin(this.pulseTime * 7 + particleIndex) * 0.3
+        // Lighter particles have more varied opacity for special look
+        const isLighter = particleIndex % 2 === 0
+        const baseOpacity = isLighter ? 0.8 : 0.7
+        particleMaterial.opacity = baseOpacity + Math.sin(this.pulseTime * 7 + particleIndex) * 0.2
       }
     }
 
@@ -184,27 +189,27 @@ export class PowerUp {
   private updateGlowEffects(): void {
     const time = this.pulseTime
     
-    // Update main glow
+    // Update main glow - More dramatic pulsing for vibrant look
     if (this.mesh.children[0]) {
       const glow = this.mesh.children[0] as THREE.Mesh
       const glowMaterial = glow.material as THREE.MeshBasicMaterial
-      glowMaterial.opacity = 0.5 + Math.sin(time * 4) * 0.2
-      glow.scale.setScalar(1 + Math.sin(time * 5) * 0.15)
+      glowMaterial.opacity = 0.6 + Math.sin(time * 4) * 0.25 // Stronger opacity pulse
+      glow.scale.setScalar(1 + Math.sin(time * 5) * 0.2) // More dramatic scale
     }
     
-    // Update outer ring
+    // Update outer ring - Lighter green with gentle pulse
     if (this.mesh.children[1]) {
       const outerRing = this.mesh.children[1] as THREE.Mesh
       const outerRingMaterial = outerRing.material as THREE.MeshBasicMaterial
-      outerRingMaterial.opacity = 0.7 + Math.sin(time * 3) * 0.3
-      outerRing.scale.setScalar(1 + Math.sin(time * 4) * 0.1)
+      outerRingMaterial.opacity = 0.75 + Math.sin(time * 3) * 0.2
+      outerRing.scale.setScalar(1 + Math.sin(time * 4) * 0.12)
     }
     
-    // Update inner ring
+    // Update inner ring - Vibrant deep green with subtle pulse
     if (this.mesh.children[2]) {
       const innerRing = this.mesh.children[2] as THREE.Mesh
       const innerRingMaterial = innerRing.material as THREE.MeshBasicMaterial
-      innerRingMaterial.opacity = 0.8 + Math.sin(time * 5) * 0.2
+      innerRingMaterial.opacity = 0.85 + Math.sin(time * 5) * 0.15
     }
   }
 
@@ -215,21 +220,21 @@ export class PowerUp {
     // Faster trail when magnetized!
     const interval = this.isMagnetized ? this.trailInterval * 0.5 : this.trailInterval
     if (this.trailTimer >= interval) {
-      // Create sparkle particles - CYAN color
+      // Create sparkle particles - LIGHTER GREEN color
       const sparkleVelocity = new THREE.Vector3(
         (Math.random() - 0.5) * 0.5,
         (Math.random() - 0.5) * 0.5,
         (Math.random() - 0.5) * 0.3
       )
       
-      // Green sparkles for weapon power-up
+      // Lighter green sparkles for vibrant, special look
       const sparkleColor = new THREE.Color().setHSL(
-        0.33 + Math.sin(this.pulseTime * 2) * 0.05, // Green hue range
+        0.35 + Math.sin(this.pulseTime * 3) * 0.03, // Lighter green hue range
         1.0,
-        0.7
+        0.65 + Math.random() * 0.15 // Lighter, varied brightness
       )
       
-      this.effectsSystem.createSparkle(this.position, sparkleVelocity, sparkleColor, 0.5)
+      this.effectsSystem.createSparkle(this.position, sparkleVelocity, sparkleColor, 0.6)
       
       this.trailTimer = 0
     }
@@ -269,12 +274,13 @@ export class PowerUp {
   collect(): void {
     this.alive = false
     
-    // Create collection effect - CYAN EXPLOSION!
+    // Create collection effect - VIBRANT GREEN EXPLOSION!
     if (this.effectsSystem) {
-      // Green explosion effect
-      this.effectsSystem.createExplosion(this.position, 1.5, new THREE.Color().setHSL(0.33, 1.0, 0.6))
+      // Vibrant green explosion effect with multiple bursts
+      this.effectsSystem.createExplosion(this.position, 1.8, new THREE.Color(0x00EE33))
+      this.effectsSystem.createExplosion(this.position, 1.2, new THREE.Color(0x66FF88))
       
-      // Electric burst with cyan tint
+      // Electric burst with vibrant green tint
       this.effectsSystem.createElectricDeath(this.position, 'PowerUp')
     }
   }

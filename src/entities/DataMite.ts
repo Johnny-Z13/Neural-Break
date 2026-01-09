@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Enemy } from './Enemy'
+import { Enemy, EnemyState, SpawnConfig, DeathConfig } from './Enemy'
 import { Player } from './Player'
 import { BALANCE_CONFIG } from '../config'
 
@@ -8,9 +8,6 @@ export class DataMite extends Enemy {
   private movementOffset: number = Math.random() * Math.PI * 2 // Random starting phase
   private swayAmount: number = 0.3 // Amount of perpendicular sway
   private swaySpeed: number = 3.0 // Speed of sway oscillation
-  
-  // 💀 DEATH STATE 💀 (simplified - no complex animation)
-  private isDying: boolean = false
   
   constructor(x: number, y: number) {
     super(x, y)
@@ -113,63 +110,57 @@ export class DataMite extends Enemy {
       spike.rotation.z = angle + Math.PI / 2
       this.mesh.add(spike)
     }
+    
+    // 🌟 START SMALL FOR SPAWN ANIMATION 🌟
+    this.mesh.scale.setScalar(0.01)
   }
-
-  // Override takeDamage to trigger custom death
-  takeDamage(damage: number): void {
-    if (this.isDying) return // Prevent multiple death triggers
-    
-    this.health -= damage
-    
-    // Visual feedback on hit
-    const material = this.mesh.material as THREE.MeshBasicMaterial
-    const originalColor = material.color.clone()
-    const originalScale = this.mesh.scale.clone()
-    
-    const hsl = { h: 0, s: 0, l: 0 }
-    originalColor.getHSL(hsl)
-    material.color.setHSL(hsl.h, 1.0, 0.7)
-    this.mesh.scale.multiplyScalar(1.5)
-    
-    setTimeout(() => {
-      material.color.copy(originalColor)
-      this.mesh.scale.copy(originalScale)
-    }, 100)
-
-    if (this.health <= 0 && !this.isDying) {
-      this.startDeathAnimation()
+  
+  // 🎬 SPAWN CONFIGURATION 🎬
+  protected getSpawnConfig(): SpawnConfig {
+    return {
+      duration: 0.2,
+      invulnerable: true,
+      particles: {
+        count: 8,
+        colors: [0xFF4400, 0xFF6600],
+        speed: 2,
+        burstAtStart: true
+      }
     }
   }
-
-  private startDeathAnimation(): void {
-    // Simple death animation - particles only, no orange circle
-    this.alive = false
-    this.isDying = false
-    this.mesh.visible = false
-    
-    // Create particle burst (dots) - no orange circle explosion
-    if (this.effectsSystem) {
-      const deathColor = new THREE.Color(1, 0.5, 0) // Orange color
-      // Create enemy death particles (lots of dots radiating outward)
-      this.effectsSystem.createEnemyDeathParticles(this.position, 'DataMite', deathColor)
+  
+  // 🎬 DEATH CONFIGURATION 🎬
+  protected getDeathConfig(): DeathConfig {
+    return {
+      duration: 0,
+      particles: {
+        count: 8,
+        colors: [0xFF4400, 0xFF6600],
+        speed: 2
+      },
+      explosion: {
+        size: 1.2,
+        color: 0xFF5500
+      }
     }
-    
-    // Death sound will be played by EnemyManager
+  }
+  
+  // 🌟 SPAWN ANIMATION HOOK 🌟
+  protected onSpawnUpdate(progress: number): void {
+    // Simple elastic scale-in
+    const elasticProgress = progress < 1 
+      ? 1 - Math.pow(1 - progress, 3)
+      : 1
+    this.mesh.scale.setScalar(Math.max(0.01, elasticProgress))
   }
 
-  // Removed: createDeathFragments() - triangular fragments no longer used
-
-  // Removed: updateDeathAnimation() - complex animation replaced with particle burst
-
-  // Override createDeathEffect to prevent parent explosion
-  protected createDeathEffect(): void {
-    // Do nothing - we handle death in startDeathAnimation with particle burst
-    // This prevents the parent class from creating the big orange circle explosion
-  }
-
-  // Override update (death animation removed - using simple sparkles only)
+  // Override update to use parent lifecycle system
   update(deltaTime: number, player: Player): void {
-    // Death animation removed - simple sparkles handled in startDeathAnimation
+    // Use parent's lifecycle state machine
+    super.update(deltaTime, player)
+    
+    // Only do custom updates when alive
+    if (this.state !== EnemyState.ALIVE) return
     if (!this.alive) return
     
     // Store last position for trail calculation
@@ -189,6 +180,9 @@ export class DataMite extends Enemy {
   }
 
   updateAI(deltaTime: number, player: Player): void {
+    // Don't run AI during spawn/death
+    if (this.state !== EnemyState.ALIVE) return
+    
     // Simple pathfinding toward player with slight sway
     const playerPos = player.getPosition()
     const toPlayer = playerPos.clone().sub(this.position)
@@ -207,6 +201,9 @@ export class DataMite extends Enemy {
   }
 
   protected updateVisuals(deltaTime: number): void {
+    // Only animate when alive
+    if (this.state !== EnemyState.ALIVE) return
+    
     const time = Date.now() * 0.001
     
     // 🎮 FASTER PULSING - More aggressive! 🎮
@@ -261,11 +258,6 @@ export class DataMite extends Enemy {
         spikeMaterial.opacity = 0.48 + Math.sin(time * 20 + i) * 0.24 // 20% more transparent (was 0.6 + 0.3)
       }
     }
-  }
-  
-  // Override destroy (fragment cleanup removed - no longer needed)
-  destroy(): void {
-    super.destroy()
   }
 }
 

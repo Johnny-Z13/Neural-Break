@@ -4,6 +4,16 @@ import { AudioVisualReactiveSystem } from './AudioVisualReactiveSystem'
 import { EnergyBarrier } from './EnergyBarrier'
 import { DEBUG_MODE } from '../config'
 
+// 💫 SHOOTING STAR INTERFACE 💫
+interface ShootingStar {
+  position: THREE.Vector3
+  velocity: THREE.Vector3
+  life: number
+  maxLife: number
+  mesh: THREE.Mesh
+  trail: THREE.Line | null
+}
+
 export class SceneManager {
   private scene: THREE.Scene
   private camera: THREE.OrthographicCamera
@@ -44,6 +54,15 @@ export class SceneManager {
   private bloomPulse: number = 0
   private timeOffset: number = 0
   
+  // ✨ COSMIC STARFIELD ✨
+  private cosmicStarfield: THREE.Points | null = null
+  private starfieldVelocities: Float32Array | null = null
+  
+  // 💫 SHOOTING STARS 💫
+  private shootingStars: ShootingStar[] = []
+  private shootingStarTimer: number = 0
+  private shootingStarInterval: number = 3 + Math.random() * 4 // 3-7 seconds between shooting stars
+  
   // 🚀 SUPER JUICY EFFECTS SYSTEM! 🚀
   private effectsSystem: EffectsSystem
   
@@ -65,7 +84,8 @@ export class SceneManager {
     
     // Create scene
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x04040e) // Deep purple-blue background (darkened 12%)
+    // Remove solid background so starfield is visible - use renderer clear color instead
+    this.scene.background = null
     console.log('✅ Scene created')
 
     // Create orthographic camera for top-down view
@@ -95,6 +115,7 @@ export class SceneManager {
       })
       this.renderer.setSize(window.innerWidth, window.innerHeight)
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      this.renderer.setClearColor(0x04040e, 1) // Deep purple-blue background (darkened 12%)
       this.renderer.outputColorSpace = THREE.SRGBColorSpace
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping
       this.renderer.toneMappingExposure = 1.5 // More intense!
@@ -232,6 +253,9 @@ export class SceneManager {
     
     // Add neural pathway lines within bounds
     this.createNeuralPathways(worldSize)
+    
+    // ✨ Add subtle cosmic starfield in deep background ✨
+    this.createCosmicStarfield()
   }
 
   private createDataParticles(worldSize: number): void {
@@ -318,6 +342,82 @@ export class SceneManager {
     }
   }
 
+  private createCosmicStarfield(): void {
+    // ✨ COSMIC STARFIELD - Subtle background stars with size variation ✨
+    console.log('🌌 Creating cosmic starfield...')
+    
+    const starCount = 400
+    const geometry = new THREE.BufferGeometry()
+    const positions = new Float32Array(starCount * 3)
+    const colors = new Float32Array(starCount * 3)
+    const sizes = new Float32Array(starCount)
+    this.starfieldVelocities = new Float32Array(starCount * 2)
+
+    for (let i = 0; i < starCount; i++) {
+      const i3 = i * 3
+      const i2 = i * 2
+      
+      // Spread stars across visible area
+      positions[i3] = (Math.random() - 0.5) * 100 // X position
+      positions[i3 + 1] = (Math.random() - 0.5) * 100 // Y position
+      positions[i3 + 2] = -2 // Behind grid (background)
+
+      // Subtle white/blue colors
+      const starType = Math.random()
+      let brightness: number
+      if (starType < 0.6) {
+        // Dim small stars
+        brightness = 0.3 + Math.random() * 0.3
+      } else if (starType < 0.9) {
+        // Medium stars
+        brightness = 0.5 + Math.random() * 0.3
+      } else {
+        // Rare bright stars
+        brightness = 0.8 + Math.random() * 0.2
+      }
+      
+      colors[i3] = brightness
+      colors[i3 + 1] = brightness
+      colors[i3 + 2] = brightness + 0.05 // Very slight blue tint
+      
+      // Size variation - more larger stars for cosmic feel
+      if (starType < 0.4) {
+        sizes[i] = 0.6 + Math.random() * 0.6 // Small stars
+      } else if (starType < 0.7) {
+        sizes[i] = 1.2 + Math.random() * 1.0 // Medium stars
+      } else if (starType < 0.9) {
+        sizes[i] = 2.0 + Math.random() * 1.5 // Large stars
+      } else {
+        sizes[i] = 3.0 + Math.random() * 2.0 // Extra large stars (10%)
+      }
+      
+      // Very slow drift velocities for subtle movement
+      this.starfieldVelocities[i2] = (Math.random() - 0.5) * 0.2
+      this.starfieldVelocities[i2 + 1] = (Math.random() - 0.5) * 0.2
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+
+    const material = new THREE.PointsMaterial({
+      size: 1.5,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+      depthTest: false,
+      depthWrite: false
+    })
+
+    this.cosmicStarfield = new THREE.Points(geometry, material)
+    this.cosmicStarfield.renderOrder = -1000
+    this.scene.add(this.cosmicStarfield)
+    
+    console.log('🌌 Starfield created with', starCount, 'stars')
+  }
+
   // 🔥 SUPER CRAZY EFFECTS METHOD! 🔥
   private setupCrazyEffects(): void {
     // Create data streams flowing across the screen
@@ -376,7 +476,7 @@ export class SceneManager {
     })
     
     this.glitchEffect = new THREE.Mesh(geometry, material)
-    this.glitchEffect.position.z = -5
+    this.glitchEffect.position.z = 5 // Move in front of game objects, behind camera
     this.scene.add(this.glitchEffect)
   }
 
@@ -476,6 +576,9 @@ export class SceneManager {
     if (this.energyBarrier) {
       this.energyBarrier.update(deltaTime)
     }
+    
+    // ✨ UPDATE COSMIC STARFIELD - Subtle slow drift ✨
+    this.updateCosmicStarfield(deltaTime)
     
     // Smoothly move camera towards target with shake
     this.camera.position.x = THREE.MathUtils.lerp(
@@ -625,6 +728,169 @@ export class SceneManager {
       }
     })
   }
+
+  private updateCosmicStarfield(deltaTime: number): void {
+    // ✨ UPDATE COSMIC STARFIELD - Slow drift for cosmic depth ✨
+    if (this.cosmicStarfield && this.starfieldVelocities) {
+      const positions = this.cosmicStarfield.geometry.attributes.position.array as Float32Array
+      const starCount = positions.length / 3
+      
+      for (let i = 0; i < starCount; i++) {
+        const i3 = i * 3
+        const i2 = i * 2
+        
+        // Apply slow drift velocity
+        positions[i3] += this.starfieldVelocities[i2] * deltaTime
+        positions[i3 + 1] += this.starfieldVelocities[i2 + 1] * deltaTime
+        
+        // Wrap around when stars go off-screen
+        if (positions[i3] > 50) positions[i3] = -50
+        if (positions[i3] < -50) positions[i3] = 50
+        if (positions[i3 + 1] > 50) positions[i3 + 1] = -50
+        if (positions[i3 + 1] < -50) positions[i3 + 1] = 50
+      }
+      
+      // Mark positions as needing update
+      this.cosmicStarfield.geometry.attributes.position.needsUpdate = true
+      
+      // Subtle twinkle effect
+      const material = this.cosmicStarfield.material as THREE.PointsMaterial
+      material.opacity = 0.55 + Math.sin(this.timeOffset * 0.5) * 0.1
+    }
+    
+    // 💫 SHOOTING STARS - Disabled for now 💫
+    // this.updateShootingStars(deltaTime)
+  }
+  
+  /* 💫 SHOOTING STARS - DISABLED FOR NOW 💫
+  private updateShootingStars(deltaTime: number): void {
+    // Spawn new shooting stars occasionally
+    this.shootingStarTimer += deltaTime
+    if (this.shootingStarTimer >= this.shootingStarInterval) {
+      this.spawnShootingStar()
+      this.shootingStarTimer = 0
+      this.shootingStarInterval = 3 + Math.random() * 5 // 3-8 seconds until next
+    }
+    
+    // Update existing shooting stars
+    for (let i = this.shootingStars.length - 1; i >= 0; i--) {
+      const star = this.shootingStars[i]
+      
+      // Move the shooting star
+      star.position.x += star.velocity.x * deltaTime
+      star.position.y += star.velocity.y * deltaTime
+      star.life -= deltaTime
+      
+      // Update mesh position
+      star.mesh.position.copy(star.position)
+      
+      // Fade out as life decreases
+      const material = star.mesh.material as THREE.MeshBasicMaterial
+      material.opacity = Math.max(0, star.life / star.maxLife) * 0.8
+      
+      // Update trail
+      if (star.trail) {
+        const trailPositions = star.trail.geometry.attributes.position.array as Float32Array
+        // Shift trail positions
+        for (let j = trailPositions.length - 3; j >= 3; j -= 3) {
+          trailPositions[j] = trailPositions[j - 3]
+          trailPositions[j + 1] = trailPositions[j - 2]
+          trailPositions[j + 2] = trailPositions[j - 1]
+        }
+        // Set head position
+        trailPositions[0] = star.position.x
+        trailPositions[1] = star.position.y
+        trailPositions[2] = star.position.z
+        star.trail.geometry.attributes.position.needsUpdate = true
+        
+        // Fade trail
+        const trailMaterial = star.trail.material as THREE.LineBasicMaterial
+        trailMaterial.opacity = Math.max(0, star.life / star.maxLife) * 0.5
+      }
+      
+      // Remove dead shooting stars
+      if (star.life <= 0) {
+        this.scene.remove(star.mesh)
+        if (star.trail) this.scene.remove(star.trail)
+        this.shootingStars.splice(i, 1)
+      }
+    }
+  }
+  
+  private spawnShootingStar(): void {
+    // Random starting position at edge of visible area
+    const side = Math.floor(Math.random() * 4) // 0=top, 1=right, 2=bottom, 3=left
+    let x: number, y: number, vx: number, vy: number
+    
+    const speed = 25 + Math.random() * 20 // Fast!
+    const angle = Math.random() * Math.PI * 0.4 - Math.PI * 0.2 // Slight angle variation
+    
+    switch (side) {
+      case 0: // From top
+        x = (Math.random() - 0.5) * 60
+        y = 35
+        vx = Math.sin(angle) * speed * 0.3
+        vy = -speed
+        break
+      case 1: // From right
+        x = 45
+        y = (Math.random() - 0.5) * 60
+        vx = -speed
+        vy = Math.sin(angle) * speed * 0.3
+        break
+      case 2: // From bottom
+        x = (Math.random() - 0.5) * 60
+        y = -35
+        vx = Math.sin(angle) * speed * 0.3
+        vy = speed
+        break
+      default: // From left
+        x = -45
+        y = (Math.random() - 0.5) * 60
+        vx = speed
+        vy = Math.sin(angle) * speed * 0.3
+    }
+    
+    // Create shooting star mesh (small bright point)
+    const geometry = new THREE.CircleGeometry(0.3, 8)
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xFFFFFF,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    })
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.set(x, y, -1.5)
+    mesh.renderOrder = -500
+    this.scene.add(mesh)
+    
+    // Create trail
+    const trailLength = 15
+    const trailPoints: THREE.Vector3[] = []
+    for (let i = 0; i < trailLength; i++) {
+      trailPoints.push(new THREE.Vector3(x, y, -1.5))
+    }
+    const trailGeometry = new THREE.BufferGeometry().setFromPoints(trailPoints)
+    const trailMaterial = new THREE.LineBasicMaterial({
+      color: 0xCCDDFF,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending
+    })
+    const trail = new THREE.Line(trailGeometry, trailMaterial)
+    trail.renderOrder = -501
+    this.scene.add(trail)
+    
+    this.shootingStars.push({
+      position: new THREE.Vector3(x, y, -1.5),
+      velocity: new THREE.Vector3(vx, vy, 0),
+      life: 1.5 + Math.random() * 0.5,
+      maxLife: 1.5 + Math.random() * 0.5,
+      mesh,
+      trail
+    })
+  }
+  END SHOOTING STARS */
 
   setCameraTarget(position: THREE.Vector3): void {
     this.cameraTarget.set(position.x, position.y, 10) // Keep camera at fixed Z distance

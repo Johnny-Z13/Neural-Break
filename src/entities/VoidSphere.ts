@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { Enemy } from './Enemy'
+import { Enemy, EnemyState, SpawnConfig, DeathConfig } from './Enemy'
 import { Player } from './Player'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { AudioManager } from '../audio/AudioManager'
@@ -36,11 +36,13 @@ export class VoidSphere extends Enemy {
   private ambientPulseInterval: number = 2.0
   
   // 💀 DEATH ANIMATION STATE 💀
-  private isDying: boolean = false
-  private deathTimer: number = 0
-  private deathDuration: number = 1.5
   private implosionScale: number = 1.0
   private voidRingsCollapsed: boolean[] = []
+  
+  // 🎵 SOUND TRACKING 🎵
+  private spawnChargeSoundPlayed: boolean = false
+  private spawnPulseSoundPlayed: boolean = false
+  private deathInitialized: boolean = false
 
   constructor(x: number, y: number) {
     super(x, y)
@@ -144,9 +146,17 @@ export class VoidSphere extends Enemy {
         ring.add(particle)
       }
       
+      // 🌟 START RINGS INVISIBLE AND SMALL FOR SPAWN ANIMATION 🌟
+      ring.scale.setScalar(0.01)
+      const ringMat = ring.material as THREE.MeshBasicMaterial
+      ringMat.opacity = 0
+      
       this.voidRings.push(ring)
       this.mesh.add(ring)
     }
+    
+    // 🌟 START MESH SMALL FOR SPAWN ANIMATION 🌟
+    this.mesh.scale.setScalar(0.01)
     
     // ⚡ ENERGY TENDRILS - Reaching out! ⚡
     for (let i = 0; i < 8; i++) {
@@ -250,47 +260,106 @@ export class VoidSphere extends Enemy {
       this.mesh.add(port)
     }
   }
-
-  // Override takeDamage to trigger custom death
-  takeDamage(damage: number): void {
-    if (this.isDying) return
-    
-    this.health -= damage
-    
-    // Visual feedback - void pulses darker
-    const core = this.mesh.children[0] as THREE.Mesh
-    if (core) {
-      const material = core.material as THREE.MeshBasicMaterial
-      const originalOpacity = material.opacity
-      material.opacity = Math.min(1.0, originalOpacity + 0.2)
-      setTimeout(() => {
-        material.opacity = originalOpacity
-      }, 150)
+  
+  // 🎬 SPAWN CONFIGURATION 🎬
+  protected getSpawnConfig(): SpawnConfig {
+    return {
+      duration: 1.0,
+      invulnerable: true,
+      particles: {
+        count: 20,
+        colors: [0x8800FF, 0xAA00FF],
+        speed: 2,
+        burstAtStart: false // Custom animation handles particles
+      }
     }
-
-    if (this.health <= 0 && !this.isDying) {
-      this.startDeathAnimation()
+  }
+  
+  // 🎬 DEATH CONFIGURATION 🎬
+  protected getDeathConfig(): DeathConfig {
+    return {
+      duration: 1.5,
+      particles: {
+        count: 20,
+        colors: [0x8800FF, 0xAA00FF],
+        speed: 3
+      },
+      explosion: {
+        size: 3.0,
+        color: 0x8800FF
+      },
+      distortionWave: {
+        radius: 2.5
+      }
+    }
+  }
+  
+  // 🌟 SPAWN ANIMATION HOOK 🌟
+  protected onSpawnUpdate(progress: number): void {
+    // 🌀 RINGS MORPH INTO EXISTENCE - FROM INSIDE OUT! 🌀
+    const easeProgress = progress * progress * (3 - 2 * progress) // Smooth ease-in-out
+    
+    // Grow main mesh
+    this.mesh.scale.setScalar(easeProgress)
+    
+    // Rings appear one by one from inside out with dramatic growth
+    const spawnDuration = 1.0
+    for (let i = 0; i < this.ringCount; i++) {
+      const ring = this.voidRings[i]
+      
+      // Each ring starts appearing after the previous one
+      const ringDelay = i * 0.12 // 0.12s delay between rings
+      const ringProgress = Math.max(0, Math.min(1, (progress - ringDelay / spawnDuration) * 1.5))
+      
+      if (ringProgress > 0) {
+        // Ease-out elastic growth for dramatic effect
+        const elasticScale = ringProgress < 1 
+          ? ringProgress * ringProgress * ((2.5 + 1) * ringProgress - 2.5) + 1 
+          : 1
+        
+        ring.scale.setScalar(Math.max(0.01, elasticScale))
+        
+        const material = ring.material as THREE.MeshBasicMaterial
+        material.opacity = Math.min(0.7, ringProgress * 1.2) // Target opacity 0.7
+        
+        // Animate wireframe too
+        const wireframe = ring.children[0] as THREE.Mesh
+        if (wireframe) {
+          const wireMaterial = wireframe.material as THREE.MeshBasicMaterial
+          wireMaterial.opacity = Math.min(0.9, ringProgress * 1.5)
+        }
+        
+        // Fade in particles
+        for (let j = 1; j < ring.children.length; j++) {
+          const particle = ring.children[j] as THREE.Mesh
+          if (particle) {
+            const particleMaterial = particle.material as THREE.MeshBasicMaterial
+            particleMaterial.opacity = Math.min(0.8, ringProgress * 1.2)
+          }
+        }
+      }
+    }
+    
+    // 🎵 PLAY SPAWN SOUND AT START! 🎵
+    if (!this.spawnChargeSoundPlayed && this.audioManager) {
+      this.spawnChargeSoundPlayed = true
+      this.audioManager.playVoidSphereChargeSound() // Dramatic charge sound!
+    }
+    
+    // 🎵 PLAY PULSE SOUND WHEN FULLY SPAWNED! 🎵
+    if (progress >= 0.95 && !this.spawnPulseSoundPlayed && this.audioManager) {
+      this.spawnPulseSoundPlayed = true
+      this.audioManager.playVoidSpherePulseSound() // Activation sound!
     }
   }
 
-  private startDeathAnimation(): void {
-    this.isDying = true
-    this.deathTimer = 0
-    this.alive = true
-    this.implosionScale = 1.0
-    this.voidRingsCollapsed = new Array(this.ringCount).fill(false)
-    
-    // 🎵 PLAY DEATH SOUND! 🎵
-    if (this.audioManager) {
-      this.audioManager.playEnemyDeathSound('VoidSphere')
+  // 💀 DEATH ANIMATION HOOK 💀
+  protected onDeathUpdate(progress: number): void {
+    // Initialize on first call
+    if (!this.deathInitialized) {
+      this.deathInitialized = true
+      this.voidRingsCollapsed = new Array(this.ringCount).fill(false)
     }
-  }
-
-  private updateDeathAnimation(deltaTime: number): void {
-    if (!this.isDying) return
-    
-    this.deathTimer += deltaTime
-    const progress = this.deathTimer / this.deathDuration
     
     // Phase 1: Rings collapse inward (0-0.27s)
     if (progress < 0.27) {
@@ -396,32 +465,16 @@ export class VoidSphere extends Enemy {
         }
       })
       
-      if (progress >= 1.0) {
-        this.completeDeath()
-      }
     }
   }
 
-  private completeDeath(): void {
-    // Final VFX
-    if (this.effectsSystem) {
-      const deathColor = new THREE.Color(0x5000FF)
-      this.effectsSystem.createExplosion(this.position, 3.0, deathColor)
-      this.effectsSystem.addDistortionWave(this.position, 2.5)
-    }
-    
-    this.alive = false
-    this.isDying = false
-    this.createDeathEffect()
-  }
-
-  // Override update to handle death animation
+  // Override update to use parent lifecycle system
   update(deltaTime: number, player: Player): void {
-    if (this.isDying) {
-      this.updateDeathAnimation(deltaTime)
-      return
-    }
+    // Use parent's lifecycle state machine
+    super.update(deltaTime, player)
     
+    // Only do custom updates when alive
+    if (this.state !== EnemyState.ALIVE) return
     if (!this.alive) return
     
     // Store last position for trail calculation
@@ -444,6 +497,12 @@ export class VoidSphere extends Enemy {
   }
 
   updateAI(deltaTime: number, player: Player): void {
+    // 🛡️ DON'T MOVE OR ATTACK DURING SPAWN/DEATH! 🛡️
+    if (this.state !== EnemyState.ALIVE) {
+      this.velocity.set(0, 0, 0)
+      return
+    }
+    
     // Slow, menacing approach
     const playerPos = player.getPosition()
     const direction = playerPos.sub(this.position).normalize()

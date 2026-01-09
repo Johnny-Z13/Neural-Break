@@ -4,6 +4,53 @@ import { EffectsSystem } from '../graphics/EffectsSystem'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
 import { AudioManager } from '../audio/AudioManager'
 
+// 🌟 ENEMY LIFECYCLE STATE MACHINE 🌟
+export enum EnemyState {
+  SPAWNING = 'spawning',
+  ALIVE = 'alive',
+  DYING = 'dying',
+  DEAD = 'dead'
+}
+
+// 🎬 ANIMATION CONFIGURATION INTERFACES 🎬
+export interface SpawnConfig {
+  duration: number
+  invulnerable: boolean
+  particles?: {
+    count: number
+    colors: number[]
+    speed: number
+    burstAtStart?: boolean
+  }
+  sound?: string
+  screenFlash?: {
+    intensity: number
+    color: number
+  }
+}
+
+export interface DeathConfig {
+  duration: number
+  particles?: {
+    count: number
+    colors: number[]
+    speed: number
+  }
+  sound?: string
+  screenFlash?: {
+    intensity: number
+    color: number
+  }
+  explosion?: {
+    size: number
+    color: number
+  }
+  distortionWave?: {
+    radius: number
+  }
+  electricDeath?: boolean
+}
+
 export abstract class Enemy {
   protected mesh: THREE.Mesh
   protected position: THREE.Vector3
@@ -27,6 +74,12 @@ export abstract class Enemy {
   // 💥 DEATH DAMAGE - Enemies damage nearby enemies when they die! 💥
   protected deathDamageRadius: number = 3.0 // Default radius for death damage
   protected deathDamageAmount: number = 10 // Default damage to nearby enemies
+  
+  // 🎬 LIFECYCLE STATE MACHINE 🎬
+  protected state: EnemyState = EnemyState.SPAWNING
+  protected animTimer: number = 0
+  private spawnSoundPlayed: boolean = false
+  private deathSoundPlayed: boolean = false
 
   constructor(x: number, y: number) {
     this.position = new THREE.Vector3(x, y, 0)
@@ -35,8 +88,78 @@ export abstract class Enemy {
 
   abstract initialize(): void
   abstract updateAI(deltaTime: number, player: Player): void
+  
+  // 🎬 LIFECYCLE CONFIGURATION - Override in subclasses for custom behavior 🎬
+  protected getSpawnConfig(): SpawnConfig {
+    return {
+      duration: 0.25,
+      invulnerable: true,
+      particles: {
+        count: 8,
+        colors: [0xFF6600, 0xFF8800],
+        speed: 3,
+        burstAtStart: true
+      }
+    }
+  }
+  
+  protected getDeathConfig(): DeathConfig {
+    return {
+      duration: 0,
+      particles: {
+        count: 15,
+        colors: [0xFF4400, 0xFF6600],
+        speed: 3
+      },
+      explosion: {
+        size: 1.2,
+        color: 0xFF4400
+      }
+    }
+  }
+  
+  // 🎬 LIFECYCLE HOOKS - Override for custom animations 🎬
+  protected onSpawnUpdate(progress: number): void {
+    // Default: elastic scale-in
+    const elasticProgress = progress < 1 
+      ? 1 - Math.pow(1 - progress, 3) * Math.cos(progress * Math.PI * 2)
+      : 1
+    this.mesh.scale.setScalar(Math.max(0.01, elasticProgress))
+  }
+  
+  protected onDeathUpdate(progress: number): void {
+    // Default: fade out
+    this.mesh.traverse((child) => {
+      if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+        const material = child.material as THREE.MeshBasicMaterial | THREE.LineBasicMaterial
+        if (material && material.opacity !== undefined) {
+          material.opacity = 1 - progress
+        }
+      }
+    })
+  }
 
   update(deltaTime: number, player: Player): void {
+    // 🎬 LIFECYCLE STATE MACHINE UPDATE 🎬
+    switch (this.state) {
+      case EnemyState.SPAWNING:
+        this.updateSpawnAnimation(deltaTime)
+        this.updateVisuals(deltaTime)
+        return
+        
+      case EnemyState.DYING:
+        this.updateDeathAnimation(deltaTime)
+        this.updateVisuals(deltaTime)
+        return
+        
+      case EnemyState.DEAD:
+        return
+        
+      case EnemyState.ALIVE:
+        // Normal behavior - continue below
+        break
+    }
+    
     if (!this.alive) return
 
     // Store last position for trail calculation
@@ -55,13 +178,72 @@ export abstract class Enemy {
     this.updateVisuals(deltaTime)
   }
 
+  // 🌟 SPAWN ANIMATION HANDLER 🌟
+  private updateSpawnAnimation(deltaTime: number): void {
+    const config = this.getSpawnConfig()
+    this.animTimer += deltaTime
+    const progress = Math.min(1.0, this.animTimer / config.duration)
+    
+    // Play spawn sound at start
+    if (!this.spawnSoundPlayed) {
+      this.spawnSoundPlayed = true
+      if (config.particles?.burstAtStart && this.effectsSystem) {
+        this.spawnParticleBurst(config.particles)
+      }
+      if (config.screenFlash && this.effectsSystem) {
+        this.effectsSystem.addScreenFlash(
+          config.screenFlash.intensity,
+          new THREE.Color(config.screenFlash.color)
+        )
+      }
+      if (config.sound && this.audioManager) {
+        // Play spawn sound if defined (can be added to AudioManager later)
+      }
+    }
+    
+    // Call subclass hook for custom spawn animation
+    this.onSpawnUpdate(progress)
+    
+    // Complete spawn
+    if (progress >= 1.0) {
+      this.state = EnemyState.ALIVE
+      this.animTimer = 0
+    }
+  }
+  
+  // 💀 DEATH ANIMATION HANDLER 💀
+  private updateDeathAnimation(deltaTime: number): void {
+    const config = this.getDeathConfig()
+    this.animTimer += deltaTime
+    const progress = config.duration > 0 
+      ? Math.min(1.0, this.animTimer / config.duration)
+      : 1.0
+    
+    // Call subclass hook for custom death animation
+    this.onDeathUpdate(progress)
+    
+    // Complete death
+    if (progress >= 1.0) {
+      this.state = EnemyState.DEAD
+      this.alive = false
+      this.mesh.visible = false
+    }
+  }
+
   protected updateVisuals(deltaTime: number): void {
-    // Default pulsing effect
-    const pulse = Math.sin(Date.now() * 0.005) * 0.1 + 1
-    this.mesh.scale.setScalar(pulse)
+    // Default pulsing effect (only when alive)
+    if (this.state === EnemyState.ALIVE) {
+      const pulse = Math.sin(Date.now() * 0.005) * 0.1 + 1
+      this.mesh.scale.setScalar(pulse)
+    }
   }
 
   takeDamage(damage: number): void {
+    // 🛡️ INVULNERABLE DURING SPAWN/DEATH ANIMATIONS! 🛡️
+    const config = this.getSpawnConfig()
+    if (this.state === EnemyState.SPAWNING && config.invulnerable) return
+    if (this.state === EnemyState.DYING || this.state === EnemyState.DEAD) return
+    
     const wasAlive = this.alive
     this.health -= damage
     
@@ -76,9 +258,98 @@ export abstract class Enemy {
       }
     }
 
-    if (this.health <= 0) {
+    if (this.health <= 0 && this.state === EnemyState.ALIVE) {
+      this.startDeathSequence()
+    }
+  }
+  
+  // 💀 START DEATH SEQUENCE 💀
+  private startDeathSequence(): void {
+    this.state = EnemyState.DYING
+    this.animTimer = 0
+    this.deathSoundPlayed = false
+    
+    const config = this.getDeathConfig()
+    
+    // Play death sound
+    if (!this.deathSoundPlayed && this.audioManager) {
+      this.deathSoundPlayed = true
+      const enemyType = this.constructor.name
+      this.audioManager.playEnemyDeathSound(enemyType)
+    }
+    
+    // Trigger death effects at start
+    if (this.effectsSystem) {
+      // Particles
+      if (config.particles) {
+        this.spawnParticleBurst(config.particles)
+      }
+      
+      // Explosion
+      if (config.explosion) {
+        this.effectsSystem.createExplosion(
+          this.position,
+          config.explosion.size,
+          new THREE.Color(config.explosion.color)
+        )
+      }
+      
+      // Screen flash
+      if (config.screenFlash) {
+        this.effectsSystem.addScreenFlash(
+          config.screenFlash.intensity,
+          new THREE.Color(config.screenFlash.color)
+        )
+      }
+      
+      // Distortion wave
+      if (config.distortionWave) {
+        this.effectsSystem.addDistortionWave(
+          this.position,
+          config.distortionWave.radius
+        )
+      }
+      
+      // Electric death
+      if (config.electricDeath) {
+        const enemyType = this.constructor.name
+        this.effectsSystem.createElectricDeath(this.position, enemyType)
+      }
+      
+      // Vector death particles
+      const enemyType = this.constructor.name
+      const deathColor = config.explosion 
+        ? new THREE.Color(config.explosion.color)
+        : new THREE.Color(0xFF4400)
+      this.effectsSystem.createEnemyDeathParticles(this.position, enemyType, deathColor)
+    }
+    
+    // If no death animation duration, transition to dead immediately
+    if (config.duration === 0) {
+      this.state = EnemyState.DEAD
       this.alive = false
-      this.createDeathEffect()
+      this.mesh.visible = false
+    }
+  }
+  
+  // 💥 CENTRALIZED PARTICLE BURST HELPER 💥
+  protected spawnParticleBurst(config: { count: number, colors: number[], speed: number }): void {
+    if (!this.effectsSystem) return
+    
+    for (let i = 0; i < config.count; i++) {
+      const angle = (i / config.count) * Math.PI * 2
+      const speedVariance = config.speed + Math.random() * 2
+      const velocity = new THREE.Vector3(
+        Math.cos(angle) * speedVariance,
+        Math.sin(angle) * speedVariance,
+        (Math.random() - 0.5) * 2
+      )
+      
+      // Alternate between colors if multiple provided
+      const colorHex = config.colors[i % config.colors.length]
+      const color = new THREE.Color(colorHex)
+      
+      this.effectsSystem.createSparkle(this.position, velocity, color, 0.3)
     }
   }
   
@@ -120,140 +391,11 @@ export abstract class Enemy {
     }, 200)
   }
 
+  // 💀 DEPRECATED - Death effects now handled by lifecycle system 💀
+  // This method is kept for backwards compatibility with enemies that haven't
+  // been fully migrated yet, but will be removed in the future.
   protected createDeathEffect(): void {
-    // 💥 SUPER JUICY DEATH EFFECT WITH VECTOR PARTICLES! 💥
-    if (this.effectsSystem) {
-      // Determine death effect type based on enemy
-      const enemyType = this.constructor.name
-      
-      // ALWAYS spawn death particles (vector style) for every enemy!
-      let deathColor: THREE.Color | undefined
-      
-      switch (enemyType) {
-        case 'DataMite':
-          // 🔥 DATA MITE - Quick orange pop with energy burst! 🔥
-          deathColor = new THREE.Color(1, 0.3, 0)
-          this.effectsSystem.createExplosion(this.position, 1.2, deathColor)
-          // Add extra sparkles for small enemy
-          for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2
-            const velocity = new THREE.Vector3(
-              Math.cos(angle) * 2,
-              Math.sin(angle) * 2,
-              (Math.random() - 0.5) * 1
-            )
-            this.effectsSystem.createSparkle(this.position, velocity, deathColor, 0.32) // 20% shorter
-          }
-          break
-        case 'ScanDrone':
-          // 📡 SCAN DRONE - Electric discharge with grid collapse! 📡
-          deathColor = new THREE.Color().setHSL(0.1, 0.9, 0.7)
-          this.effectsSystem.createElectricDeath(this.position, enemyType)
-          this.effectsSystem.createExplosion(this.position, 1.5, deathColor)
-          // Add cyan energy burst
-          for (let i = 0; i < 12; i++) {
-            const angle = (i / 12) * Math.PI * 2
-            const velocity = new THREE.Vector3(
-              Math.cos(angle) * 3,
-              Math.sin(angle) * 3,
-              (Math.random() - 0.5) * 1.5
-            )
-            const cyanColor = new THREE.Color().setHSL(0.5, 1.0, 0.6)
-            this.effectsSystem.createSparkle(this.position, velocity, cyanColor, 0.4) // 20% shorter
-          }
-          break
-        case 'ChaosWorm':
-          // 🐛 CHAOS WORM - Handled by custom death sequence 🐛
-          deathColor = new THREE.Color().setHSL(Math.random(), 0.9, 0.7)
-          this.effectsSystem.createExplosion(this.position, 2.0, deathColor)
-          break
-        case 'VoidSphere':
-          // 🌀 VOID SPHERE - Massive void collapse with distortion! 🌀
-          deathColor = new THREE.Color(0.5, 0, 1)
-          this.effectsSystem.createExplosion(this.position, 3.0, deathColor)
-          this.effectsSystem.addDistortionWave(this.position, 2.5)
-          // Add purple void particles
-          for (let i = 0; i < 20; i++) {
-            const angle = (i / 20) * Math.PI * 2
-            const velocity = new THREE.Vector3(
-              Math.cos(angle) * (2 + Math.random() * 3),
-              Math.sin(angle) * (2 + Math.random() * 3),
-              (Math.random() - 0.5) * 2
-            )
-            const purpleColor = new THREE.Color(0.7, 0, 1)
-            this.effectsSystem.createSparkle(this.position, velocity, purpleColor, 0.48) // 20% shorter
-          }
-          break
-        case 'CrystalShardSwarm':
-          // 💎 CRYSTAL SWARM - Shattering crystals with lightning burst! 💎
-          deathColor = new THREE.Color(0, 1, 1)
-          this.effectsSystem.createElectricDeath(this.position, enemyType)
-          this.effectsSystem.createExplosion(this.position, 2.2, deathColor)
-          // Add rainbow crystal shards
-          for (let i = 0; i < 16; i++) {
-            const angle = (i / 16) * Math.PI * 2
-            const velocity = new THREE.Vector3(
-              Math.cos(angle) * (3 + Math.random() * 2),
-              Math.sin(angle) * (3 + Math.random() * 2),
-              (Math.random() - 0.5) * 2
-            )
-            const hue = (i / 16) % 1
-            const crystalColor = new THREE.Color().setHSL(hue, 1.0, 0.7)
-            this.effectsSystem.createSparkle(this.position, velocity, crystalColor, 0.56) // 20% shorter
-          }
-          break
-        case 'Fizzer':
-          // ⚡ FIZZER - Electric zap explosion with erratic sparks! ⚡
-          deathColor = new THREE.Color().setHSL(0.5, 1.0, 0.6)
-          this.effectsSystem.createElectricDeath(this.position, enemyType)
-          this.effectsSystem.createExplosion(this.position, 1.8, deathColor)
-          // Add erratic electric sparks
-          for (let i = 0; i < 15; i++) {
-            const angle = Math.random() * Math.PI * 2
-            const speed = 2 + Math.random() * 4
-            const velocity = new THREE.Vector3(
-              Math.cos(angle) * speed,
-              Math.sin(angle) * speed,
-              (Math.random() - 0.5) * 2
-            )
-            const electricColor = new THREE.Color().setHSL(0.5 + Math.random() * 0.1, 1.0, 0.7)
-            this.effectsSystem.createSparkle(this.position, velocity, electricColor, 0.4) // 20% shorter
-          }
-          break
-        case 'UFO':
-          // 🛸 UFO - Alien craft explosion with tractor beam collapse! 🛸
-          deathColor = new THREE.Color().setHSL(0.6, 0.8, 0.5)
-          this.effectsSystem.createExplosion(this.position, 2.5, deathColor)
-          // Add cyan/blue alien energy particles
-          for (let i = 0; i < 18; i++) {
-            const angle = (i / 18) * Math.PI * 2
-            const velocity = new THREE.Vector3(
-              Math.cos(angle) * (2.5 + Math.random() * 2.5),
-              Math.sin(angle) * (2.5 + Math.random() * 2.5),
-              (Math.random() - 0.5) * 2
-            )
-            const alienColor = new THREE.Color().setHSL(0.55 + Math.random() * 0.1, 1.0, 0.6)
-            this.effectsSystem.createSparkle(this.position, velocity, alienColor, 0.48) // 20% shorter
-          }
-          // Add tractor beam collapse effect
-          this.effectsSystem.addDistortionWave(this.position, 1.8)
-          break
-        case 'Boss':
-          // 💀 BOSS - Handled by custom death animation 💀
-          deathColor = new THREE.Color(1, 0, 0)
-          this.effectsSystem.createExplosion(this.position, 4.0, deathColor)
-          break
-        default:
-          deathColor = new THREE.Color().setHSL(0.0, 0.8, 0.6)
-          this.effectsSystem.createExplosion(this.position, 1.0, deathColor)
-      }
-      
-      // ALWAYS create vector-style death particles!
-      this.effectsSystem.createEnemyDeathParticles(this.position, enemyType, deathColor)
-    } else {
-      // Fallback to old particle system if effects system not available
-      this.createOldDeathEffect()
-    }
+    // No-op - death effects are now triggered in startDeathSequence()
   }
   
   private createOldDeathEffect(): void {

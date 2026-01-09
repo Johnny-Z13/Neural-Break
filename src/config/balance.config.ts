@@ -184,7 +184,7 @@ export const BALANCE_CONFIG = {
   // ENEMY: VOID SPHERE (Tank) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   VOID_SPHERE: {
-    HEALTH: 150,                   // HUGE health pool (was 250) - much easier!
+    HEALTH: 450,                   // MASSIVE health pool (3x tougher!) - epic boss-tier enemy!
     SPEED: 0.5,                    // Slow but deadly (was 0.6) - slower!
     DAMAGE: 30,                    // DEVASTATING collision (was 50) - less damage!
     XP_VALUE: 50,                  // Massive reward

@@ -61,6 +61,9 @@ export class Player {
   // 🌟 INVULNERABLE NOTIFICATION CALLBACKS 🌟
   private onInvulnerableActivatedCallback: (() => void) | null = null
   private onInvulnerableDeactivatedCallback: (() => void) | null = null
+  
+  // 🧪 TEST MODE - Unlimited health for testing 🧪
+  private isTestMode: boolean = false
 
   constructor() {
     this.position = new THREE.Vector3(0, 0, 0)
@@ -1076,9 +1079,16 @@ export class Player {
   }
 
   takeDamage(damage: number): void {
-    // 🧪 TESTING MODE DISABLED - Shields now work! 🧪
-    // (Uncomment next line to re-enable invulnerability testing)
-    // return
+    // 🧪 TEST MODE - Unlimited health! 🧪
+    if (this.isTestMode) {
+      // Flash gold to show test mode is active
+      const material = this.mesh.material as THREE.MeshLambertMaterial
+      material.emissive.setHex(0xFFD700) // Gold flash
+      setTimeout(() => {
+        material.emissive.setHex(0x334455)
+      }, 50)
+      return // No damage taken!
+    }
     
     // 🌟 INVULNERABLE PICKUP - NO DAMAGE! 🌟
     if (this.isInvulnerablePickup) {
@@ -1466,6 +1476,11 @@ export class Player {
 
   setEffectsSystem(effectsSystem: EffectsSystem): void {
     this.effectsSystem = effectsSystem
+  }
+  
+  // 🧪 TEST MODE SETTER - Enable/disable unlimited health 🧪
+  setTestMode(enabled: boolean): void {
+    this.isTestMode = enabled
   }
 
   // 🎬 SET ZOOM COMPENSATION - Callback to get zoom scale from SceneManager! 🎬
