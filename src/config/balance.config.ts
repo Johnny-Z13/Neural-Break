@@ -114,7 +114,7 @@ export const BALANCE_CONFIG = {
     FIRE_RATE: 2.0,                // Time between shots
     BULLET_SPEED: 7.0,             // Projectile speed
     BULLET_DAMAGE: 15,             // Bullet damage
-    DETECTION_RANGE: 45,           // Aggro range
+    DETECTION_RANGE: 15,           // Aggro range
     PATROL_RANGE: 10,               // Patrol radius
     
     DEATH_DAMAGE: 0,               // No death explosion

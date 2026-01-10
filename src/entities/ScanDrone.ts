@@ -532,8 +532,8 @@ export class ScanDrone extends Enemy {
     const playerPos = player.getPosition()
     const distanceToPlayer = this.position.distanceTo(playerPos)
 
-    // Check if player is within scan range
-    if (distanceToPlayer < 5) {
+    // Check if player is within scan range (uses DETECTION_RANGE from balance config)
+    if (distanceToPlayer < BALANCE_CONFIG.SCAN_DRONE.DETECTION_RANGE) {
       // 🚨 Play alert sound when first entering alert state! 🚨
       if (!this.alertState && this.audioManager) {
         this.audioManager.playScanDroneAlertSound()
