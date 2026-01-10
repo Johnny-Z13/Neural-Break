@@ -878,6 +878,13 @@ export class Game {
     if (this.player && this.player.getMesh()) {
       this.player.update(deltaTime, this.inputManager)
       
+      // 💎 UPDATE GRID COLORS BASED ON PLAYER STATE 💎
+      this.sceneManager.updateGridColors(
+        this.player.getHealth(),
+        this.player.getMaxHealth(),
+        this.player.isInvulnerableActive()
+      )
+      
       // Track damage taken
       const currentHealth = this.player.getHealth()
       if (currentHealth < this.lastDamageTaken) {

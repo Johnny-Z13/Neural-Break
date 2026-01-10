@@ -657,24 +657,36 @@ export class Starfield {
     this.ctx.strokeStyle = '#00FFFF'
     this.ctx.lineWidth = 1
     
+    // 💎 DIAMOND GRID - Rotate 45 degrees for more appealing pattern! 💎
     const horizonY = this.canvas.height * 0.5
     const gridLines = 20
+    const vanishX = this.centerX
     
-    for (let i = 0; i <= gridLines; i++) {
-      const progress = i / gridLines
-      const y = horizonY + (this.canvas.height - horizonY) * Math.pow(progress, 1.5)
+    // Draw diagonal lines from vanishing point (creates diamond pattern)
+    for (let i = -10; i <= 10; i++) {
+      // Left-to-right diagonals
+      const offsetLeft = i * (this.canvas.width / 20)
       this.ctx.beginPath()
-      this.ctx.moveTo(0, y)
-      this.ctx.lineTo(this.canvas.width, y)
+      this.ctx.moveTo(vanishX + offsetLeft, horizonY)
+      this.ctx.lineTo(offsetLeft, this.canvas.height)
+      this.ctx.stroke()
+      
+      // Right-to-left diagonals (creates diamond intersections)
+      const offsetRight = i * (this.canvas.width / 20)
+      this.ctx.beginPath()
+      this.ctx.moveTo(vanishX + offsetRight, horizonY)
+      this.ctx.lineTo(this.canvas.width - offsetRight, this.canvas.height)
       this.ctx.stroke()
     }
     
-    const vanishX = this.centerX
-    for (let i = -10; i <= 10; i++) {
-      const bottomX = vanishX + i * (this.canvas.width / 10)
+    // Optional: Add horizontal lines for depth reference
+    for (let i = 0; i <= gridLines; i++) {
+      const progress = i / gridLines
+      const y = horizonY + (this.canvas.height - horizonY) * Math.pow(progress, 1.5)
+      this.ctx.globalAlpha = 0.03 // Fainter horizontal lines
       this.ctx.beginPath()
-      this.ctx.moveTo(vanishX, horizonY)
-      this.ctx.lineTo(bottomX, this.canvas.height)
+      this.ctx.moveTo(0, y)
+      this.ctx.lineTo(this.canvas.width, y)
       this.ctx.stroke()
     }
     

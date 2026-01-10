@@ -28,6 +28,9 @@ export class SceneManager {
   // 🔘 ENERGY BARRIER 🔘
   private energyBarrier: EnergyBarrier
   
+  // 💎 BACKGROUND GRID - For dynamic color updates! 💎
+  private backgroundGrid: THREE.GridHelper | null = null
+  
   // 🎬 MOTION GRAPHICS - Dynamic Camera Zoom! 🎬
   private baseFrustumSize: number = 30 // More zoomed out default
   private currentFrustumSize: number = 30
@@ -234,11 +237,9 @@ export class SceneManager {
     // Each screen is roughly 20x20 units, so total world is 60x60
     const worldSize = 60
     
-    // Create floor grid within bounds - deep purple-blue tones (darkened 12%)
-    const gridHelper = new THREE.GridHelper(worldSize, 30, 0x250e46, 0x0e0723)
-    gridHelper.rotateX(Math.PI / 2) // Rotate to be horizontal
-    gridHelper.position.z = -1
-    this.scene.add(gridHelper)
+    // 💎 GRID REMOVED - Clean background! 💎
+    // Grid was removed per user request
+    this.backgroundGrid = null
 
     // 🔘 Create circular energy barrier 🔘
     this.energyBarrier = new EnergyBarrier(worldSize / 2)
@@ -927,6 +928,43 @@ export class SceneManager {
       
       // Add distortion wave effect
       this.effectsSystem.addDistortionWave(new THREE.Vector3(0, 0, 0), intensity)
+    }
+  }
+
+  // 💎 UPDATE GRID COLORS BASED ON PLAYER STATE 💎
+  updateGridColors(playerHealth: number, maxHealth: number, isInvulnerable: boolean): void {
+    if (!this.backgroundGrid) return
+    
+    // GridHelper is a LineSegments with LineBasicMaterial
+    const material = this.backgroundGrid.material as THREE.LineBasicMaterial
+    if (!material || !material.color) return
+    
+    if (isInvulnerable) {
+      // 🟢 GREEN GLOW - Invulnerable state!
+      const pulse = 0.5 + Math.sin(Date.now() * 0.01) * 0.5 // Pulsing intensity
+      material.color.setHex(0x00FF00) // Bright green
+      material.opacity = 0.5 + pulse * 0.3 // Pulsing opacity
+    } else {
+      const healthPercent = playerHealth / maxHealth
+      
+      if (healthPercent <= 0.25) {
+        // 🔴 RED GLOW - Low health warning!
+        const pulse = 0.5 + Math.sin(Date.now() * 0.015) * 0.5 // Faster pulse for urgency
+        material.color.setHex(0xFF0000) // Danger red
+        material.opacity = 0.5 + pulse * 0.4 // Strong pulsing
+      } else if (healthPercent <= 0.5) {
+        // 🟡 YELLOW TINT - Medium health
+        const lerpFactor = (healthPercent - 0.25) / 0.25 // 0 to 1 as health goes from 25% to 50%
+        const r = 1.0 // Red channel
+        const g = 0.5 + lerpFactor * 0.5 // Green channel interpolates from 0.5 to 1.0
+        const b = 0.0 // Blue channel
+        material.color.setRGB(r, g, b)
+        material.opacity = 0.6
+      } else {
+        // 💜 NORMAL - Purple-blue tones (original color - use the center line color)
+        material.color.setHex(0x250e46) // Purple-blue
+        material.opacity = 1.0
+      }
     }
   }
 

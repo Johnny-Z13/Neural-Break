@@ -236,6 +236,165 @@ export class CrystalShardSwarm extends Enemy {
       ring.rotation.x = Math.PI / 2
       this.mesh.add(ring)
     }
+    
+    // 🌟 START INVISIBLE FOR SPAWN ANIMATION 🌟
+    this.mesh.scale.setScalar(0.01)
+    this.mesh.traverse((child) => {
+      if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+        const material = child.material as THREE.Material
+        if ('opacity' in material && material.transparent) {
+          material.opacity = 0
+        }
+      }
+    })
+  }
+  
+  // 🎬 SPAWN CONFIGURATION - Crystal sharding out! 🎬
+  protected getSpawnConfig(): SpawnConfig {
+    return {
+      duration: 1.0, // 1 second spawn animation
+      invulnerable: true, // Invulnerable during spawn
+      particles: {
+        count: 20,
+        colors: [0x00FFFF, 0xFF00FF, 0xFFFF00, 0x00FF00], // Rainbow prismatic colors
+        speed: 4,
+        burstAtStart: true
+      },
+      screenFlash: {
+        intensity: 0.15,
+        color: 0x00FFFF
+      }
+    }
+  }
+  
+  // 🌟 SPAWN ANIMATION - Shards materialize from center with glow! 🌟
+  protected onSpawnUpdate(progress: number): void {
+    // Phase 1: Core materializes (0-0.3s)
+    if (progress < 0.3) {
+      const phaseProgress = progress / 0.3
+      
+      // Core fades in and scales up
+      const core = this.mesh.children[0] as THREE.Mesh
+      if (core) {
+        const coreMaterial = core.material as THREE.MeshBasicMaterial
+        coreMaterial.opacity = phaseProgress * 0.6
+        core.scale.setScalar(phaseProgress)
+      }
+      
+      // Core wireframe appears
+      const coreWire = this.mesh.children[1] as THREE.Mesh
+      if (coreWire) {
+        const coreWireMaterial = coreWire.material as THREE.MeshBasicMaterial
+        coreWireMaterial.opacity = phaseProgress * 0.9
+        coreWire.scale.setScalar(phaseProgress)
+      }
+      
+      // Container mesh scales
+      this.mesh.scale.setScalar(phaseProgress * 0.3)
+    }
+    // Phase 2: Shards materialize outward (0.3-0.7s)
+    else if (progress < 0.7) {
+      const phaseProgress = (progress - 0.3) / 0.4
+      
+      // Shards fly out from center with glow
+      for (let i = 0; i < this.shards.length; i++) {
+        const shard = this.shards[i]
+        const angle = (i / this.shardCount) * Math.PI * 2
+        const currentRadius = this.orbitRadius * phaseProgress
+        
+        // Shard position expands outward
+        shard.position.set(
+          Math.cos(angle) * currentRadius,
+          Math.sin(angle) * currentRadius,
+          0
+        )
+        
+        // Shard rotates into position
+        shard.rotation.z = angle + Math.PI / 2
+        shard.rotation.x = (1 - phaseProgress) * Math.PI * 2
+        
+        // Shard fades in with glow
+        const material = shard.material as THREE.MeshLambertMaterial
+        material.opacity = phaseProgress * 0.9
+        material.emissive.multiplyScalar(2.0) // Extra bright during spawn!
+        
+        // Shard scales in with bounce
+        const bounceScale = phaseProgress + Math.sin(phaseProgress * Math.PI) * 0.2
+        shard.scale.setScalar(bounceScale)
+        
+        // Animate shard children (wireframe, tip, inner glow)
+        shard.traverse((child) => {
+          if (child !== shard && child instanceof THREE.Mesh) {
+            const childMaterial = child.material as THREE.Material
+            if ('opacity' in childMaterial) {
+              childMaterial.opacity = phaseProgress * (child === shard.children[1] ? 0.9 : 0.7)
+            }
+          }
+        })
+        
+        // Create sparkle trail as shards fly out
+        if (this.effectsSystem && Math.random() < 0.1) {
+          const hue = i / this.shardCount
+          const color = new THREE.Color().setHSL(hue, 1.0, 0.7)
+          const worldPos = new THREE.Vector3()
+          shard.getWorldPosition(worldPos)
+          const velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2,
+            0
+          )
+          this.effectsSystem.createSparkle(worldPos, velocity, color, 0.3)
+        }
+      }
+      
+      // Container mesh continues scaling
+      this.mesh.scale.setScalar(0.3 + phaseProgress * 0.7)
+    }
+    // Phase 3: Lightning connects, rings appear (0.7-1.0s)
+    else {
+      const phaseProgress = (progress - 0.7) / 0.3
+      
+      // Shards reach final positions
+      for (let i = 0; i < this.shards.length; i++) {
+        const shard = this.shards[i]
+        const angle = (i / this.shardCount) * Math.PI * 2
+        
+        shard.position.set(
+          Math.cos(angle) * this.orbitRadius,
+          Math.sin(angle) * this.orbitRadius,
+          0
+        )
+        
+        const material = shard.material as THREE.MeshLambertMaterial
+        material.opacity = 0.9
+        
+        // Emissive fades from bright to normal
+        material.emissive.multiplyScalar(1 - phaseProgress * 0.5)
+        
+        shard.scale.setScalar(1)
+      }
+      
+      // Lightning effects fade in
+      for (let i = 0; i < this.lightningEffects.length; i++) {
+        const lightning = this.lightningEffects[i]
+        const lightningMaterial = lightning.material as THREE.LineBasicMaterial
+        lightningMaterial.opacity = phaseProgress * 0.8
+      }
+      
+      // Outer rings fade in
+      const ringStartIndex = this.shardCount + this.lightningEffects.length + 2
+      for (let i = 0; i < 3; i++) {
+        const ring = this.mesh.children[ringStartIndex + i] as THREE.Mesh
+        if (ring) {
+          const ringMaterial = ring.material as THREE.MeshBasicMaterial
+          ringMaterial.opacity = phaseProgress * 0.3
+          ring.scale.setScalar(0.5 + phaseProgress * 0.5) // Rings expand
+        }
+      }
+      
+      // Final container scale
+      this.mesh.scale.setScalar(1.0)
+    }
   }
 
   // Override takeDamage to trigger custom death
@@ -478,13 +637,19 @@ export class CrystalShardSwarm extends Enemy {
     this.createDeathEffect()
   }
 
-  // Override update to handle death animation
+  // Override update to use parent lifecycle system
   update(deltaTime: number, player: Player): void {
+    // Use parent's lifecycle state machine
+    super.update(deltaTime, player)
+    
+    // Custom death animation system (legacy - kept for dramatic effect)
     if (this.isDying) {
       this.updateDeathAnimation(deltaTime)
       return
     }
     
+    // Only do custom updates when alive
+    if (this.state !== EnemyState.ALIVE) return
     if (!this.alive) return
     
     // Store last position for trail calculation
@@ -621,6 +786,9 @@ export class CrystalShardSwarm extends Enemy {
 
 
   protected updateVisuals(deltaTime: number): void {
+    // 🎬 Don't run normal visuals during spawn/death animations! 🎬
+    if (this.state !== EnemyState.ALIVE) return
+    
     const time = Date.now() * 0.001
     
     // 🛡️ SAFEGUARD: Ensure container mesh never scales (prevents size growth bug)
