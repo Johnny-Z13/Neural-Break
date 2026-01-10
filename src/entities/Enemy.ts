@@ -355,13 +355,19 @@ export abstract class Enemy {
   
   // 🔴 RED FLASH - Clear visual feedback that enemy was hit! 🔴
   private flashRed(): void {
-    const material = this.mesh.material as THREE.MeshLambertMaterial
+    const material = this.mesh.material as THREE.Material & { color?: THREE.Color; emissive?: THREE.Color }
+    
+    // Safety check - ensure material has color property
+    if (!material || !material.color) return
+    
     const originalColor = material.color.clone()
-    const originalEmissive = material.emissive.clone()
+    const originalEmissive = material.emissive?.clone() // May be undefined for BasicMaterial
     const originalScale = this.mesh.scale.clone()
     
     // BRIGHT RED FLASH! (same as player)
-    material.emissive.setHex(0xFF0000) // Pure red glow
+    if (material.emissive) {
+      material.emissive.setHex(0xFF0000) // Pure red glow (if material supports it)
+    }
     material.color.setHex(0xFF0000)    // Full red
     
     // Scale up for impact effect
@@ -369,24 +375,32 @@ export abstract class Enemy {
     
     // Flash sequence: Red → White → Red → Normal
     setTimeout(() => {
-      material.emissive.setHex(0xFFFFFF) // White flash
+      if (material.emissive) {
+        material.emissive.setHex(0xFFFFFF) // White flash
+      }
       material.color.setHex(0xFFAAAA)    // Light red
     }, 50)
     
     setTimeout(() => {
-      material.emissive.setHex(0xFF0000) // Back to red
+      if (material.emissive) {
+        material.emissive.setHex(0xFF0000) // Back to red
+      }
       material.color.setHex(0xFF4444)    
       this.mesh.scale.copy(originalScale) // Reset scale
     }, 100)
     
     setTimeout(() => {
-      material.emissive.setHex(0xFF6666) // Fading red
+      if (material.emissive) {
+        material.emissive.setHex(0xFF6666) // Fading red
+      }
       material.color.setHex(0xFF8888)    
     }, 150)
     
     setTimeout(() => {
       // Restore original colors
-      material.emissive.copy(originalEmissive)
+      if (material.emissive && originalEmissive) {
+        material.emissive.copy(originalEmissive)
+      }
       material.color.copy(originalColor)
     }, 200)
   }

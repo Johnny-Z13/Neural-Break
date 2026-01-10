@@ -221,9 +221,10 @@ export class CrystalShardSwarm extends Enemy {
     }
     
     // 🔮 OUTER ENERGY RINGS 🔮
+    // OPTIMIZED: Reduced segments from 32 to 16
     for (let i = 0; i < 3; i++) {
       const ringRadius = this.orbitRadius + 0.5 + i * 0.4
-      const ringGeometry = new THREE.RingGeometry(ringRadius - 0.1, ringRadius, 32)
+      const ringGeometry = new THREE.RingGeometry(ringRadius - 0.1, ringRadius, 16)
       const ringMaterial = new THREE.MeshBasicMaterial({
         color: new THREE.Color().setHSL(0.5 + i * 0.1, 1.0, 0.7),
         transparent: true,

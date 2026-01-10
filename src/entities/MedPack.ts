@@ -35,7 +35,8 @@ export class MedPack {
     this.mesh.position.copy(this.position)
     
     // 💚 GREEN GLOWING BASE - Health pickup! 💚
-    const glowGeometry = new THREE.SphereGeometry(0.5, 16, 16) // Scaled up from 0.4
+    // OPTIMIZED: Reduced from 16x16 to 8x8 for performance
+    const glowGeometry = new THREE.SphereGeometry(0.5, 8, 8)
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00, // GREEN glow
       transparent: true,
@@ -47,7 +48,8 @@ export class MedPack {
     this.mesh.add(this.glowMesh)
     
     // 💫 ADDITIONAL GREEN AURA - Extra glow layer! 💫
-    const outerGlowGeometry = new THREE.SphereGeometry(0.625, 16, 16) // Scaled up from 0.5
+    // OPTIMIZED: Reduced from 16x16 to 8x8 for performance
+    const outerGlowGeometry = new THREE.SphereGeometry(0.625, 8, 8)
     const outerGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF00,
       transparent: true,

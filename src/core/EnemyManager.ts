@@ -643,13 +643,20 @@ export class EnemyManager {
   }
   
   // 💥 CHAIN REACTION SYSTEM - Enemies damage nearby enemies when they die! 💥
+  // OPTIMIZED: Uses spatial grid for O(neighbors) instead of O(n) lookup
   private applyDeathDamageToNearby(dyingEnemy: Enemy): void {
     const dyingPos = dyingEnemy.getPosition()
     const damageRadius = dyingEnemy.getDeathDamageRadius()
     const damageAmount = dyingEnemy.getDeathDamageAmount()
     
-    // Check all other alive enemies
-    for (const enemy of this.enemies) {
+    // Skip if no damage to apply
+    if (damageRadius <= 0 || damageAmount <= 0) return
+    
+    // Use spatial grid for efficient neighbor lookup (already populated in update loop)
+    // Only check enemies within potential damage range
+    const neighbors = this.getNeighborsInRadius(dyingEnemy, damageRadius)
+    
+    for (const enemy of neighbors) {
       if (enemy === dyingEnemy || !enemy.isAlive()) continue
       
       const enemyPos = enemy.getPosition()
@@ -688,41 +695,62 @@ export class EnemyManager {
   }
   
   // 💥 CHAOS WORM SEGMENT DEATH DAMAGE - Called for each exploding segment! 💥
+  // OPTIMIZED: Uses spatial grid for O(neighbors) instead of O(n) lookup
   applySegmentDeathDamage(segmentPos: THREE.Vector3, damageRadius: number, damageAmount: number): void {
-    // Check all alive enemies
-    for (const enemy of this.enemies) {
-      if (!enemy.isAlive()) continue
-      
-      const enemyPos = enemy.getPosition()
-      const distance = segmentPos.distanceTo(enemyPos)
-      
-      // If within damage radius, apply damage
-      if (distance <= damageRadius) {
-        // Apply damage with falloff based on distance
-        const damageMultiplier = 1.0 - (distance / damageRadius) * 0.5 // 50-100% damage based on distance
-        const finalDamage = Math.floor(damageAmount * damageMultiplier)
+    // Skip if no damage to apply
+    if (damageRadius <= 0 || damageAmount <= 0) return
+    
+    // Ensure spatial grid is populated for efficient lookup
+    this.populateSpatialGrid()
+    
+    // Get potential neighbors using spatial grid
+    const searchRadius = Math.ceil(damageRadius / this.gridCellSize)
+    const centerKey = this.getGridKey(segmentPos.x, segmentPos.y)
+    const [centerX, centerY] = centerKey.split(',').map(Number)
+    
+    // Check surrounding grid cells
+    for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+      for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+        const key = `${centerX + dx},${centerY + dy}`
+        const cellEnemies = this.spatialGrid.get(key)
         
-        if (DEBUG_MODE) {
-          console.log(`🐛 Worm segment chain damage: ${finalDamage} to ${enemy.constructor.name} at distance ${distance.toFixed(2)}`)
-        }
+        if (!cellEnemies) continue
         
-        enemy.takeDamage(finalDamage)
-        
-        // Visual feedback - rainbow-colored explosion for worm segments
-        if (this.effectsSystem) {
-          const hue = Math.random() // Random rainbow color
-          const chainColor = new THREE.Color().setHSL(hue, 1.0, 0.6)
-          this.effectsSystem.createExplosion(enemyPos, 0.8, chainColor)
+        for (const enemy of cellEnemies) {
+          if (!enemy.isAlive()) continue
           
-          // Add a few sparkles
-          for (let i = 0; i < 3; i++) {
-            const angle = Math.random() * Math.PI * 2
-            const velocity = new THREE.Vector3(
-              Math.cos(angle) * 1.5,
-              Math.sin(angle) * 1.5,
-              (Math.random() - 0.5) * 0.5
-            )
-            this.effectsSystem.createSparkle(enemyPos, velocity, chainColor, 0.3)
+          const enemyPos = enemy.getPosition()
+          const distance = segmentPos.distanceTo(enemyPos)
+          
+          // If within damage radius, apply damage
+          if (distance <= damageRadius) {
+            // Apply damage with falloff based on distance
+            const damageMultiplier = 1.0 - (distance / damageRadius) * 0.5 // 50-100% damage based on distance
+            const finalDamage = Math.floor(damageAmount * damageMultiplier)
+            
+            if (DEBUG_MODE) {
+              console.log(`🐛 Worm segment chain damage: ${finalDamage} to ${enemy.constructor.name} at distance ${distance.toFixed(2)}`)
+            }
+            
+            enemy.takeDamage(finalDamage)
+            
+            // Visual feedback - rainbow-colored explosion for worm segments
+            if (this.effectsSystem) {
+              const hue = Math.random() // Random rainbow color
+              const chainColor = new THREE.Color().setHSL(hue, 1.0, 0.6)
+              this.effectsSystem.createExplosion(enemyPos, 0.8, chainColor)
+              
+              // Add a few sparkles
+              for (let i = 0; i < 3; i++) {
+                const angle = Math.random() * Math.PI * 2
+                const velocity = new THREE.Vector3(
+                  Math.cos(angle) * 1.5,
+                  Math.sin(angle) * 1.5,
+                  (Math.random() - 0.5) * 0.5
+                )
+                this.effectsSystem.createSparkle(enemyPos, velocity, chainColor, 0.3)
+              }
+            }
           }
         }
       }

@@ -150,6 +150,20 @@ export class Game {
       this.audioManager.initialize()
       if (DEBUG_MODE) console.log('✅ AudioManager initialized')
       
+      // 🎵 RESUME AUDIO ON FIRST USER INTERACTION 🎵
+      // Browsers require user gesture before audio can play
+      const resumeAudioOnce = () => {
+        this.audioManager.resumeAudio().catch(e => {
+          // Ignore errors - audio will resume when available
+        })
+        document.removeEventListener('click', resumeAudioOnce)
+        document.removeEventListener('keydown', resumeAudioOnce)
+        document.removeEventListener('touchstart', resumeAudioOnce)
+      }
+      document.addEventListener('click', resumeAudioOnce, { once: false })
+      document.addEventListener('keydown', resumeAudioOnce, { once: false })
+      document.addEventListener('touchstart', resumeAudioOnce, { once: false })
+      
       // Hide loading screen
       if (loadingElement) {
         loadingElement.style.display = 'none'

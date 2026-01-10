@@ -104,18 +104,18 @@ export const BALANCE_CONFIG = {
   // ENEMY: SCAN DRONE (Ranged attacker) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   SCAN_DRONE: {
-    HEALTH: 3,                     // Takes a few hits (was 4) - easier to kill!
-    SPEED: 1.2,                    // Moderate speed (was 1.5) - slower!
-    DAMAGE: 8,                     // Collision damage (was 15) - less damage!
-    XP_VALUE: 5,                   // Better reward
-    RADIUS: 1.1,                   // Medium size
+    HEALTH: 30,                     // Takes a few hits
+    SPEED: 1.2,                    // Moderate speed
+    DAMAGE: 15,                     // Collision damage
+    XP_VALUE: 6,                   // Better reward
+    RADIUS: 1.2,                   // Medium size
     
     // Shooting Behavior
-    FIRE_RATE: 3.0,                // Time between shots (was 2.0) - slower firing!
-    BULLET_SPEED: 6.0,             // Projectile speed (was 8.0) - easier to dodge!
-    BULLET_DAMAGE: 10,             // Bullet damage (was 15) - less damage!
-    DETECTION_RANGE: 15,           // Aggro range
-    PATROL_RANGE: 8,               // Patrol radius
+    FIRE_RATE: 2.0,                // Time between shots
+    BULLET_SPEED: 7.0,             // Projectile speed
+    BULLET_DAMAGE: 15,             // Bullet damage
+    DETECTION_RANGE: 45,           // Aggro range
+    PATROL_RANGE: 10,               // Patrol radius
     
     DEATH_DAMAGE: 0,               // No death explosion
     DEATH_RADIUS: 0,
@@ -125,14 +125,14 @@ export const BALANCE_CONFIG = {
   // ENEMY: FIZZER (Fast agile enemy) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   FIZZER: {
-    HEALTH: 2,                     // Low health (was 3) - easier to kill!
-    SPEED: 6.0,                    // VERY FAST! (was 8.0) - slower!
+    HEALTH: 2,                     // Low health
+    SPEED: 8.0,                    // VERY FAST! 
     DAMAGE: 6,                     // Collision damage (was 10) - less damage!
     XP_VALUE: 15,                  // Good reward for difficulty
     RADIUS: 0.35,                  // Small = hard to hit
     
     // Shooting Behavior (Burst fire)
-    FIRE_RATE: 3.5,                // Time between bursts (was 2.5) - less frequent!
+    FIRE_RATE: 3.0,                // Time between bursts
     BURST_COUNT: 2,                // Shots per burst (was 3) - fewer shots!
     BURST_DELAY: 0.2,              // Time between burst shots (was 0.15) - slower!
     BULLET_SPEED: 9.0,             // Fast bullets (was 12.0) - easier to dodge!
@@ -184,18 +184,18 @@ export const BALANCE_CONFIG = {
   // ENEMY: VOID SPHERE (Tank) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   VOID_SPHERE: {
-    HEALTH: 450,                   // MASSIVE health pool (3x tougher!) - epic boss-tier enemy!
+    HEALTH: 650,                   // MASSIVE health pool (3x tougher!) - epic boss-tier enemy!
     SPEED: 0.5,                    // Slow but deadly (was 0.6) - slower!
-    DAMAGE: 30,                    // DEVASTATING collision (was 50) - less damage!
+    DAMAGE: 40,                    // DEVASTATING collision
     XP_VALUE: 50,                  // Massive reward
     RADIUS: 3.2,                   // Huge hitbox (4x normal)
     
     // Shooting Behavior (Burst)
-    FIRE_RATE: 4.0,                // Time between bursts (was 3.0) - less frequent!
-    BURST_COUNT: 4,                // Shots per burst (was 5) - fewer shots!
+    FIRE_RATE: 3.0,                // Time between bursts
+    BURST_COUNT: 4,                // Shots per burst
     BURST_DELAY: 0.25,             // Time between burst shots (was 0.2) - slower!
     BULLET_SPEED: 5.0,             // Slow heavy bullets (was 6.0) - easier to dodge!
-    BULLET_DAMAGE: 15,             // High damage per bullet (was 25) - less damage!
+    BULLET_DAMAGE: 20,             // High damage per bullet
     
     DEATH_DAMAGE: 50,              // MASSIVE implosion
     DEATH_RADIUS: 8.0,             // Huge explosion radius
@@ -205,7 +205,7 @@ export const BALANCE_CONFIG = {
   // ENEMY: CRYSTAL SHARD SWARM (Orbital attacker) - EASY MODE
   // ═══════════════════════════════════════════════════════════════════
   CRYSTAL_SWARM: {
-    HEALTH: 80,                    // High health (was 120) - easier to kill!
+    HEALTH: 200,                    // High health
     SPEED: 1.4,                    // Fast (was 1.8) - slower!
     DAMAGE: 25,                    // High collision damage (was 40) - less damage!
     XP_VALUE: 45,                  // Big reward
@@ -219,7 +219,7 @@ export const BALANCE_CONFIG = {
     BURST_DELAY: 0.2,              // Time between burst shots (was 0.15) - slower!
     BULLET_SPEED: 8.0,             // Projectile speed (was 10.0) - easier to dodge!
     BULLET_DAMAGE: 10,             // Damage per bullet (was 15) - less damage!
-    SHARDS_THAT_FIRE: 1,           // How many shards fire at once (was 2) - less threats!
+    SHARDS_THAT_FIRE: 2,           // How many shards fire at once
     
     DEATH_DAMAGE: 30,              // Crystal explosion
     DEATH_RADIUS: 5.0,             // Large explosion
@@ -233,7 +233,7 @@ export const BALANCE_CONFIG = {
     SPEED: 0.3,                    // Slow but menacing (was 0.4) - slower!
     DAMAGE: 25,                    // High collision damage (was 40) - less damage!
     XP_VALUE: 100,                 // Huge reward
-    RADIUS: 4.0,                   // Large ship
+    RADIUS: 3.5,                   // Large ship
     
     // Shooting Behavior (Multi-phase)
     PHASE_1_FIRE_RATE: 1.5,        // Aggressive firing (was 1.0) - slower!
@@ -297,8 +297,8 @@ export const BALANCE_CONFIG = {
     },
     
     // Magnetism (All pickups)
-    MAGNET_RADIUS: 4.0,            // Distance at which pickup moves to player
-    MAGNET_STRENGTH: 12.0,         // Attraction force
+    MAGNET_RADIUS: 5.0,            // Distance at which pickup moves to player
+    MAGNET_STRENGTH: 16.0,         // Attraction force
     MAX_MAGNET_SPEED: 18.0,        // Max speed when being pulled
   },
 
@@ -342,7 +342,7 @@ export const BALANCE_CONFIG = {
   // WORLD SETTINGS
   // ═══════════════════════════════════════════════════════════════════
   WORLD: {
-    SIZE: 60,                      // World diameter
+    SIZE: 80,                      // World diameter
     BOUNDARY_RADIUS: 29,           // Playable area radius
     BOUNDARY_DAMAGE: 10,           // Damage per second outside boundary
     SPAWN_BOUNDARY: 28,            // Enemy spawn radius

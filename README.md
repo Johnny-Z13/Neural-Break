@@ -95,14 +95,18 @@ src/
 ├── core/                   # Core game systems
 │   ├── Game.ts            # Main game coordinator
 │   ├── GameState.ts       # State management and scoring
+│   ├── GameStateManager.ts # 🆕 Modular state transitions & death animation
+│   ├── CollisionSystem.ts # 🆕 Modular collision detection & response
 │   ├── GameTimer.ts       # Timer system
 │   ├── LevelManager.ts    # Difficulty progression
 │   ├── InputManager.ts    # Input handling
-│   ├── EnemyManager.ts    # Enemy spawning/management
+│   ├── EnemyManager.ts    # Enemy spawning/management (optimized spatial grid)
 │   ├── PickupManager.ts   # Base class for pickup management
 │   ├── PowerUpManager.ts  # Power-up spawning and collection
 │   ├── MedPackManager.ts  # Health pack management
-│   └── SpeedUpManager.ts  # Speed boost management
+│   ├── SpeedUpManager.ts  # Speed boost management
+│   ├── ShieldManager.ts   # Shield pickup management
+│   └── InvulnerableManager.ts # Invulnerable pickup management
 ├── entities/               # Game entities
 │   ├── Player.ts          # Player entity
 │   ├── Enemy.ts           # Base enemy class
@@ -117,17 +121,23 @@ src/
 │   ├── PowerUp.ts         # Power-up pickup
 │   ├── MedPack.ts         # Health pickup
 │   ├── SpeedUp.ts         # Speed boost pickup
+│   ├── Shield.ts          # Shield pickup
+│   ├── Invulnerable.ts    # Invulnerable pickup
 │   └── index.ts           # Entity exports
 ├── weapons/                # Combat system
 │   ├── WeaponSystem.ts    # Weapon management
 │   ├── Projectile.ts      # Player projectiles
 │   └── EnemyProjectile.ts # Enemy projectiles
 ├── graphics/               # Rendering and visual effects
-│   ├── SceneManager.ts    # Three.js scene management
-│   ├── EffectsSystem.ts   # Main effects coordinator
+│   ├── SceneManager.ts    # Three.js scene management (throttled zoom)
+│   ├── EffectsSystem.ts   # Main effects coordinator (cleaned up)
 │   ├── AudioVisualReactiveSystem.ts # Audio-reactive visuals
+│   ├── EnergyBarrier.ts   # Arena boundary visual
+│   ├── Starfield.ts       # Background starfield
+│   ├── StarfieldManager.ts # Starfield management
 │   └── effects/           # Modular effect systems
 │       ├── ParticlePool.ts      # Base particle system
+│       ├── SpecializedParticlePool.ts # 🆕 Generic specialized pool (consolidated)
 │       ├── ExplosionEffects.ts  # Explosion and impact effects
 │       ├── ScreenEffects.ts     # Screen-wide visual effects
 │       └── VectorParticles.ts   # Vector-style particles
@@ -138,9 +148,14 @@ src/
 │       ├── StartScreen.ts        # Main menu screen
 │       ├── LeaderboardScreen.ts  # High score leaderboard
 │       ├── GameOverScreen.ts     # Game over screen
+│       ├── PauseScreen.ts        # In-game pause menu
 │       └── ScreenTransitions.ts  # Transition animations
 ├── audio/                  # Audio system
-│   └── AudioManager.ts    # Sound management
+│   ├── AudioManager.ts    # Sound management
+│   ├── AudioPool.ts       # Sound limiting and priority system
+│   └── MusicManager.ts    # Background music management
+├── utils/                  # Utilities
+│   └── LocationService.ts # Browser geolocation service
 └── data/                   # Data services
     ├── HighScoreService.ts # High score persistence
     └── HIGH_SCORE_SETUP.md # High score setup guide
@@ -151,14 +166,24 @@ src/
 - **Three.js Integration**: Modern WebGL rendering with orthographic camera
 - **TypeScript**: Full type safety and modern JavaScript features
 - **Entity Component System (ECS)**: Efficient entity management with proper cleanup
-- **Collision Detection**: Optimized spatial checking for arena gameplay
-- **Performance Optimized**: Entity pooling, particle pooling, and efficient resource management
+- **Collision Detection**: Optimized spatial grid for O(neighbors) instead of O(n) collision checks
+- **Performance Optimized**: Entity pooling, particle pooling, throttled camera zoom, and efficient resource management
 - **Modular Design**: Clean separation of concerns with system-based architecture
 - **Visual Effects**: Comprehensive particle systems, screen effects, and audio-reactive visuals
+- **Generic Particle Pools**: Consolidated specialized particle pools eliminate code duplication
 - **Screen Management**: Modular UI screens with smooth transitions
 - **Configuration Management**: Centralized config system for easy tuning
 - **High Score System**: LocalStorage and API-based high score tracking
 - **TWEEN.js**: Smooth animations and transitions
+
+### Performance Optimizations (Jan 2026)
+
+- **Spatial Grid Collision**: Enemy death chain damage uses spatial grid for O(neighbors) lookup
+- **Throttled Dynamic Zoom**: Camera zoom recalculates every 50ms instead of every frame
+- **Consolidated Particle Pools**: Generic `SpecializedParticlePool<T>` class eliminates ~400 lines of duplication
+- **Modular Architecture**: `CollisionSystem` and `GameStateManager` extracted from Game.ts
+- **Cleaned Effects System**: Removed ~300 lines of legacy/deprecated code
+- **Removed Backup Files**: Eliminated orphaned `.bak` files from codebase
 
 ## 🔧 Development
 
@@ -212,6 +237,17 @@ ISC License
 Active development - see commit history for latest updates and features.
 
 ### Recent Improvements
+
+#### January 2026 - Codebase Optimization 🧹
+- ✅ **🗑️ Removed Bloat**: Deleted 4 orphaned `.bak` files
+- ✅ **🧹 Cleaned EffectsSystem**: Removed ~300 lines of `_LEGACY` and `_DEPRECATED` methods
+- ✅ **🔧 Consolidated Particle Pools**: Generic `SpecializedParticlePool<T>` base class eliminates duplication
+- ✅ **📦 Modularized Game.ts**: Extracted `CollisionSystem` and `GameStateManager` for better maintainability
+- ✅ **⚡ Optimized Enemy Death Chain**: Uses spatial grid for O(neighbors) collision instead of O(n)
+- ✅ **🎬 Throttled Dynamic Zoom**: Recalculates every 50ms instead of every frame for better FPS
+- ✅ **📝 Updated README**: Reflects new architecture and optimizations
+
+#### Previous Improvements
 - ✅ **🐛 FIXED: UFO Spawns Use LevelManager!** - Removed hardcoded spawn rates, configs now work as expected!
 - ✅ **🐛 FIXED: Power-Ups Now Spawn!** - Critical bug fix: spawn logic was broken, now working perfectly!
 - ✅ **🎁 Generous Power-Up Spawns** - 2x more pickups, regular intervals, fully configurable in balance.config!

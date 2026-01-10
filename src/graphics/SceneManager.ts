@@ -1015,34 +1015,48 @@ export class SceneManager {
   }
 
   // 🎬 DYNAMIC ZOOM SYSTEM - Procedural zoom based on gameplay! 🎬
+  // 🎯 THROTTLE TIMER - Skip intensive recalculations for performance
+  private zoomThrottleTimer: number = 0
+  private zoomThrottleInterval: number = 0.05 // Update zoom target every 50ms (20 FPS)
+  
   private updateDynamicZoom(deltaTime: number): void {
-    // Calculate gameplay intensity (0-1)
-    // Based on: enemy count, combo, audio-visual intensity
-    const audioIntensity = this.audioVisualSystem.getGameplayIntensity()
-    const enemyIntensity = Math.min(this.enemyCount / 20, 1) // Max at 20 enemies
-    const comboIntensity = Math.min(this.comboCount / 15, 1) // Max at 15 combo
+    // THROTTLE: Only recalculate intensity target periodically
+    this.zoomThrottleTimer += deltaTime
     
-    // Combined intensity - higher = more zoomed out
-    this.gameplayIntensity = Math.max(audioIntensity, enemyIntensity, comboIntensity * 0.7)
+    if (this.zoomThrottleTimer >= this.zoomThrottleInterval) {
+      this.zoomThrottleTimer = 0
+      
+      // Calculate gameplay intensity (0-1)
+      // Based on: enemy count, combo, audio-visual intensity
+      const audioIntensity = this.audioVisualSystem.getGameplayIntensity()
+      const enemyIntensity = Math.min(this.enemyCount / 20, 1) // Max at 20 enemies
+      const comboIntensity = Math.min(this.comboCount / 15, 1) // Max at 15 combo
+      
+      // Combined intensity - higher = more zoomed out
+      this.gameplayIntensity = Math.max(audioIntensity, enemyIntensity, comboIntensity * 0.7)
+      
+      // Calculate target zoom - zoom out as intensity increases
+      const zoomRange = this.maxZoom - this.minZoom
+      this.targetFrustumSize = this.minZoom + (this.gameplayIntensity * zoomRange)
+    }
     
-    // Calculate target zoom - zoom out as intensity increases
-    const zoomRange = this.maxZoom - this.minZoom
-    this.targetFrustumSize = this.minZoom + (this.gameplayIntensity * zoomRange)
-    
-    // Smoothly lerp to target zoom
+    // Always lerp to target for smooth animation (cheap operation)
+    const previousZoom = this.currentFrustumSize
     this.currentFrustumSize = THREE.MathUtils.lerp(
       this.currentFrustumSize,
       this.targetFrustumSize,
       this.zoomLerpSpeed * deltaTime
     )
     
-    // Apply zoom to camera
-    const aspect = window.innerWidth / window.innerHeight
-    this.camera.left = this.currentFrustumSize * aspect / -2
-    this.camera.right = this.currentFrustumSize * aspect / 2
-    this.camera.top = this.currentFrustumSize / 2
-    this.camera.bottom = this.currentFrustumSize / -2
-    this.camera.updateProjectionMatrix()
+    // Only update projection matrix if zoom actually changed (avoids GPU overhead)
+    if (Math.abs(this.currentFrustumSize - previousZoom) > 0.001) {
+      const aspect = window.innerWidth / window.innerHeight
+      this.camera.left = this.currentFrustumSize * aspect / -2
+      this.camera.right = this.currentFrustumSize * aspect / 2
+      this.camera.top = this.currentFrustumSize / 2
+      this.camera.bottom = this.currentFrustumSize / -2
+      this.camera.updateProjectionMatrix()
+    }
   }
 
   // 🎬 SET GAMEPLAY DATA FOR ZOOM CALCULATION 🎬

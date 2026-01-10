@@ -85,7 +85,8 @@ export class Fizzer extends Enemy {
     this.mesh.position.copy(this.position)
 
     // ⚡ MAIN BODY - Tiny glowing orb ⚡
-    const coreGeometry = new THREE.SphereGeometry(0.25, 16, 16)
+    // OPTIMIZED: Reduced from 16x16 to 10x8 for performance
+    const coreGeometry = new THREE.SphereGeometry(0.25, 10, 8)
     const coreMaterial = new THREE.MeshBasicMaterial({
       color: 0x00FF88,
       transparent: true,

@@ -20,6 +20,7 @@ export class VoidSphere extends Enemy {
   private wavePositions: Float32Array
   private ringCount: number = 7 // More rings for bigger sphere
   private pulseTime: number = 0
+  private waveUpdateSkipFrames: number = 0 // Throttle wave updates for performance
   
   // 🔫 PROJECTILE SYSTEM 🔫
   private sceneManager: any = null
@@ -75,7 +76,8 @@ export class VoidSphere extends Enemy {
 
   initialize(): void {
     // 🌀 CREATE MASSIVE CENTRAL VOID SPHERE - 4X SIZE! 🌀
-    const coreGeometry = new THREE.SphereGeometry(2.4, 32, 32) // 4x (was 0.6)
+    // OPTIMIZED: Reduced poly count from 32x32 to 16x12 for performance
+    const coreGeometry = new THREE.SphereGeometry(2.4, 16, 12)
     const coreMaterial = new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
@@ -85,7 +87,8 @@ export class VoidSphere extends Enemy {
     this.mesh.position.copy(this.position)
     
     // 💀 INNER VOID CORE - Pulsing darkness 💀
-    const innerCoreGeometry = new THREE.SphereGeometry(1.8, 24, 24)
+    // OPTIMIZED: Reduced from 24x24 to 12x8
+    const innerCoreGeometry = new THREE.SphereGeometry(1.8, 12, 8)
     const innerCoreMaterial = new THREE.MeshBasicMaterial({
       color: 0x110022,
       transparent: true,
@@ -96,9 +99,10 @@ export class VoidSphere extends Enemy {
     this.mesh.add(innerCore)
 
     // 🎮 ASTEROIDS-STYLE SWIRLING VOID RINGS - 4X BIGGER! 🎮
+    // OPTIMIZED: Reduced ring segments from 12x48 to 6x24, particles from 8x8 to 4x4
     for (let i = 0; i < this.ringCount; i++) {
-      const ringRadius = 3.2 + i * 1.2 // 4x (was 0.8 + i * 0.3)
-      const ringGeometry = new THREE.TorusGeometry(ringRadius, 0.2, 12, 48) // 4x thickness
+      const ringRadius = 3.2 + i * 1.2
+      const ringGeometry = new THREE.TorusGeometry(ringRadius, 0.2, 6, 24)
       const ringColor = new THREE.Color().setHSL(0.8 + i * 0.03, 1.0, 0.3 + i * 0.08)
       
       // Main ring
@@ -116,6 +120,7 @@ export class VoidSphere extends Enemy {
       ring.rotation.z = Math.random() * Math.PI
       
       // 🌟 WIREFRAME OUTLINE - Vector style! 🌟
+      // OPTIMIZED: Reuse ring geometry instead of creating new one
       const wireframeMaterial = new THREE.MeshBasicMaterial({
         color: ringColor,
         wireframe: true,
@@ -128,8 +133,9 @@ export class VoidSphere extends Enemy {
       ring.add(wireframe)
       
       // 💫 ENERGY PARTICLES - Orbiting around ring! 💫
-      for (let j = 0; j < 12; j++) { // More particles
-        const particleGeometry = new THREE.SphereGeometry(0.12, 8, 8) // 4x (was 0.03)
+      // OPTIMIZED: Reduced particles from 12 to 6, geometry from 8x8 to 4x4
+      for (let j = 0; j < 6; j++) {
+        const particleGeometry = new THREE.SphereGeometry(0.12, 4, 4)
         const particleMaterial = new THREE.MeshBasicMaterial({
           color: ringColor,
           transparent: true,
@@ -137,7 +143,7 @@ export class VoidSphere extends Enemy {
           blending: THREE.AdditiveBlending
         })
         const particle = new THREE.Mesh(particleGeometry, particleMaterial)
-        const angle = (j / 12) * Math.PI * 2
+        const angle = (j / 6) * Math.PI * 2
         particle.position.set(
           Math.cos(angle) * ringRadius,
           Math.sin(angle) * ringRadius,
@@ -159,8 +165,9 @@ export class VoidSphere extends Enemy {
     this.mesh.scale.setScalar(0.01)
     
     // ⚡ ENERGY TENDRILS - Reaching out! ⚡
-    for (let i = 0; i < 8; i++) {
-      const tendrilGeometry = new THREE.CylinderGeometry(0.08, 0.25, 4, 8)
+    // OPTIMIZED: Reduced from 8 tendrils to 6, geometry segments from 8 to 6
+    for (let i = 0; i < 6; i++) {
+      const tendrilGeometry = new THREE.CylinderGeometry(0.08, 0.25, 4, 6)
       const tendrilMaterial = new THREE.MeshBasicMaterial({
         color: new THREE.Color().setHSL(0.75, 1.0, 0.5),
         transparent: true,
@@ -168,7 +175,7 @@ export class VoidSphere extends Enemy {
         blending: THREE.AdditiveBlending
       })
       const tendril = new THREE.Mesh(tendrilGeometry, tendrilMaterial)
-      const angle = (i / 8) * Math.PI * 2
+      const angle = (i / 6) * Math.PI * 2
       tendril.position.set(
         Math.cos(angle) * 2.8,
         Math.sin(angle) * 2.8,
@@ -179,7 +186,8 @@ export class VoidSphere extends Enemy {
     }
 
     // Create MASSIVE distortion field effect
-    const distortGeometry = new THREE.SphereGeometry(6, 48, 48) // 4x (was 1.5)
+    // OPTIMIZED: Reduced from 48x48 to 16x12
+    const distortGeometry = new THREE.SphereGeometry(6, 16, 12)
     const distortMaterial = new THREE.MeshBasicMaterial({
       color: 0x660088,
       transparent: true,
@@ -191,7 +199,8 @@ export class VoidSphere extends Enemy {
     this.mesh.add(this.distortionField)
     
     // 🔮 SECONDARY DISTORTION SHELL 🔮
-    const outerDistortGeometry = new THREE.SphereGeometry(8, 32, 32)
+    // OPTIMIZED: Reduced from 32x32 to 12x8
+    const outerDistortGeometry = new THREE.SphereGeometry(8, 12, 8)
     const outerDistortMaterial = new THREE.MeshBasicMaterial({
       color: 0x440066,
       transparent: true,
@@ -203,7 +212,8 @@ export class VoidSphere extends Enemy {
     this.mesh.add(outerDistortion)
 
     // Create MASSIVE gravity wave particles
-    const waveCount = 300 // More particles
+    // OPTIMIZED: Reduced from 300 to 150 for better performance
+    const waveCount = 150
     this.wavePositions = new Float32Array(waveCount * 3)
     const waveColors = new Float32Array(waveCount * 3)
 
@@ -684,18 +694,24 @@ export class VoidSphere extends Enemy {
     const distortMaterial = this.distortionField.material as THREE.MeshBasicMaterial
     distortMaterial.opacity = 0.1 + Math.sin(time * 4) * 0.1
 
-    // Animate gravity waves spiraling inward
-    for (let i = 0; i < this.wavePositions.length / 3; i++) {
-      const i3 = i * 3
-      const angle = time * 1.5 + (i / (this.wavePositions.length / 3)) * Math.PI * 2
-      const radius = 12 - (time * 0.5 + i * 0.01) % 12
+    // OPTIMIZED: Animate gravity waves spiraling inward (throttled to every 3rd frame)
+    this.waveUpdateSkipFrames++
+    if (this.waveUpdateSkipFrames >= 3) {
+      this.waveUpdateSkipFrames = 0
       
-      this.wavePositions[i3] = Math.cos(angle) * radius
-      this.wavePositions[i3 + 1] = Math.sin(angle) * radius
-      this.wavePositions[i3 + 2] = Math.sin(time * 3 + i * 0.1) * 2
-    }
+      // Update particle positions
+      for (let i = 0; i < this.wavePositions.length / 3; i++) {
+        const i3 = i * 3
+        const angle = time * 1.5 + (i / (this.wavePositions.length / 3)) * Math.PI * 2
+        const radius = 12 - (time * 0.5 + i * 0.01) % 12
+        
+        this.wavePositions[i3] = Math.cos(angle) * radius
+        this.wavePositions[i3 + 1] = Math.sin(angle) * radius
+        this.wavePositions[i3 + 2] = Math.sin(time * 3 + i * 0.1) * 2
+      }
 
-    this.waveGeometry.attributes.position.needsUpdate = true
+      this.waveGeometry.attributes.position.needsUpdate = true
+    }
 
     // Core void pulsing - BIGGER pulse for massive sphere
     const corePulse = 1 + Math.sin(time * 4) * 0.15

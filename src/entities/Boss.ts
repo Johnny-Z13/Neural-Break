@@ -175,9 +175,10 @@ export class Boss extends Enemy {
     }
     
     // ⚡ ENERGY RINGS - Threat indicators! ⚡ - 50% SMALLER
+    // OPTIMIZED: Reduced segments from 64 to 24
     for (let i = 0; i < 3; i++) {
-      const ringRadius = 2.25 + i * 0.4 // 50% smaller (was 4.5 + i * 0.8)
-      const ringGeometry = new THREE.RingGeometry(ringRadius - 0.15, ringRadius, 64) // 50% smaller
+      const ringRadius = 2.25 + i * 0.4
+      const ringGeometry = new THREE.RingGeometry(ringRadius - 0.15, ringRadius, 24)
       const ringMaterial = new THREE.MeshBasicMaterial({
         color: 0xFF0000,
         transparent: true,

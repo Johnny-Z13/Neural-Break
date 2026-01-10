@@ -42,10 +42,10 @@ export class EnemyProjectile {
 
   private createMesh(): void {
     // 🔴 ENEMY PROJECTILE - RED/ORANGE DANGER COLOR! 🔴
-    const geometry = new THREE.SphereGeometry(this.radius, 12, 12)
+    // Using lower poly count for performance (was 12,12)
+    const geometry = new THREE.SphereGeometry(this.radius, 8, 6)
     const material = new THREE.MeshBasicMaterial({
       color: this.color,
-      emissive: this.emissiveColor,
       transparent: true,
       opacity: 0.95
     })
@@ -53,8 +53,8 @@ export class EnemyProjectile {
     this.mesh = new THREE.Mesh(geometry, material)
     this.mesh.position.copy(this.position)
     
-    // 🔥 OUTER GLOW - Danger aura! 🔥
-    const glowGeometry = new THREE.SphereGeometry(this.radius * 1.5, 8, 8)
+    // 🔥 OUTER GLOW - Danger aura! (optimized low-poly)
+    const glowGeometry = new THREE.SphereGeometry(this.radius * 1.5, 6, 4)
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: this.emissiveColor,
       transparent: true,

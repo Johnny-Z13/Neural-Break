@@ -40,7 +40,8 @@ export class Projectile {
     let geometry: THREE.BufferGeometry
     
     // 🔥 Higher power = more geometry detail for extra juiciness!
-    const geometryDetail = Math.min(8 + Math.floor(this.powerLevel * 1.5), 24)
+    // OPTIMIZED: Capped at 12 instead of 24 for better performance
+    const geometryDetail = Math.min(6 + Math.floor(this.powerLevel * 0.6), 12)
     
     switch (this.weaponType) {
       case WeaponType.BULLETS:

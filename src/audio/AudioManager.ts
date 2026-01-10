@@ -37,22 +37,32 @@ export class AudioManager {
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       
-      // Create master gain node
+      // 🎚️ CREATE MASTER DYNAMICS COMPRESSOR - Prevents audio clipping/distortion! 🎚️
+      // This acts as a limiter when many sounds play simultaneously
+      const compressor = this.audioContext.createDynamicsCompressor()
+      compressor.threshold.setValueAtTime(-24, this.audioContext.currentTime) // Start compressing at -24dB
+      compressor.knee.setValueAtTime(12, this.audioContext.currentTime)       // Soft knee for smooth compression
+      compressor.ratio.setValueAtTime(8, this.audioContext.currentTime)       // 8:1 ratio (aggressive limiting)
+      compressor.attack.setValueAtTime(0.003, this.audioContext.currentTime)  // Fast attack (3ms)
+      compressor.release.setValueAtTime(0.15, this.audioContext.currentTime)  // Medium release (150ms)
+      compressor.connect(this.audioContext.destination)
+      
+      // Create master gain node - connects to compressor instead of destination
       this.masterGainNode = this.audioContext.createGain()
       this.masterGainNode.gain.value = this.masterVolume
-      this.masterGainNode.connect(this.audioContext.destination)
+      this.masterGainNode.connect(compressor)
       
       // Create separate gain nodes for SFX and Ambient
       this.sfxGainNode = this.audioContext.createGain()
-      this.sfxGainNode.gain.value = 1.0  // SFX at full volume relative to master
+      this.sfxGainNode.gain.value = 0.8  // Slightly reduced to give compressor headroom
       this.sfxGainNode.connect(this.masterGainNode)
       
       this.ambientGainNode = this.audioContext.createGain()
-      this.ambientGainNode.gain.value = 0.35  // Ambient quieter so SFX punch through
+      this.ambientGainNode.gain.value = 0.3  // Ambient quieter so SFX punch through
       this.ambientGainNode.connect(this.masterGainNode)
       
       this.isInitialized = true
-      console.log('🎵 AudioManager initialized')
+      console.log('🎵 AudioManager initialized with dynamics compressor')
       
       // Play any pending sounds
       this.flushPendingSounds()

@@ -21,14 +21,15 @@ export enum SoundCategory {
 
 export class AudioPool {
   private activeSounds: Set<ActiveSound> = new Set()
-  private readonly MAX_CONCURRENT_SOUNDS = 48
+  // 🎚️ REDUCED LIMITS - Prevents audio overload/crunchiness! 🎚️
+  private readonly MAX_CONCURRENT_SOUNDS = 24 // Was 48 - reduced to prevent distortion
   private readonly SOUND_BUDGETS: Record<SoundCategory, number> = {
-    [SoundCategory.UI]: 8,
-    [SoundCategory.PLAYER]: 8,
-    [SoundCategory.WEAPON]: 12,
-    [SoundCategory.ENEMY]: 8,
-    [SoundCategory.AMBIENT]: 4,
-    [SoundCategory.DEATH]: 8
+    [SoundCategory.UI]: 4,      // Was 8 - UI sounds are rare, don't need many
+    [SoundCategory.PLAYER]: 4,  // Was 8 - player actions are single events
+    [SoundCategory.WEAPON]: 6,  // Was 12 - most common, but limit for sanity
+    [SoundCategory.ENEMY]: 4,   // Was 8 - many enemies, need tight limit
+    [SoundCategory.AMBIENT]: 2, // Was 4 - background sounds, minimal
+    [SoundCategory.DEATH]: 4    // Was 8 - deaths can stack, limit them
   }
   
   // Performance tracking
