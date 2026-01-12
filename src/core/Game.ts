@@ -610,15 +610,20 @@ export class Game {
     const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
     if (DEBUG_MODE) console.log('📷 Setting camera with offset:', cameraOffset)
     
+    // Position player at bottom of screen for Rogue mode
+    // With frustumSize=30 and offset=12, player should be at camera.y - 12 to appear at bottom
+    const initialPlayerY = -10  // Start player lower for bullet-hell positioning
+    this.player.getMesh().position.y = initialPlayerY
+    
     // Camera target is above the player by the offset amount
-    const cameraTargetY = playerPos.y + cameraOffset
+    const cameraTargetY = initialPlayerY + cameraOffset
     this.sceneManager.setCameraTarget(new THREE.Vector3(playerPos.x, cameraTargetY, 0))
     
     // Force camera to update immediately with offset applied
     const camera = this.sceneManager.getCamera()
     camera.position.set(playerPos.x, cameraTargetY, 10)
     camera.lookAt(playerPos.x, cameraTargetY, 0)
-    if (DEBUG_MODE) console.log('📷 Camera positioned at:', camera.position.clone(), 'with offset:', cameraOffset)
+    if (DEBUG_MODE) console.log(`📷 Camera positioned at: ${camera.position.y}, Player at: ${initialPlayerY}, Offset: ${cameraOffset}`)
     
     // Reset weapon system
     this.weaponSystem = new WeaponSystem()
@@ -2229,16 +2234,16 @@ export class Game {
     
     // 🌀 Spawn new wormhole exit for next layer 🌀
     this.spawnRogueWormholeExit()
-    if (DEBUG_MODE) console.log(`🌀 New wormhole spawned for layer ${this.rogueLayer}`)
+    if (DEBUG_MODE) console.log(`🌀 New wormhole spawned for layer ${this.rogueCurrentLayer}`)
     
     // Resume enemy spawning
     this.enemyManager.resumeSpawning()
     
-    // Return to playing state
+    // Return to playing state and resume game loop
     this.gameState = GameStateType.PLAYING
+    this.isRunning = true  // Resume without restarting the entire loop
     
-    // Restart game loop
-    this.start()
+    if (DEBUG_MODE) console.log('✅ Game resumed - Layer started')
   }
 
   private updateLevelTransition(deltaTime: number): void {
