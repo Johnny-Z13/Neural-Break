@@ -61,6 +61,11 @@ export class LevelManager {
    * 🎲 Fizzers are OPTIONAL (multiplier-based spawns)
    */
   static getLevelConfig(level: number): LevelConfig {
+    // 🎲 ROGUE MODE - Return Rogue layer configuration
+    if (level === 998) {
+      return this.getRogueLevelConfig()
+    }
+    
     // 🧪 TEST MODE - Return test configuration
     if (level === 999) {
       return this.getTestLevelConfig()
@@ -358,6 +363,13 @@ export class LevelManager {
     this.currentProgress = this.createEmptyProgress()
     this.objectivesComplete = false
   }
+  
+  startAtLevel(level: number): void {
+    this.currentLevel = level
+    this.totalElapsedTime = 0
+    this.currentProgress = this.createEmptyProgress()
+    this.objectivesComplete = false
+  }
 
   update(deltaTime: number): void {
     this.totalElapsedTime += deltaTime
@@ -467,6 +479,14 @@ export class LevelManager {
   }
 
   /**
+   * Reset objectives without advancing level (for Rogue mode layers)
+   */
+  resetObjectives(): void {
+    this.currentProgress = this.createEmptyProgress()
+    this.objectivesComplete = false
+  }
+
+  /**
    * Check if all levels are complete
    */
   isGameComplete(): boolean {
@@ -552,6 +572,38 @@ export class LevelManager {
   /**
    * 🧪 Get test level configuration with all enemies
    */
+  // ═══════════════════════════════════════════════════════
+  // 🎲 ROGUE MODE CONFIGURATION
+  // ═══════════════════════════════════════════════════════
+  static getRogueLevelConfig(): LevelConfig {
+    return {
+      level: 998,
+      name: "NEURAL ASCENT - LAYER 1",
+      objectives: {
+        dataMites: 30,       // Moderate objectives per layer
+        scanDrones: 12,
+        chaosWorms: 2,
+        voidSpheres: 1,
+        crystalSwarms: 1,
+        fizzers: 0,          // Optional bonus enemies
+        ufos: 1,
+        bosses: 0
+      },
+      // Aggressive spawn rates for continuous action
+      miteSpawnRate: 1.2,
+      droneSpawnRate: 6.0,
+      wormSpawnRate: 40.0,
+      voidSpawnRate: 50.0,
+      crystalSpawnRate: 45.0,
+      fizzerSpawnRate: 18.0,
+      ufoSpawnRate: 60.0,
+      bossSpawnRate: Infinity  // Bosses appear every 2-3 layers (handled separately)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 🧪 TEST MODE CONFIGURATION
+  // ═══════════════════════════════════════════════════════
   static getTestLevelConfig(): LevelConfig {
     return {
       level: 999,

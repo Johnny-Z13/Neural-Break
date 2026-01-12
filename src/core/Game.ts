@@ -7,8 +7,10 @@ import { WeaponSystem, WeaponType } from '../weapons/WeaponSystem'
 import { UIManager } from '../ui/UIManager'
 import { GameTimer } from './GameTimer'
 import { AudioManager } from '../audio/AudioManager'
-import { GameStateType, GameStats, ScoreManager, KILL_POINTS } from './GameState'
+import { GameStateType, GameStats, ScoreManager, KILL_POINTS, GameMode } from './GameState'
 import { GameScreens } from '../ui/GameScreens'
+import { RogueChoiceScreen } from '../ui/screens/RogueChoiceScreen'
+import { RogueSpecial } from './RogueSpecial'
 import { PauseScreen } from '../ui/screens/PauseScreen'
 import { Enemy, DataMite, ScanDrone, ChaosWorm, VoidSphere, CrystalShardSwarm, Fizzer, UFO, Boss } from '../entities'
 import { LevelManager } from './LevelManager'
@@ -17,6 +19,9 @@ import { MedPackManager } from './MedPackManager'
 import { SpeedUpManager } from './SpeedUpManager'
 import { ShieldManager } from './ShieldManager'
 import { InvulnerableManager } from './InvulnerableManager'
+import { WormholeExit } from '../graphics/WormholeExit'
+import { RogueSideBarriers } from '../graphics/RogueSideBarriers'
+import { GameModeManager } from './GameModeManager'
 import { DEBUG_MODE } from '../config'
 
 export class Game {
@@ -39,12 +44,32 @@ export class Game {
   
   // 🎮 Game State Management
   private gameState: GameStateType = GameStateType.START_SCREEN
+  private gameMode: GameMode = GameMode.ORIGINAL
+  private gameModeManager: GameModeManager
   private gameStats: GameStats = this.createEmptyStats()
   private combo: number = 0
   private comboTimer: number = 0
+  private comboDecayMultiplier: number = 1.0 // 🎲 ROGUE MODE: Combo decay speed multiplier
   private lastDamageTaken: number = 0
   private isTestMode: boolean = false // Unlimited health test mode
   private isPaused: boolean = false
+  
+  // 🎲 ROGUE MODE STATE 🎲
+  private rogueCurrentLayer: number = 1 // What layer player is currently ON
+  private rogueLayersCompleted: number = 0 // How many layers have been completed
+  private rogueSelectedSpecialIds: Set<string> = new Set() // Track selected specials to prevent duplicates
+  private rogueVerticalPosition: number = 0 // Current vertical ascent position
+  private rogueScrollSpeed: number = 3.0 // Units per second - continuous upward flow
+  private rogueWormholeExit: WormholeExit | null = null // End-of-layer portal
+  private rogueExitDistance: number = 180 // Distance to exit (60 seconds @ 3.0 speed)
+  private rogueSideBarriers: RogueSideBarriers | null = null // Left/right boundaries
+  
+  // 🌀 WORMHOLE ENTRY ANIMATION STATE 🌀
+  private isWormholeEntryAnimating: boolean = false
+  private wormholeEntryTime: number = 0
+  private wormholeEntryDuration: number = 1.5 // 1.5 seconds to spiral into wormhole
+  private wormholeEntryStartPos: THREE.Vector3 | null = null
+  private wormholeEntryStartRotation: number = 0
   
   // 💀 DEATH ANIMATION STATE 💀
   private isDeathAnimationPlaying: boolean = false
@@ -81,6 +106,7 @@ export class Game {
     this.uiManager = new UIManager()
     this.levelManager = new LevelManager()
     this.audioManager = new AudioManager()
+    this.gameModeManager = new GameModeManager(GameMode.ORIGINAL)
     
     // Connect audio manager to UI screens
     GameScreens.setAudioManager(this.audioManager)
@@ -202,10 +228,21 @@ export class Game {
   }
 
   private showStartScreen(): void {
+    console.log('🎮🎮🎮 Game.showStartScreen() CALLED 🎮🎮🎮')
     this.gameState = GameStateType.START_SCREEN
     // Stop ambient soundscape on start screen
     this.audioManager.stopAmbientSoundscape()
-    GameScreens.showStartScreen(() => this.startNewGame(), () => this.startTestMode())
+    console.log('🎮 Calling GameScreens.showStartScreen with callbacks:', {
+      startNewGame: !!this.startNewGame,
+      startTestMode: !!this.startTestMode,
+      startRogueMode: !!this.startRogueMode
+    })
+    GameScreens.showStartScreen(
+      () => this.startNewGame(),
+      () => this.startTestMode(),
+      () => this.startRogueMode()
+    )
+    console.log('🎮 GameScreens.showStartScreen returned')
   }
   
   private showPauseMenu(): void {
@@ -448,6 +485,259 @@ export class Game {
     if (DEBUG_MODE) console.log('✅ Test mode initialization complete!')
   }
 
+  private startRogueMode(): void {
+    if (DEBUG_MODE) console.log('🎲 startRogueMode() called')
+    
+    // COMPLETE CLEANUP FIRST! 🧹
+    this.cleanupGameObjects()
+    
+    // Small delay to ensure cleanup is complete and old game loop has stopped
+    setTimeout(() => {
+      // Ensure game loop is stopped before starting rogue mode
+      this.isRunning = false
+      if (DEBUG_MODE) console.log('🎲 Starting initializeRogueMode()...')
+      this.initializeRogueMode()
+    }, 100)
+  }
+
+  private initializeRogueMode(): void {
+    if (DEBUG_MODE) console.log('🎲 Starting Rogue mode...')
+    
+    // Reset game state - CRITICAL: Must be PLAYING for updates to work!
+    this.gameState = GameStateType.PLAYING
+    this.gameMode = GameMode.ROGUE
+    this.gameModeManager.setMode(GameMode.ROGUE) // Update mode manager
+    this.isTestMode = false
+    this.rogueCurrentLayer = 1
+    this.rogueLayersCompleted = 0
+    this.rogueSelectedSpecialIds.clear() // Reset selected specials for new run
+    this.rogueVerticalPosition = 0
+    if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (ROGUE MODE):', this.gameState)
+    if (DEBUG_MODE) console.log(`🎲 Starting Rogue run at Layer ${this.rogueCurrentLayer}`)
+    
+    // 🎮 Apply mode-specific settings from GameModeManager
+    const config = this.gameModeManager.getConfig()
+    
+    // Boundaries
+    this.sceneManager.setEnergyBarrierVisible(config.usesCircularBoundary)
+    this.sceneManager.setStarfieldDownwardFlow(config.starfieldFlowsDown)
+    
+    // Side barriers (if mode uses them)
+    if (config.usesSideBoundaries) {
+      const aspect = window.innerWidth / window.innerHeight
+      const frustumSize = 30 // baseFrustumSize from SceneManager
+      const screenWidth = frustumSize * aspect
+      const barrierWidth = screenWidth * config.boundaryWidthMultiplier
+      this.rogueSideBarriers = new RogueSideBarriers(barrierWidth)
+      this.sceneManager.addToScene(this.rogueSideBarriers.getLeftWall())
+      this.sceneManager.addToScene(this.rogueSideBarriers.getRightWall())
+      if (DEBUG_MODE) console.log(`🚧 Side barriers created at ±${barrierWidth} units (${config.boundaryWidthMultiplier * 100}% width)`)
+    }
+    
+    // Show HUD when game starts
+    this.uiManager.setHUDVisibility(true)
+    
+    this.gameStats = this.createEmptyStats()
+    this.combo = 0
+    this.comboTimer = 0
+    this.scoreMultiplier = 1
+    this.multiplierTimer = 0
+    this.lastKillTime = 0
+    this.lastMultiplierShown = 0
+    this.recentEnemyDeaths = []
+    this.lastScore = 0
+    this.lastHighScoreMoment = 0
+    
+    // Start ambient soundscape
+    this.audioManager.startAmbientSoundscape()
+    
+    // Start level manager at mode-specific starting level
+    const startingLevel = this.gameModeManager.getStartingLevel()
+    this.levelManager.startAtLevel(startingLevel)
+    if (DEBUG_MODE) console.log(`🎮 Level manager started at level ${startingLevel}`)
+    
+    // Reset player
+    if (this.player) {
+      this.player.cleanupFragments()
+    }
+    
+    if (DEBUG_MODE) console.log('👤 Creating player...')
+    this.player = new Player()
+    if (DEBUG_MODE) console.log('✅ Player object created')
+    
+    this.player.initialize(this.audioManager)
+    if (DEBUG_MODE) console.log('✅ Player initialized')
+    
+    // Ensure test mode is disabled for rogue gameplay
+    this.player.setTestMode(false)
+    this.player.setRogueMode(true) // Enable Rogue mode behavior
+    if (DEBUG_MODE) console.log('✅ Test mode disabled on player (rogue game)')
+    if (DEBUG_MODE) console.log('✅ Rogue mode enabled on player')
+    
+    // Set shield notification callbacks
+    this.player.setShieldCallbacks(
+      () => this.uiManager.showShieldActivated(),
+      () => this.uiManager.showShieldDeactivated()
+    )
+    if (DEBUG_MODE) console.log('✅ Shield callbacks connected')
+    
+    // Set invulnerable notification callbacks
+    this.player.setInvulnerableCallbacks(
+      () => this.uiManager.showInvulnerableActivated(),
+      () => this.uiManager.showInvulnerableDeactivated()
+    )
+    if (DEBUG_MODE) console.log('✅ Invulnerable callbacks connected')
+    
+    const playerMesh = this.player.getMesh()
+    if (DEBUG_MODE) console.log('🔍 Player mesh retrieved:', playerMesh)
+    
+    if (!playerMesh) {
+      console.error('❌ CRITICAL: Player mesh is null after initialization!')
+    } else {
+      if (DEBUG_MODE) console.log('✅ Player mesh exists')
+      
+      // Force visibility
+      playerMesh.visible = true
+      playerMesh.position.z = 0
+      
+      if (DEBUG_MODE) console.log('➕ Adding player mesh to scene...')
+      this.sceneManager.addToScene(playerMesh)
+      if (DEBUG_MODE) console.log('✅ Player mesh added to scene')
+    }
+    
+    // Set camera to follow player with vertical offset (bullet hell style - player at bottom)
+    const playerPos = this.player.getPosition()
+    const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
+    if (DEBUG_MODE) console.log('📷 Setting camera with offset:', cameraOffset)
+    
+    // Camera target is above the player by the offset amount
+    const cameraTargetY = playerPos.y + cameraOffset
+    this.sceneManager.setCameraTarget(new THREE.Vector3(playerPos.x, cameraTargetY, 0))
+    
+    // Force camera to update immediately with offset applied
+    const camera = this.sceneManager.getCamera()
+    camera.position.set(playerPos.x, cameraTargetY, 10)
+    camera.lookAt(playerPos.x, cameraTargetY, 0)
+    if (DEBUG_MODE) console.log('📷 Camera positioned at:', camera.position.clone(), 'with offset:', cameraOffset)
+    
+    // Reset weapon system
+    this.weaponSystem = new WeaponSystem()
+    this.weaponSystem.initialize(this.player, this.sceneManager, this.audioManager)
+    
+    // 🎆 CONNECT EFFECTS SYSTEM! 🎆
+    const effectsSystem = this.sceneManager.getEffectsSystem()
+    this.weaponSystem.setEffectsSystem(effectsSystem)
+    this.player.setEffectsSystem(effectsSystem)
+    
+    // 🎬 CONNECT ZOOM COMPENSATION
+    this.player.setZoomCompensationCallback(() => this.sceneManager.getZoomCompensationScale())
+    
+    // 🎯 SET UP WEAPON TYPE CHANGE CALLBACK 🎯
+    this.weaponSystem.setWeaponTypeChangeCallback((weaponType: WeaponType) => {
+      this.uiManager.updateWeaponType(weaponType)
+    })
+
+    // 🔥 SET UP HEAT SYSTEM CALLBACK 🔥
+    let lastOverheatState = false
+    this.weaponSystem.setHeatChangeCallback((heat, isOverheated) => {
+      this.uiManager.updateHeat(heat, isOverheated)
+      
+      if (isOverheated) {
+        if (!lastOverheatState) {
+          this.uiManager.showOverheatedNotification()
+        }
+        this.multiplierTimer = Math.max(0, this.multiplierTimer - 0.5)
+      }
+      lastOverheatState = isOverheated
+    })
+    
+    // Initialize weapon type display
+    this.uiManager.updateWeaponType(this.weaponSystem.getCurrentWeaponType())
+    
+    // Reset enemy manager
+    this.enemyManager = new EnemyManager()
+    this.enemyManager.initialize(this.sceneManager, this.player)
+    this.enemyManager.setLevelManager(this.levelManager)
+    this.enemyManager.setEffectsSystem(effectsSystem)
+    this.enemyManager.setAudioManager(this.audioManager)
+    
+    // Set enemy spawn mode based on game mode
+    const spawnMode = this.gameModeManager.getEnemySpawnMode()
+    if (spawnMode === 'vertical') {
+      this.enemyManager.setRogueMode(true) // Vertical spawning (SCRAMBLE-style)
+    }
+    
+    // 🎲 Calculate barrier width for Rogue mode pickup spawning
+    const aspect = window.innerWidth / window.innerHeight
+    const frustumSize = 30
+    const screenWidth = frustumSize * aspect
+    const barrierWidth = screenWidth * config.boundaryWidthMultiplier
+    
+    // Reset power-up manager (with Rogue mode vertical spawning)
+    this.powerUpManager = new PowerUpManager()
+    this.powerUpManager.initialize(this.sceneManager, this.player)
+    this.powerUpManager.setLevelManager(this.levelManager)
+    this.powerUpManager.setEffectsSystem(effectsSystem)
+    this.powerUpManager.setRogueMode(true, barrierWidth)
+    
+    // Reset med pack manager (with Rogue mode vertical spawning)
+    this.medPackManager = new MedPackManager()
+    this.medPackManager.initialize(this.sceneManager, this.player)
+    this.medPackManager.setLevelManager(this.levelManager)
+    this.medPackManager.setEffectsSystem(effectsSystem)
+    this.medPackManager.setRogueMode(true, barrierWidth)
+    
+    // Reset speed-up manager (with Rogue mode vertical spawning)
+    this.speedUpManager = new SpeedUpManager()
+    this.speedUpManager.initialize(this.sceneManager, this.player)
+    this.speedUpManager.setLevelManager(this.levelManager)
+    this.speedUpManager.setEffectsSystem(effectsSystem)
+    this.speedUpManager.setRogueMode(true, barrierWidth)
+    
+    // Reset shield manager (with Rogue mode vertical spawning)
+    this.shieldManager = new ShieldManager()
+    this.shieldManager.initialize(this.sceneManager, this.player)
+    this.shieldManager.setLevelManager(this.levelManager)
+    this.shieldManager.setEffectsSystem(effectsSystem)
+    this.shieldManager.setRogueMode(true, barrierWidth)
+    
+    // Reset invulnerable manager (with Rogue mode vertical spawning)
+    this.invulnerableManager = new InvulnerableManager()
+    this.invulnerableManager.setSceneManager(this.sceneManager)
+    this.invulnerableManager.setPlayer(this.player)
+    this.invulnerableManager.setRogueMode(true, barrierWidth)
+    
+    if (DEBUG_MODE) console.log(`🎲 Pickup managers set to Rogue mode with barrier width: ${barrierWidth}`)
+    
+    // Reset player power-up level, speed level, and shield
+    this.player.resetPowerUpLevel()
+    this.player.resetSpeedUpLevel()
+    this.player.resetShield()
+    
+    // Initialize health tracking
+    this.lastDamageTaken = this.player.getHealth()
+    
+    // 🌀 Spawn wormhole exit at the target distance 🌀
+    this.spawnRogueWormholeExit()
+    
+    if (DEBUG_MODE) {
+      console.log(`✅ Rogue mode initialized - Layer ${this.rogueLayer}`)
+    }
+    
+    // CRITICAL: Ensure game loop is running!
+    if (DEBUG_MODE) console.log('🎮 Checking game loop state. isRunning:', this.isRunning)
+    if (!this.isRunning) {
+      if (DEBUG_MODE) console.log('🚀 Game loop not running - starting it now!')
+      this.start()
+    } else {
+      if (DEBUG_MODE) console.log('✅ Game loop already running')
+    }
+    
+    // Force an immediate render to ensure everything is visible
+    this.render()
+    if (DEBUG_MODE) console.log('🎲 Rogue mode initialization complete. Game state:', this.gameState)
+  }
+
   private startNewGame(): void {
     if (DEBUG_MODE) console.log('🎮 startNewGame() called')
     
@@ -660,6 +950,117 @@ export class Game {
 
   // Removed: Timer-based system replaced with objective-based system
 
+  // 🌀 ROGUE MODE: Wormhole Exit Management 🌀
+  private spawnRogueWormholeExit(): void {
+    // Clean up existing wormhole
+    if (this.rogueWormholeExit) {
+      this.sceneManager.removeFromScene(this.rogueWormholeExit.getMesh())
+      this.rogueWormholeExit.destroy()
+    }
+
+    // Create new wormhole at exit distance above player
+    this.rogueWormholeExit = new WormholeExit()
+    const playerPos = this.player.getPosition()
+    this.rogueWormholeExit.setPosition(playerPos.x, playerPos.y + this.rogueExitDistance, 0)
+    this.sceneManager.addToScene(this.rogueWormholeExit.getMesh())
+
+    if (DEBUG_MODE) {
+      console.log(`🌀 Wormhole exit spawned at Y=${playerPos.y + this.rogueExitDistance}`)
+    }
+  }
+
+  private checkRogueWormholeCollision(): void {
+    if (!this.rogueWormholeExit || !this.player || this.isWormholeEntryAnimating) return
+
+    const playerPos = this.player.getPosition()
+    if (this.rogueWormholeExit.containsPoint(playerPos)) {
+      if (DEBUG_MODE) console.log('🌀 Player entered wormhole! Starting entry animation...')
+      this.startWormholeEntryAnimation()
+    }
+  }
+
+  private startWormholeEntryAnimation(): void {
+    this.isWormholeEntryAnimating = true
+    this.wormholeEntryTime = 0
+    this.wormholeEntryStartPos = this.player.getPosition().clone()
+    this.wormholeEntryStartRotation = this.player.getMesh().rotation.z
+    
+    // 🌀 Play WUB WUB WUB sound! 🌀
+    this.audioManager.playWormholeEntrySound()
+    
+    if (DEBUG_MODE) console.log('🌀 Wormhole entry animation started!')
+  }
+
+  private updateWormholeEntryAnimation(deltaTime: number): void {
+    if (!this.isWormholeEntryAnimating || !this.player || !this.rogueWormholeExit) return
+
+    this.wormholeEntryTime += deltaTime
+    const progress = Math.min(this.wormholeEntryTime / this.wormholeEntryDuration, 1.0)
+    
+    // Ease-in effect for smooth entry
+    const easeProgress = 1 - Math.pow(1 - progress, 3)
+    
+    // Get wormhole center position
+    const wormholePos = this.rogueWormholeExit.getPosition()
+    
+    // Move player toward wormhole center
+    if (this.wormholeEntryStartPos) {
+      const currentPos = this.player.getPosition()
+      currentPos.x = THREE.MathUtils.lerp(this.wormholeEntryStartPos.x, wormholePos.x, easeProgress)
+      currentPos.y = THREE.MathUtils.lerp(this.wormholeEntryStartPos.y, wormholePos.y, easeProgress)
+      this.player.getMesh().position.copy(currentPos)
+    }
+    
+    // Rotate player (spiral effect)
+    const rotationSpeed = 8 // Rotations per second
+    this.player.getMesh().rotation.z = this.wormholeEntryStartRotation + (progress * rotationSpeed * Math.PI * 2)
+    
+    // Scale down player (shrinking into wormhole)
+    const scale = 1.0 - (easeProgress * 0.7) // Scale down to 30% of original size
+    this.player.getMesh().scale.set(scale, scale, scale)
+    
+    // Animation complete
+    if (progress >= 1.0) {
+      if (DEBUG_MODE) console.log('🌀 Wormhole entry animation complete!')
+      this.isWormholeEntryAnimating = false
+      this.completeRogueLayer()
+    }
+  }
+
+  private completeRogueLayer(): void {
+    // Guard against multiple calls (wormhole collision might trigger multiple times)
+    if (this.isWormholeEntryAnimating) {
+      if (DEBUG_MODE) console.log('⚠️ Wormhole animation still playing, ignoring')
+      return
+    }
+    
+    // Check if we're already showing the choice screen
+    if (document.getElementById('rogueChoiceScreen')) {
+      if (DEBUG_MODE) console.log('⚠️ Choice screen already exists, ignoring duplicate call')
+      return
+    }
+    
+    // Increment layers completed counter
+    this.rogueLayersCompleted++
+    
+    // Trigger staggered enemy destruction, THEN show choice screen
+    if (DEBUG_MODE) {
+      console.log('═════════════════════════════════════')
+      console.log(`🎲 LAYER ${this.rogueCurrentLayer} COMPLETE`)
+      console.log(`   Layers Completed: ${this.rogueLayersCompleted}`)
+      console.log(`   Next Layer: ${this.rogueCurrentLayer + 1}`)
+      console.log('═════════════════════════════════════')
+    }
+    
+    // Clear all enemies with staggered death animations
+    this.clearAllEnemies()
+    
+    // Wait for enemy death animations to complete, then show choice screen
+    setTimeout(() => {
+      this.showRogueChoiceScreen()
+    }, 2000) // 2 seconds for staggered deaths to play out
+  }
+
   private cleanupGameObjects(): void {
     if (DEBUG_MODE) console.log('🧹 Starting cleanup...')
     
@@ -725,6 +1126,7 @@ export class Game {
     // Reset combo, multiplier and stats
     this.combo = 0
     this.comboTimer = 0
+    this.comboDecayMultiplier = 1.0 // 🎲 Reset Rogue combo decay multiplier
     this.scoreMultiplier = 1
     this.multiplierTimer = 0
     this.lastKillTime = 0
@@ -733,6 +1135,41 @@ export class Game {
     this.recentEnemyDeaths = []
     this.lastScore = 0
     this.lastHighScoreMoment = 0
+    
+    // 🎲 Reset game mode to ORIGINAL
+    this.gameMode = GameMode.ORIGINAL
+    this.gameModeManager.setMode(GameMode.ORIGINAL)
+    this.rogueCurrentLayer = 1
+    this.rogueLayersCompleted = 0
+    this.rogueSelectedSpecialIds.clear()
+    this.rogueVerticalPosition = 0
+    
+    // Clean up wormhole exit
+    if (this.rogueWormholeExit) {
+      this.sceneManager.removeFromScene(this.rogueWormholeExit.getMesh())
+      this.rogueWormholeExit.destroy()
+      this.rogueWormholeExit = null
+    }
+    
+    // Clean up side barriers
+    if (this.rogueSideBarriers) {
+      this.sceneManager.removeFromScene(this.rogueSideBarriers.getLeftWall())
+      this.sceneManager.removeFromScene(this.rogueSideBarriers.getRightWall())
+      this.rogueSideBarriers.destroy()
+      this.rogueSideBarriers = null
+    }
+    
+    // Restore energy barrier visibility
+    this.sceneManager.setEnergyBarrierVisible(true)
+    this.sceneManager.setStarfieldDownwardFlow(false) // Restore normal starfield
+    
+    // Reset rogue mutations on player and weapon system
+    if (this.player) {
+      this.player.resetRogueMutations()
+    }
+    if (this.weaponSystem) {
+      this.weaponSystem.resetRogueMutations()
+    }
   }
 
   start(): void {
@@ -797,7 +1234,7 @@ export class Game {
     this.inputManager.update()
     
     // 🛑 CHECK FOR PAUSE (ESC key) - Only during active gameplay
-    if (this.gameState === GameStateType.PLAYING && !this.isPaused && !this.isDeathAnimationPlaying && !this.isLevelTransitioning) {
+    if (this.gameState === GameStateType.PLAYING && !this.isPaused && !this.isDeathAnimationPlaying && !this.isLevelTransitioning && !this.isWormholeEntryAnimating) {
       if (this.inputManager.isKeyPressed('escape')) {
         this.showPauseMenu()
         return
@@ -807,6 +1244,17 @@ export class Game {
     // 🛑 If paused, skip all updates except scene manager
     if (this.isPaused) {
       this.sceneManager.update(deltaTime) // Keep background effects running
+      return
+    }
+    
+    // 🌀 Handle wormhole entry animation 🌀
+    if (this.isWormholeEntryAnimating) {
+      this.updateWormholeEntryAnimation(deltaTime)
+      this.sceneManager.update(deltaTime) // Keep visual effects running
+      // Update wormhole visual
+      if (this.rogueWormholeExit) {
+        this.rogueWormholeExit.update(deltaTime)
+      }
       return
     }
     
@@ -835,6 +1283,13 @@ export class Game {
       return
     }
     
+    // 🎲 ROGUE MODE: Handle choice screen state 🎲
+    if (this.gameState === GameStateType.ROGUE_CHOICE) {
+      // Only update scene manager for visual effects
+      this.sceneManager.update(deltaTime)
+      return
+    }
+    
     // Always update scene manager for background animations and effects
     this.sceneManager.update(deltaTime)
     
@@ -850,8 +1305,66 @@ export class Game {
     // Update level manager
     this.levelManager.update(deltaTime)
     
-    // Update combo timer
-    this.comboTimer -= deltaTime
+    // 🎲 VERTICAL SCROLLING (Mode-specific feature)
+    if (this.gameModeManager.hasVerticalScroll() && this.player) {
+      const scrollSpeed = this.gameModeManager.getScrollSpeed()
+      const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
+      
+      // Increment vertical position (ascent)
+      this.rogueVerticalPosition += scrollSpeed * deltaTime
+      
+      // Get current camera position and player position
+      const camera = this.sceneManager.getCamera()
+      const playerPos = this.player.getPosition()
+      
+      // Camera follows player Y + offset (player at bottom of screen in bullet hell style)
+      // The offset pushes the camera UP, making the player appear LOWER on screen
+      const targetCameraY = playerPos.y + cameraOffset
+      
+      // Smooth camera follow with minimum scroll speed
+      const minScrollY = camera.position.y + (scrollSpeed * deltaTime)
+      const newCameraY = Math.max(targetCameraY, minScrollY)
+      camera.position.y = newCameraY
+      
+      // Update camera target (look at point ahead of player)
+      this.sceneManager.setCameraTarget(new THREE.Vector3(playerPos.x, playerPos.y + cameraOffset, 0))
+      
+      // Keep player from falling too far behind (soft boundary at bottom of screen)
+      // Calculate the visible bottom of the screen based on camera position and offset
+      const visibleBottom = camera.position.y - cameraOffset - 3 // 3 units buffer from screen edge
+      const playerY = playerPos.y
+      if (playerY < visibleBottom) {
+        // Soft push upward - player can still move freely but gets nudged
+        const pushAmount = (visibleBottom - playerY) * 0.15
+        this.player.getMesh().position.y = playerY + pushAmount
+      }
+      
+      // 🌀 Update wormhole exit animation and check collision 🌀
+      if (this.rogueWormholeExit) {
+        this.rogueWormholeExit.update(deltaTime)
+        this.checkRogueWormholeCollision()
+      }
+      
+      // 🚧 Update side barriers and check collision 🚧
+      if (this.rogueSideBarriers) {
+        this.rogueSideBarriers.update(deltaTime, camera.position.y)
+        
+        // Check and clamp player position to boundaries
+        const playerPos = this.player.getPosition()
+        const playerRadius = this.player.getRadius()
+        const boundaryCheck = this.rogueSideBarriers.isOutOfBounds(playerPos, playerRadius)
+        if (boundaryCheck.isOut) {
+          const clampedPos = this.rogueSideBarriers.clampPosition(playerPos, playerRadius)
+          this.player.getMesh().position.x = clampedPos.x
+          if (DEBUG_MODE && Math.random() < 0.1) {
+            console.log(`🚧 Player hit ${boundaryCheck.side} boundary!`)
+          }
+        }
+      }
+    }
+    
+    // Update combo timer (with Rogue mode decay multiplier)
+    this.comboTimer -= deltaTime * this.comboDecayMultiplier
     if (this.comboTimer <= 0) {
       this.combo = 0
     }
@@ -862,8 +1375,9 @@ export class Game {
       deathTime => currentTime - deathTime < this.clusterWindow
     )
     
-    // 🎯 CHECK FOR OBJECTIVE COMPLETION
-    if (this.levelManager.checkObjectivesComplete()) {
+    // 🎯 CHECK FOR OBJECTIVE COMPLETION (Mode-specific)
+    // Some modes (like ROGUE) don't use objectives - they have their own progression
+    if (this.gameModeManager.usesObjectiveSystem() && this.levelManager.checkObjectivesComplete()) {
       // Objectives complete! Start level transition
       this.startLevelTransition()
     }
@@ -1555,6 +2069,12 @@ export class Game {
   private startLevelTransition(): void {
     if (this.isLevelTransitioning) return
 
+    // 🎲 Some modes (like ROGUE) have custom progression systems
+    if (this.gameModeManager.hasSpecialChoices()) {
+      this.showRogueChoiceScreen()
+      return
+    }
+
     console.log('🎯 Level objectives complete! Starting transition...')
     this.isLevelTransitioning = true
     this.transitionPhase = 'clearing'
@@ -1573,6 +2093,152 @@ export class Game {
     
     // Stop spawning new enemies during transition
     this.enemyManager.pauseSpawning()
+  }
+  
+  // 🎲 ROGUE MODE: Show Special Choice Screen 🎲
+  private showRogueChoiceScreen(): void {
+    // Guard against multiple calls - check if screen already exists
+    if (document.getElementById('rogueChoiceScreen')) {
+      if (DEBUG_MODE) console.log('⚠️ Choice screen already exists, ignoring duplicate call')
+      return
+    }
+    
+    if (DEBUG_MODE) console.log('🎲 Layer complete! Showing Rogue choice screen...')
+    
+    // Pause game loop
+    this.isRunning = false
+    
+    // Clear enemies with death animations (may have been called already, but safe to call again)
+    this.clearAllEnemies()
+    this.enemyManager.pauseSpawning()
+    
+    // Change state to show choice screen
+    this.gameState = GameStateType.ROGUE_CHOICE
+    
+    // Create and show choice screen with excluded specials
+    const choiceScreen = RogueChoiceScreen.create(
+      this.audioManager,
+      this.rogueSelectedSpecialIds, // Pass already-selected IDs to prevent duplicates
+      (special: RogueSpecial) => {
+        // Track this selection
+        this.rogueSelectedSpecialIds.add(special.id)
+        if (DEBUG_MODE) console.log(`✅ Selected special: ${special.id} (${special.name})`)
+        
+        // Apply the special
+        this.applyRogueSpecial(special)
+        
+        // Continue to next layer
+        this.continueRogueLayer()
+      }
+    )
+    
+    document.body.appendChild(choiceScreen)
+  }
+  
+  // 🎲 ROGUE MODE: Apply selected special mutation 🎲
+  private applyRogueSpecial(special: RogueSpecial): void {
+    if (DEBUG_MODE) console.log('🎲 Applying Rogue Special:', special.name)
+    
+    // Apply stat mutations
+    if (special.statModifier) {
+      if (special.statModifier.movementSpeed) {
+        this.player.applyRogueStatMutation({ movementSpeed: special.statModifier.movementSpeed })
+        if (DEBUG_MODE) console.log(`  ✅ Movement Speed: ${special.statModifier.movementSpeed}x`)
+      }
+      if (special.statModifier.shieldCapacity) {
+        this.player.applyRogueStatMutation({ shieldCapacity: special.statModifier.shieldCapacity })
+        if (DEBUG_MODE) console.log(`  ✅ Shield Capacity: +${special.statModifier.shieldCapacity}`)
+      }
+      if (special.statModifier.fireRate) {
+        this.weaponSystem.applyRogueStatMutation({ fireRate: special.statModifier.fireRate })
+        if (DEBUG_MODE) console.log(`  ✅ Fire Rate: ${special.statModifier.fireRate}x`)
+      }
+      if (special.statModifier.projectileSpeed) {
+        this.weaponSystem.applyRogueStatMutation({ projectileSpeed: special.statModifier.projectileSpeed })
+        if (DEBUG_MODE) console.log(`  ✅ Projectile Speed: ${special.statModifier.projectileSpeed}x`)
+      }
+      if (special.statModifier.heatDecay) {
+        this.weaponSystem.applyRogueStatMutation({ heatDecay: special.statModifier.heatDecay })
+        if (DEBUG_MODE) console.log(`  ✅ Heat Decay: ${special.statModifier.heatDecay}x`)
+      }
+      if (special.statModifier.comboDecay) {
+        this.comboDecayMultiplier *= special.statModifier.comboDecay
+        if (DEBUG_MODE) console.log(`  ✅ Combo Decay: ${special.statModifier.comboDecay}x (total: ${this.comboDecayMultiplier}x)`)
+      }
+    }
+    
+    // Apply firing mode mutations
+    if (special.firingMode) {
+      this.weaponSystem.applyRogueFiringMode(special.firingMode)
+      if (DEBUG_MODE) console.log(`  ✅ Firing Mode:`, special.firingMode)
+    }
+    
+    // Apply behavioural mutations (stored for later use in Game.ts)
+    // TODO: Implement behavioural mutation logic
+    if (special.behavioural) {
+      if (DEBUG_MODE) console.log(`  ⚠️ Behavioural mutations not yet implemented:`, special.behavioural)
+      // These will be handled in the update loop
+    }
+    
+    // NOTE: Don't show notification here - it will be shown in continueRogueLayer()
+    // after the layer number is incremented
+  }
+  
+  // 🎲 ROGUE MODE: Continue to next layer after choice 🎲
+  private continueRogueLayer(): void {
+    // Remove choice screen
+    const choiceScreen = document.getElementById('rogueChoiceScreen')
+    if (choiceScreen) {
+      choiceScreen.remove()
+    }
+    RogueChoiceScreen.cleanup()
+    
+    // Advance to next layer
+    this.rogueCurrentLayer++
+    
+    if (DEBUG_MODE) {
+      console.log('═════════════════════════════════════')
+      console.log(`🚀 STARTING LAYER ${this.rogueCurrentLayer}`)
+      console.log(`   Total Layers Completed: ${this.rogueLayersCompleted}`)
+      console.log('═════════════════════════════════════')
+    }
+    
+    // Show layer notification with correct number
+    this.uiManager.showRogueLayerNotification(this.rogueCurrentLayer)
+    
+    // 🎲 DON'T call advanceLevel() - Rogue mode stays at level 998!
+    // Just reset the objectives so enemies keep spawning
+    this.levelManager.resetObjectives()
+    
+    // Clear all enemies and projectiles
+    this.enemyManager.clearAllEnemies()
+    this.weaponSystem.clearAllProjectiles()
+    
+    // Clear visual effects
+    const effectsSystem = this.sceneManager.getEffectsSystem()
+    if (effectsSystem?.cleanup) {
+      effectsSystem.cleanup()
+    }
+    
+    // 🌀 Reset player appearance (scale and rotation) 🌀
+    if (this.player) {
+      this.player.getMesh().scale.set(1, 1, 1)
+      this.player.getMesh().rotation.z = 0
+      if (DEBUG_MODE) console.log('✅ Player scale and rotation reset')
+    }
+    
+    // 🌀 Spawn new wormhole exit for next layer 🌀
+    this.spawnRogueWormholeExit()
+    if (DEBUG_MODE) console.log(`🌀 New wormhole spawned for layer ${this.rogueLayer}`)
+    
+    // Resume enemy spawning
+    this.enemyManager.resumeSpawning()
+    
+    // Return to playing state
+    this.gameState = GameStateType.PLAYING
+    
+    // Restart game loop
+    this.start()
   }
 
   private updateLevelTransition(deltaTime: number): void {

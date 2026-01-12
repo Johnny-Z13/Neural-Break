@@ -60,6 +60,7 @@ export class SceneManager {
   // ✨ COSMIC STARFIELD ✨
   private cosmicStarfield: THREE.Points | null = null
   private starfieldVelocities: Float32Array | null = null
+  private starfieldSpeedLayers: Float32Array | null = null  // Parallax depth layers (0-1, higher = faster/closer)
   
   // 💫 SHOOTING STARS 💫
   private shootingStars: ShootingStar[] = []
@@ -344,55 +345,67 @@ export class SceneManager {
   }
 
   private createCosmicStarfield(): void {
-    // ✨ COSMIC STARFIELD - Subtle background stars with size variation ✨
-    console.log('🌌 Creating cosmic starfield...')
+    // ✨ COSMIC STARFIELD - Parallax background stars with depth layers ✨
+    console.log('🌌 Creating cosmic starfield with parallax layers...')
     
-    const starCount = 400
+    const starCount = 500  // More stars for better parallax effect
     const geometry = new THREE.BufferGeometry()
     const positions = new Float32Array(starCount * 3)
     const colors = new Float32Array(starCount * 3)
     const sizes = new Float32Array(starCount)
     this.starfieldVelocities = new Float32Array(starCount * 2)
+    this.starfieldSpeedLayers = new Float32Array(starCount)  // Parallax depth
 
     for (let i = 0; i < starCount; i++) {
       const i3 = i * 3
       const i2 = i * 2
       
-      // Spread stars across visible area
-      positions[i3] = (Math.random() - 0.5) * 100 // X position
-      positions[i3 + 1] = (Math.random() - 0.5) * 100 // Y position
-      positions[i3 + 2] = -2 // Behind grid (background)
-
-      // Subtle white/blue colors
-      const starType = Math.random()
+      // Assign to a depth layer (affects speed and appearance)
+      // Layer 0: Far background (slow, dim, small)
+      // Layer 1: Mid background (medium speed and size)
+      // Layer 2: Near foreground (fast, bright, large)
+      const layerRoll = Math.random()
+      let depthLayer: number
       let brightness: number
-      if (starType < 0.6) {
-        // Dim small stars
-        brightness = 0.3 + Math.random() * 0.3
-      } else if (starType < 0.9) {
-        // Medium stars
-        brightness = 0.5 + Math.random() * 0.3
+      let starSize: number
+      
+      if (layerRoll < 0.5) {
+        // 50% - Far background layer (slow stars)
+        depthLayer = 0.2 + Math.random() * 0.2  // 0.2-0.4 speed multiplier
+        brightness = 0.2 + Math.random() * 0.2  // Dim
+        starSize = 0.4 + Math.random() * 0.4    // Small
+      } else if (layerRoll < 0.8) {
+        // 30% - Mid layer (medium speed)
+        depthLayer = 0.5 + Math.random() * 0.2  // 0.5-0.7 speed multiplier
+        brightness = 0.4 + Math.random() * 0.3  // Medium brightness
+        starSize = 0.8 + Math.random() * 0.8    // Medium size
+      } else if (layerRoll < 0.95) {
+        // 15% - Near layer (fast stars)
+        depthLayer = 0.8 + Math.random() * 0.15 // 0.8-0.95 speed multiplier
+        brightness = 0.6 + Math.random() * 0.3  // Bright
+        starSize = 1.5 + Math.random() * 1.5    // Large
       } else {
-        // Rare bright stars
-        brightness = 0.8 + Math.random() * 0.2
+        // 5% - Very close "streaker" stars (very fast!)
+        depthLayer = 1.0 + Math.random() * 0.5  // 1.0-1.5 speed multiplier
+        brightness = 0.9 + Math.random() * 0.1  // Very bright
+        starSize = 2.5 + Math.random() * 2.0    // Extra large
       }
       
+      this.starfieldSpeedLayers[i] = depthLayer
+      
+      // Spread stars across visible area (wider for scrolling)
+      positions[i3] = (Math.random() - 0.5) * 120     // X position (wider)
+      positions[i3 + 1] = (Math.random() - 0.5) * 150 // Y position (taller for scrolling)
+      positions[i3 + 2] = -2 - (1 - depthLayer) * 2   // Z depth based on layer
+
+      // Colors - closer stars slightly warmer, distant stars cooler
       colors[i3] = brightness
       colors[i3 + 1] = brightness
-      colors[i3 + 2] = brightness + 0.05 // Very slight blue tint
+      colors[i3 + 2] = brightness + 0.1 * (1 - depthLayer) // Distant = more blue
       
-      // Size variation - more larger stars for cosmic feel
-      if (starType < 0.4) {
-        sizes[i] = 0.6 + Math.random() * 0.6 // Small stars
-      } else if (starType < 0.7) {
-        sizes[i] = 1.2 + Math.random() * 1.0 // Medium stars
-      } else if (starType < 0.9) {
-        sizes[i] = 2.0 + Math.random() * 1.5 // Large stars
-      } else {
-        sizes[i] = 3.0 + Math.random() * 2.0 // Extra large stars (10%)
-      }
+      sizes[i] = starSize
       
-      // Very slow drift velocities for subtle movement
+      // Initial velocities (will be updated based on mode)
       this.starfieldVelocities[i2] = (Math.random() - 0.5) * 0.2
       this.starfieldVelocities[i2 + 1] = (Math.random() - 0.5) * 0.2
     }
@@ -731,24 +744,39 @@ export class SceneManager {
   }
 
   private updateCosmicStarfield(deltaTime: number): void {
-    // ✨ UPDATE COSMIC STARFIELD - Slow drift for cosmic depth ✨
+    // ✨ UPDATE COSMIC STARFIELD - Parallax scrolling for depth ✨
     if (this.cosmicStarfield && this.starfieldVelocities) {
       const positions = this.cosmicStarfield.geometry.attributes.position.array as Float32Array
       const starCount = positions.length / 3
+      
+      // Get camera Y for relative positioning (stars should move relative to camera)
+      const cameraY = this.camera.position.y
       
       for (let i = 0; i < starCount; i++) {
         const i3 = i * 3
         const i2 = i * 2
         
-        // Apply slow drift velocity
+        // Apply velocity (includes parallax speed for Rogue mode)
         positions[i3] += this.starfieldVelocities[i2] * deltaTime
         positions[i3 + 1] += this.starfieldVelocities[i2 + 1] * deltaTime
         
-        // Wrap around when stars go off-screen
-        if (positions[i3] > 50) positions[i3] = -50
-        if (positions[i3] < -50) positions[i3] = 50
-        if (positions[i3 + 1] > 50) positions[i3 + 1] = -50
-        if (positions[i3 + 1] < -50) positions[i3 + 1] = 50
+        // Wrap around when stars go off-screen (wider bounds for scrolling)
+        const wrapX = 60
+        const wrapY = 80  // Taller for vertical scrolling
+        
+        if (positions[i3] > wrapX) positions[i3] = -wrapX
+        if (positions[i3] < -wrapX) positions[i3] = wrapX
+        
+        // For vertical wrap, reposition relative to camera for seamless scrolling
+        if (positions[i3 + 1] < cameraY - wrapY) {
+          positions[i3 + 1] = cameraY + wrapY + Math.random() * 20
+          // Randomize X position when respawning for variety
+          positions[i3] = (Math.random() - 0.5) * wrapX * 2
+        }
+        if (positions[i3 + 1] > cameraY + wrapY) {
+          positions[i3 + 1] = cameraY - wrapY - Math.random() * 20
+          positions[i3] = (Math.random() - 0.5) * wrapX * 2
+        }
       }
       
       // Mark positions as needing update
@@ -1050,6 +1078,45 @@ export class SceneManager {
     // When camera zooms out (larger frustum), return larger scale to compensate
     // When camera zooms in (smaller frustum), return smaller scale to compensate
     return this.currentFrustumSize / this.baseFrustumSize
+  }
+  
+  // 🎲 ROGUE MODE: Hide/Show energy barrier 🎲
+  setEnergyBarrierVisible(visible: boolean): void {
+    if (this.energyBarrier) {
+      this.energyBarrier.getMesh().visible = visible
+    }
+  }
+  
+  // 🎲 ROGUE MODE: Set starfield to flow downward with PARALLAX effect 🎲
+  // Creates illusion of traveling upward - closer stars move faster!
+  // See src/config/modes.config.ts for configuration values
+  setStarfieldDownwardFlow(enabled: boolean): void {
+    if (!this.starfieldVelocities || !this.starfieldSpeedLayers) return
+    
+    const starCount = this.starfieldVelocities.length / 2
+    for (let i = 0; i < starCount; i++) {
+      const i2 = i * 2
+      const speedLayer = this.starfieldSpeedLayers[i] // 0.2-1.5 depth multiplier
+      
+      if (enabled) {
+        // 🚀 ROGUE MODE: Parallax downward flow!
+        // Base speed: 3-6 units/sec, multiplied by depth layer
+        // Closer stars (high layer) move MUCH faster than distant stars
+        const baseSpeed = 3.0 + Math.random() * 3.0
+        const parallaxSpeed = baseSpeed * speedLayer  // 0.6 to 9.0 units/sec!
+        
+        // Slight horizontal wobble (more for closer stars)
+        this.starfieldVelocities[i2] = (Math.random() - 0.5) * 0.5 * speedLayer
+        // Downward flow with parallax
+        this.starfieldVelocities[i2 + 1] = -parallaxSpeed
+      } else {
+        // ARCADE MODE: Subtle ambient drift in all directions
+        this.starfieldVelocities[i2] = (Math.random() - 0.5) * 0.2
+        this.starfieldVelocities[i2 + 1] = (Math.random() - 0.5) * 0.2
+      }
+    }
+    
+    console.log(`🌌 Starfield flow: ${enabled ? 'ROGUE (parallax downward)' : 'ARCADE (ambient drift)'}`)
   }
 
   // 🎬 DYNAMIC ZOOM SYSTEM - Procedural zoom based on gameplay! 🎬

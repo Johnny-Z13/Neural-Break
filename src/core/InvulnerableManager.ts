@@ -7,14 +7,31 @@ import { BALANCE_CONFIG } from '../config/balance.config'
 export class InvulnerableManager {
   private invulnerables: Invulnerable[] = []
   private sceneManager: SceneManager | null = null
+  private player: Player | null = null
   private spawnTimer: number = 0
   // Use average of min/max for regular spawning
   private spawnInterval: number = (BALANCE_CONFIG.PICKUPS.INVULNERABLE.SPAWN_INTERVAL_MIN + BALANCE_CONFIG.PICKUPS.INVULNERABLE.SPAWN_INTERVAL_MAX) / 2
   private maxInvulnerables: number = 1 // Only 1 at a time - keep rare!
   private worldRadius: number = 30 // Match game world size
   
+  // 🎲 Rogue mode support
+  private isRogueMode: boolean = false
+  private rogueBoundaryWidth: number = 16
+  
   setSceneManager(sceneManager: SceneManager): void {
     this.sceneManager = sceneManager
+  }
+  
+  setPlayer(player: Player): void {
+    this.player = player
+  }
+  
+  /**
+   * 🎲 Set Rogue mode for vertical spawning
+   */
+  setRogueMode(enabled: boolean, boundaryWidth: number = 16): void {
+    this.isRogueMode = enabled
+    this.rogueBoundaryWidth = boundaryWidth
   }
 
   update(deltaTime: number): void {
@@ -40,12 +57,27 @@ export class InvulnerableManager {
   }
 
   private spawnInvulnerable(): void {
-    // Spawn at random position within world bounds
-    const angle = Math.random() * Math.PI * 2
-    const distance = Math.random() * (this.worldRadius - 5) // Keep away from edges
+    let x: number, y: number
     
-    const x = Math.cos(angle) * distance
-    const y = Math.sin(angle) * distance
+    // 🎲 ROGUE MODE: Spawn above player within side barriers
+    if (this.isRogueMode && this.player) {
+      const playerPos = this.player.getPosition()
+      const spawnHeightMin = 10   // Minimum distance above player
+      const spawnHeightMax = 20   // Maximum distance above player
+      const safeMargin = 2        // Stay away from barriers
+      
+      // Spawn within the corridor (between side barriers)
+      x = (Math.random() - 0.5) * (this.rogueBoundaryWidth - safeMargin) * 2
+      // Spawn above the player
+      y = playerPos.y + spawnHeightMin + Math.random() * (spawnHeightMax - spawnHeightMin)
+    } else {
+      // 🔘 CIRCULAR SPAWN LOGIC for Arcade mode 🔘
+      const angle = Math.random() * Math.PI * 2
+      const distance = Math.random() * (this.worldRadius - 5) // Keep away from edges
+      
+      x = Math.cos(angle) * distance
+      y = Math.sin(angle) * distance
+    }
     
     const invulnerable = new Invulnerable(x, y)
     this.invulnerables.push(invulnerable)

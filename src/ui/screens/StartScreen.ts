@@ -20,8 +20,17 @@ export class StartScreen {
     audioManager: AudioManager | null,
     onStartGame: () => void,
     onShowLeaderboard: () => void,
-    onStartTestMode?: () => void
+    onStartTestMode?: () => void,
+    onStartRogueMode?: () => void
   ): HTMLElement {
+    console.log('🎮 StartScreen.create() called with:', {
+      audioManager: !!audioManager,
+      onStartGame: !!onStartGame,
+      onShowLeaderboard: !!onShowLeaderboard,
+      onStartTestMode: !!onStartTestMode,
+      onStartRogueMode: !!onStartRogueMode
+    })
+    
     // Start the shared starfield background
     StarfieldManager.getInstance().start()
 
@@ -164,25 +173,86 @@ export class StartScreen {
         <!-- BUTTONS -->
         <div class="button-container" style="display: flex; flex-direction: column; gap: var(--space-md, 1.2rem); align-items: center; margin-bottom: var(--space-md, 1rem);">
           
-          <!-- START GAME BUTTON (Clickable Flashing Text) -->
-          <button id="startButton" class="arcade-button arcade-button-start press-start" style="
-            background: transparent;
-            border: none;
-            font-size: clamp(1.2rem, 3vw, 2rem);
-            color: var(--color-yellow, #FFFF00);
-            text-shadow: 0 0 20px var(--color-yellow, #FFFF00), 2px 2px 0 var(--color-orange, #FF6600);
-            letter-spacing: 0.15em;
-            cursor: pointer;
-            font-family: inherit;
-            font-weight: bold;
-            padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
-            text-transform: uppercase;
-            animation: blink 0.8s step-end infinite;
-            transition: all 0.1s step-end;
-          ">
-            ▶ PRESS START ◀
-          </button>
+          <!-- SELECT MODE HEADER -->
+          <div style="
+            color: var(--color-cyan, #00FFFF);
+            font-size: clamp(0.6rem, 1.2vw, 0.8rem);
+            letter-spacing: 0.2em;
+            text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
+            margin-bottom: var(--space-xs, 0.3rem);
+          ">▼ SELECT MODE ▼</div>
           
+          <!-- GAME MODE BUTTONS ROW -->
+          <div class="mode-buttons-row" style="display: flex; gap: var(--space-md, 1rem); flex-wrap: wrap; justify-content: center;">
+            
+            <!-- ARCADE MODE BUTTON -->
+            <button id="arcadeButton" class="arcade-button arcade-button-primary" style="
+              background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+              border: var(--border-thick, 4px) solid var(--color-yellow, #FFFF00);
+              color: var(--color-yellow, #FFFF00);
+              font-family: inherit;
+              font-size: clamp(0.8rem, 1.8vw, 1.1rem);
+              font-weight: bold;
+              padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
+              cursor: pointer;
+              text-transform: uppercase;
+              letter-spacing: 0.12em;
+              text-shadow: 0 0 15px var(--color-yellow, #FFFF00), 2px 2px 0 var(--color-orange, #FF6600);
+              box-shadow: 
+                0 0 20px var(--color-yellow-glow, rgba(255, 255, 0, 0.4)),
+                var(--shadow-pixel, 4px 4px 0) var(--color-yellow-dark, #886600);
+              transition: all 0.1s step-end;
+              min-width: 140px;
+            ">
+              ▶ ARCADE ◀
+            </button>
+            
+            <!-- ROGUE MODE BUTTON -->
+            <button id="rogueButton" class="arcade-button arcade-button-primary" style="
+              background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+              border: var(--border-thick, 4px) solid #AA00FF;
+              color: #AA00FF;
+              font-family: inherit;
+              font-size: clamp(0.8rem, 1.8vw, 1.1rem);
+              font-weight: bold;
+              padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
+              cursor: pointer;
+              text-transform: uppercase;
+              letter-spacing: 0.12em;
+              text-shadow: 0 0 15px #AA00FF, 2px 2px 0 #660066;
+              box-shadow: 
+                0 0 20px rgba(170, 0, 255, 0.4),
+                var(--shadow-pixel, 4px 4px 0) #660066;
+              transition: all 0.1s step-end;
+              min-width: 140px;
+            ">
+              ▶ ROGUE ◀
+            </button>
+            
+            <!-- TEST MODE BUTTON -->
+            <button id="testButton" class="arcade-button arcade-button-primary" style="
+              background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+              border: var(--border-thick, 4px) solid var(--color-orange, #FF6600);
+              color: var(--color-orange, #FF6600);
+              font-family: inherit;
+              font-size: clamp(0.8rem, 1.8vw, 1.1rem);
+              font-weight: bold;
+              padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
+              cursor: pointer;
+              text-transform: uppercase;
+              letter-spacing: 0.12em;
+              text-shadow: 0 0 15px var(--color-orange, #FF6600), 2px 2px 0 #663300;
+              box-shadow: 
+                0 0 20px var(--color-orange-glow, rgba(255, 102, 0, 0.4)),
+                var(--shadow-pixel, 4px 4px 0) var(--color-orange-dark, #663300);
+              transition: all 0.1s step-end;
+              min-width: 140px;
+            ">
+              ▶ TEST ◀
+            </button>
+          </div>
+          
+          <!-- HIGH SCORES BUTTON -->
           <button id="leaderboardButton" class="arcade-button arcade-button-secondary" style="
             background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
             border: var(--border-thick, 4px) solid var(--color-magenta, #FF00FF);
@@ -199,29 +269,9 @@ export class StartScreen {
               0 0 15px var(--color-magenta-glow, rgba(255, 0, 255, 0.4)),
               var(--shadow-pixel, 4px 4px 0) var(--color-magenta-dark, #660066);
             transition: all 0.1s step-end;
+            margin-top: var(--space-sm, 0.5rem);
           ">
             ◆ HIGH SCORES ◆
-          </button>
-          
-          <!-- TEST MODE BUTTON -->
-          <button id="testButton" class="arcade-button arcade-button-secondary" style="
-            background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
-            border: var(--border-thick, 4px) solid var(--color-orange, #FF6600);
-            color: var(--color-orange, #FF6600);
-            font-family: inherit;
-            font-size: clamp(0.7rem, 1.5vw, 0.9rem);
-            font-weight: bold;
-            padding: var(--space-xs, 0.5rem) var(--space-md, 1rem);
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            text-shadow: 0 0 10px var(--color-orange, #FF6600);
-            box-shadow: 
-              0 0 15px var(--color-orange-glow, rgba(255, 102, 0, 0.4)),
-              var(--shadow-pixel, 4px 4px 0) var(--color-orange-dark, #663300);
-            transition: all 0.1s step-end;
-          ">
-            ◆ TEST MODE ◆
           </button>
         </div>
       </div>
@@ -282,7 +332,7 @@ export class StartScreen {
         letter-spacing: 0.1em;
         z-index: 1;
       ">
-        © 2025 NEURAL SYSTEMS
+        © 2026 NEURAL SYSTEMS
       </div>
       
       <!-- HIGH SCORE DISPLAY -->
@@ -302,6 +352,8 @@ export class StartScreen {
         <div id="topScore" style="font-size: clamp(0.8rem, 1.5vw, 1.2rem);">000000</div>
       </div>
     `
+    
+    console.log('🎮 StartScreen HTML created with mode buttons')
 
     // Add styles
     const style = document.createElement('style')
@@ -380,24 +432,70 @@ export class StartScreen {
       .key-space { width: 60px; }
       .key-shift { width: 50px; }
       
-      #startButton:hover,
-      #startButton.selected {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: scale(1.1);
+      /* ARCADE BUTTON - Yellow/Gold theme */
+      #arcadeButton:hover,
+      #arcadeButton.selected {
+        background: #333300 !important;
+        box-shadow: 
+          0 0 40px rgba(255, 255, 0, 0.6),
+          4px 4px 0 var(--color-yellow, #FFFF00) !important;
+        transform: translate(-2px, -2px) scale(1.05);
         text-shadow: 
           0 0 30px var(--color-yellow, #FFFF00),
           0 0 60px var(--color-yellow, #FFFF00),
           3px 3px 0 var(--color-orange, #FF6600) !important;
       }
       
-      #startButton:active {
-        transform: scale(1.05);
-        text-shadow: 
-          0 0 20px var(--color-yellow, #FFFF00),
-          2px 2px 0 var(--color-orange, #FF6600);
+      #arcadeButton:active {
+        transform: translate(2px, 2px) scale(1);
+        box-shadow: 
+          0 0 15px rgba(255, 255, 0, 0.4),
+          0 0 0 var(--color-yellow-dark, #886600) !important;
       }
       
+      /* ROGUE BUTTON - Purple/Violet theme */
+      #rogueButton:hover,
+      #rogueButton.selected {
+        background: #220033 !important;
+        box-shadow: 
+          0 0 40px rgba(170, 0, 255, 0.6),
+          4px 4px 0 #AA00FF !important;
+        transform: translate(-2px, -2px) scale(1.05);
+        text-shadow: 
+          0 0 30px #AA00FF,
+          0 0 60px #AA00FF,
+          3px 3px 0 #660066 !important;
+      }
+      
+      #rogueButton:active {
+        transform: translate(2px, 2px) scale(1);
+        box-shadow: 
+          0 0 15px rgba(170, 0, 255, 0.4),
+          0 0 0 #660066 !important;
+      }
+      
+      /* TEST BUTTON - Orange theme */
+      #testButton:hover,
+      #testButton.selected {
+        background: #332200 !important;
+        box-shadow: 
+          0 0 40px rgba(255, 102, 0, 0.6),
+          4px 4px 0 var(--color-orange, #FF6600) !important;
+        transform: translate(-2px, -2px) scale(1.05);
+        text-shadow: 
+          0 0 30px var(--color-orange, #FF6600),
+          0 0 60px var(--color-orange, #FF6600),
+          3px 3px 0 #663300 !important;
+      }
+      
+      #testButton:active {
+        transform: translate(2px, 2px) scale(1);
+        box-shadow: 
+          0 0 15px rgba(255, 102, 0, 0.4),
+          0 0 0 var(--color-orange-dark, #663300) !important;
+      }
+      
+      /* HIGH SCORES BUTTON - Magenta theme */
       #leaderboardButton:hover,
       #leaderboardButton.selected {
         background: #330033 !important;
@@ -412,22 +510,6 @@ export class StartScreen {
         box-shadow: 
           0 0 15px rgba(255, 0, 255, 0.4),
           0 0 0 var(--color-magenta-dark, #660066) !important;
-      }
-      
-      #testButton:hover,
-      #testButton.selected {
-        background: #332200 !important;
-        box-shadow: 
-          0 0 30px rgba(255, 102, 0, 0.6),
-          4px 4px 0 var(--color-orange, #FF6600) !important;
-        transform: translate(-2px, -2px);
-      }
-      
-      #testButton:active {
-        transform: translate(2px, 2px);
-        box-shadow: 
-          0 0 15px rgba(255, 102, 0, 0.4),
-          0 0 0 var(--color-orange-dark, #663300) !important;
       }
       
       .enemy-card {
@@ -491,18 +573,27 @@ export class StartScreen {
     `
     document.head.appendChild(style)
 
-    // Get button references
-    const startButton = startScreen.querySelector('#startButton') as HTMLButtonElement
-    const leaderboardButton = startScreen.querySelector('#leaderboardButton') as HTMLButtonElement
+    // Get button references - Order: ARCADE, ROGUE, TEST, HIGH SCORES
+    const arcadeButton = startScreen.querySelector('#arcadeButton') as HTMLButtonElement
+    const rogueButton = startScreen.querySelector('#rogueButton') as HTMLButtonElement
     const testButton = startScreen.querySelector('#testButton') as HTMLButtonElement
-    const buttons = [startButton, leaderboardButton, testButton]
+    const leaderboardButton = startScreen.querySelector('#leaderboardButton') as HTMLButtonElement
+    
+    console.log('🎮 StartScreen buttons found:', {
+      arcadeButton: !!arcadeButton,
+      rogueButton: !!rogueButton,
+      testButton: !!testButton,
+      leaderboardButton: !!leaderboardButton
+    })
+    
+    const buttons = [arcadeButton, rogueButton, testButton, leaderboardButton]
 
     // Mouse event listeners
-    startButton.addEventListener('mouseenter', () => {
+    arcadeButton.addEventListener('mouseenter', () => {
       StartScreen.selectedButtonIndex = 0
       StartScreen.updateButtonSelection(buttons, audioManager)
     })
-    startButton.addEventListener('click', () => {
+    arcadeButton.addEventListener('click', () => {
       if (audioManager) audioManager.playButtonPressSound()
       StartScreen.stopStarfield()
       StartScreen.cleanup()
@@ -511,13 +602,17 @@ export class StartScreen {
       }, 50)
     })
 
-    leaderboardButton.addEventListener('mouseenter', () => {
+    rogueButton.addEventListener('mouseenter', () => {
       StartScreen.selectedButtonIndex = 1
       StartScreen.updateButtonSelection(buttons, audioManager)
     })
-    leaderboardButton.addEventListener('click', () => {
+    rogueButton.addEventListener('click', () => {
       if (audioManager) audioManager.playButtonPressSound()
-      onShowLeaderboard()
+      StartScreen.stopStarfield()
+      StartScreen.cleanup()
+      setTimeout(() => {
+        if (onStartRogueMode) onStartRogueMode()
+      }, 50)
     })
 
     testButton.addEventListener('mouseenter', () => {
@@ -531,6 +626,15 @@ export class StartScreen {
       setTimeout(() => {
         if (onStartTestMode) onStartTestMode()
       }, 50)
+    })
+
+    leaderboardButton.addEventListener('mouseenter', () => {
+      StartScreen.selectedButtonIndex = 3
+      StartScreen.updateButtonSelection(buttons, audioManager)
+    })
+    leaderboardButton.addEventListener('click', () => {
+      if (audioManager) audioManager.playButtonPressSound()
+      onShowLeaderboard()
     })
 
     // 🎮 KEYBOARD NAVIGATION
@@ -547,25 +651,35 @@ export class StartScreen {
         StartScreen.selectedButtonIndex = Math.min(buttons.length - 1, StartScreen.selectedButtonIndex + 1)
         StartScreen.updateButtonSelection(buttons, audioManager)
       } 
-      // Select button
+      // Select button - Order: ARCADE(0), ROGUE(1), TEST(2), HIGH SCORES(3)
       else if (key === 'space' || key === 'enter') {
         e.preventDefault()
         if (audioManager) audioManager.playButtonPressSound()
         
         if (StartScreen.selectedButtonIndex === 0) {
+          // ARCADE MODE
           StartScreen.stopStarfield()
           StartScreen.cleanup()
           setTimeout(() => {
             onStartGame()
           }, 50)
         } else if (StartScreen.selectedButtonIndex === 1) {
-          onShowLeaderboard()
+          // ROGUE MODE
+          StartScreen.stopStarfield()
+          StartScreen.cleanup()
+          setTimeout(() => {
+            if (onStartRogueMode) onStartRogueMode()
+          }, 50)
         } else if (StartScreen.selectedButtonIndex === 2) {
+          // TEST MODE
           StartScreen.stopStarfield()
           StartScreen.cleanup()
           setTimeout(() => {
             if (onStartTestMode) onStartTestMode()
           }, 50)
+        } else if (StartScreen.selectedButtonIndex === 3) {
+          // HIGH SCORES
+          onShowLeaderboard()
         }
       }
     }
@@ -598,6 +712,7 @@ export class StartScreen {
       }
       
       // A button (Xbox) / X button (PlayStation) to select
+      // Order: ARCADE(0), ROGUE(1), TEST(2), HIGH SCORES(3)
       const aButton = gamepad.buttons[0]?.pressed
       if (aButton) {
         if (now - StartScreen.lastGamepadInput < StartScreen.inputCooldown) return
@@ -605,19 +720,29 @@ export class StartScreen {
         if (audioManager) audioManager.playButtonPressSound()
         
         if (StartScreen.selectedButtonIndex === 0) {
+          // ARCADE MODE
           StartScreen.stopStarfield()
           StartScreen.cleanup()
           setTimeout(() => {
             onStartGame()
           }, 50)
         } else if (StartScreen.selectedButtonIndex === 1) {
-          onShowLeaderboard()
+          // ROGUE MODE
+          StartScreen.stopStarfield()
+          StartScreen.cleanup()
+          setTimeout(() => {
+            if (onStartRogueMode) onStartRogueMode()
+          }, 50)
         } else if (StartScreen.selectedButtonIndex === 2) {
+          // TEST MODE
           StartScreen.stopStarfield()
           StartScreen.cleanup()
           setTimeout(() => {
             if (onStartTestMode) onStartTestMode()
           }, 50)
+        } else if (StartScreen.selectedButtonIndex === 3) {
+          // HIGH SCORES
+          onShowLeaderboard()
         }
         
         StartScreen.lastGamepadInput = now

@@ -10,6 +10,7 @@ import { DEBUG_MODE } from '../config'
  * Base class for managing pickup entities (PowerUps, MedPacks, SpeedUps)
  * Eliminates code duplication across pickup managers
  * 🧲 Now with magnetism support - pickups get sucked towards player!
+ * 🎲 Supports both Arcade (circular) and Rogue (vertical) spawn modes!
  */
 export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive(): boolean, update(deltaTime: number, playerPosition?: THREE.Vector3): void, setEffectsSystem(effectsSystem: EffectsSystem): void }> {
   protected pickups: T[] = []
@@ -20,6 +21,10 @@ export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive()
   protected levelManager: LevelManager | null = null
   protected spawnsThisLevel: number = 0
   protected lastSpawnTime: number = 0
+  
+  // 🎲 Rogue mode support
+  protected isRogueMode: boolean = false
+  protected rogueBoundaryWidth: number = 16 // Default width for side barriers
 
   // Configuration - subclasses override these
   protected abstract readonly SPAWNS_PER_LEVEL: number
@@ -29,6 +34,17 @@ export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive()
   initialize(sceneManager: SceneManager, player: Player): void {
     this.sceneManager = sceneManager
     this.player = player
+  }
+  
+  /**
+   * 🎲 Set Rogue mode for vertical spawning
+   */
+  setRogueMode(enabled: boolean, boundaryWidth: number = 16): void {
+    this.isRogueMode = enabled
+    this.rogueBoundaryWidth = boundaryWidth
+    if (DEBUG_MODE) {
+      console.log(`🎲 ${this.constructor.name} Rogue mode: ${enabled}, boundary width: ${boundaryWidth}`)
+    }
   }
 
   setLevelManager(levelManager: LevelManager): void {
@@ -105,13 +121,34 @@ export abstract class PickupManager<T extends { getMesh(): THREE.Mesh, isAlive()
   }
 
   protected getSpawnPosition(): THREE.Vector3 {
-    // 🔘 CIRCULAR SPAWN LOGIC for Pickups 🔘
-    const boundaryRadius = 28 // Stay well within the 29.5 radius
     const minDistanceFromPlayer = ENEMY_CONFIG.PICKUP.MIN_DISTANCE_FROM_PLAYER
     const playerPos = this.player.getPosition()
     
     let attempts = 0
     let x: number, y: number
+    
+    // 🎲 ROGUE MODE: Spawn above player within side barriers
+    if (this.isRogueMode) {
+      const spawnHeightMin = 8   // Minimum distance above player
+      const spawnHeightMax = 18  // Maximum distance above player
+      const safeMargin = 2      // Stay away from barriers
+      
+      do {
+        // Spawn within the corridor (between side barriers)
+        x = (Math.random() - 0.5) * (this.rogueBoundaryWidth - safeMargin) * 2
+        // Spawn above the player
+        y = playerPos.y + spawnHeightMin + Math.random() * (spawnHeightMax - spawnHeightMin)
+        attempts++
+      } while (
+        playerPos.distanceTo(new THREE.Vector3(x, y, 0)) < minDistanceFromPlayer &&
+        attempts < ENEMY_CONFIG.PICKUP.SPAWN_ATTEMPTS
+      )
+      
+      return new THREE.Vector3(x, y, 0)
+    }
+    
+    // 🔘 CIRCULAR SPAWN LOGIC for Arcade mode 🔘
+    const boundaryRadius = 28 // Stay well within the 29.5 radius
     
     do {
       // Random position within circle: sqrt(random) for uniform distribution

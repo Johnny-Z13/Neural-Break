@@ -20,7 +20,7 @@ export class GameScreens {
     this.sceneManager = sceneManager
   }
 
-  static showStartScreen(onStartGame: () => void, onStartTestMode?: () => void): void {
+  static showStartScreen(onStartGame: () => void, onStartTestMode?: () => void, onStartRogueMode?: () => void): void {
     // Start the starfield for menu screens
     StarfieldManager.getInstance().start()
     
@@ -29,12 +29,12 @@ export class GameScreens {
       this.sceneManager,
       () => {
         this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)
-        this.showStartScreenContent(onStartGame, onStartTestMode)
+        this.showStartScreenContent(onStartGame, onStartTestMode, onStartRogueMode)
       }
     )
   }
 
-  private static showStartScreenContent(onStartGame: () => void, onStartTestMode?: () => void): void {
+  private static showStartScreenContent(onStartGame: () => void, onStartTestMode?: () => void, onStartRogueMode?: () => void): void {
     const startScreen = StartScreen.create(
       this.audioManager,
       () => {
@@ -46,12 +46,18 @@ export class GameScreens {
       () => {
         // Only cleanup styles, starfield persists between menu screens
         StartScreen.cleanup()
-        this.showLeaderboard(() => this.showStartScreen(onStartGame, onStartTestMode))
+        this.showLeaderboard(() => this.showStartScreen(onStartGame, onStartTestMode, onStartRogueMode))
       },
       onStartTestMode ? () => {
         this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)
         setTimeout(() => {
           onStartTestMode()
+        }, 50)
+      } : undefined,
+      onStartRogueMode ? () => {
+        this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)
+        setTimeout(() => {
+          onStartRogueMode()
         }, 50)
       } : undefined
     )

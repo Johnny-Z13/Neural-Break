@@ -1,7 +1,14 @@
+export enum GameMode {
+  ORIGINAL = 'original',
+  ROGUE = 'rogue',
+  TEST = 'test'
+}
+
 export enum GameStateType {
   START_SCREEN = 'start_screen',
   PLAYING = 'playing',
-  GAME_OVER = 'game_over'
+  GAME_OVER = 'game_over',
+  ROGUE_CHOICE = 'rogue_choice'
 }
 
 export interface GameStats {
