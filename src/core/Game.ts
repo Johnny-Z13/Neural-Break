@@ -611,7 +611,7 @@ export class Game {
     
     // Position player at bottom of screen for Rogue mode
     // With frustumSize=30 and offset=12, player positioned to see engine trails and allow upward movement
-    const initialPlayerY = -2  // Position allows engine trails to be visible and upward movement to screen center
+    const initialPlayerY = 2  // Position higher up - more visible with engine trails below
     this.player.getMesh().position.y = initialPlayerY
     
     // Camera target is above the player by the offset amount
@@ -2220,11 +2220,30 @@ export class Game {
       effectsSystem.cleanup()
     }
     
-    // 🌀 Reset player appearance (scale and rotation) 🌀
+    // 🌀 Reset player appearance and position 🌀
     if (this.player) {
       this.player.getMesh().scale.set(1, 1, 1)
       this.player.getMesh().rotation.z = 0
-      if (DEBUG_MODE) console.log('✅ Player scale and rotation reset')
+      
+      // Reset player position to bottom of screen for new layer
+      const initialPlayerY = 2  // Same as initial spawn position
+      const playerX = this.player.getMesh().position.x // Keep horizontal position
+      this.player.getMesh().position.set(playerX, initialPlayerY, 0)
+      
+      // Reset vertical scroll position for new layer
+      this.rogueVerticalPosition = initialPlayerY
+      
+      // Update camera to follow player at new position
+      const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
+      const cameraTargetY = initialPlayerY + cameraOffset
+      this.sceneManager.setCameraTarget(new THREE.Vector3(playerX, cameraTargetY, 0))
+      
+      // Force camera to update immediately
+      const camera = this.sceneManager.getCamera()
+      camera.position.set(playerX, cameraTargetY, 10)
+      camera.lookAt(playerX, cameraTargetY, 0)
+      
+      if (DEBUG_MODE) console.log(`✅ Player reset to position Y=${initialPlayerY}, Camera at Y=${cameraTargetY}`)
     }
     
     // 🌀 Spawn new wormhole exit for next layer 🌀
