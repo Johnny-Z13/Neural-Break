@@ -612,7 +612,7 @@ export class Game {
     
     // Position player at bottom of screen for Rogue mode
     // With frustumSize=30 and offset=12, player should be at camera.y - 12 to appear at bottom
-    const initialPlayerY = -10  // Start player lower for bullet-hell positioning
+    const initialPlayerY = -8  // Start player at bottom third for bullet-hell positioning
     this.player.getMesh().position.y = initialPlayerY
     
     // Camera target is above the player by the offset amount
