@@ -20,6 +20,7 @@ export class GameOverScreen {
 
   static async create(
     stats: GameStats,
+    gameMode: import('../core/GameState').GameMode,
     audioManager: AudioManager | null,
     onRestart: () => void
   ): Promise<HTMLElement> {
@@ -27,7 +28,7 @@ export class GameOverScreen {
     StarfieldManager.getInstance().start()
     
     const finalScore = ScoreManager.calculateScore(stats)
-    const isNewHighScore = await ScoreManager.isHighScore(finalScore)
+    const isNewHighScore = await ScoreManager.isHighScore(finalScore, gameMode)
     
     const gameOverScreen = document.createElement('div')
     gameOverScreen.id = 'gameOverScreen'
@@ -384,7 +385,8 @@ export class GameOverScreen {
           survivedTime: stats.survivedTime,
           level: stats.level,
           date: date,
-          location: location
+          location: location,
+          gameMode: gameMode
         }
         
         nameInput.disabled = true

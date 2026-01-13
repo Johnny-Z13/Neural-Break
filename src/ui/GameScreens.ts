@@ -1,4 +1,4 @@
-import { GameStats } from '../core/GameState'
+import { GameStats, GameMode } from '../core/GameState'
 import { AudioManager } from '../audio/AudioManager'
 import { SceneManager } from '../graphics/SceneManager'
 import { StarfieldManager } from '../graphics/StarfieldManager'
@@ -94,7 +94,7 @@ export class GameScreens {
     )
   }
 
-  static async showGameOverScreen(stats: GameStats, onRestart: () => void): Promise<void> {
+  static async showGameOverScreen(stats: GameStats, gameMode: GameMode, onRestart: () => void): Promise<void> {
     ScreenTransitions.transitionOut(
       this.currentScreen,
       this.sceneManager,
@@ -102,6 +102,7 @@ export class GameScreens {
         this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)
         const gameOverScreen = await GameOverScreen.create(
           stats,
+          gameMode,
           this.audioManager,
           () => {
             this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)

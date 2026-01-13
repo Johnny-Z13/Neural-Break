@@ -15,6 +15,7 @@ export class LeaderboardScreen {
   private static lastGamepadInput = 0
   private static gamepadDeadzone = 0.5
   private static inputCooldown = 200 // ms between inputs
+  private static currentMode: 'original' | 'rogue' = 'original' // Track which leaderboard is shown
 
   static async create(
     audioManager: AudioManager | null,
@@ -80,9 +81,9 @@ export class LeaderboardScreen {
       <div class="leaderboard-content" style="position: relative; z-index: 1; width: 95%; max-width: 900px;">
         
         <!-- TITLE -->
-        <h1 class="leaderboard-title" style="
+        <h1 id="leaderboardTitle" class="leaderboard-title" style="
           font-size: clamp(1.5rem, 4vw, 2.5rem);
-          margin-bottom: var(--space-lg, 1.5rem);
+          margin-bottom: var(--space-sm, 0.5rem);
           color: var(--color-yellow, #FFFF00);
           text-shadow: 
             4px 4px 0 var(--color-orange, #FF6600),
@@ -92,8 +93,30 @@ export class LeaderboardScreen {
           text-transform: uppercase;
           animation: titleFlicker 0.1s infinite;
         ">
-          ★ HIGH SCORES ★
+          ★ ARCADE HIGH SCORES ★
         </h1>
+        
+        <!-- MODE TOGGLE BUTTON -->
+        <button id="modeToggleButton" class="arcade-button" style="
+          background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+          border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
+          color: var(--color-cyan, #00FFFF);
+          font-family: inherit;
+          font-size: clamp(0.6rem, 1.5vw, 0.8rem);
+          font-weight: bold;
+          padding: var(--space-xs, 0.5rem) var(--space-md, 1.5rem);
+          cursor: pointer;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
+          box-shadow: 
+            0 0 20px var(--color-cyan-glow, rgba(0, 255, 255, 0.4)),
+            var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666);
+          transition: all 0.1s step-end;
+          margin-bottom: var(--space-md, 1rem);
+        ">
+          SWITCH TO ROGUE MODE
+        </button>
         
         <!-- Decorative line -->
         <div style="
@@ -270,10 +293,44 @@ export class LeaderboardScreen {
       // No-op: fullscreen functionality removed
     }
 
-    // Get button reference
+    // Get button references
     const backButton = leaderboardScreen.querySelector('#backButton') as HTMLButtonElement
+    const modeToggleButton = leaderboardScreen.querySelector('#modeToggleButton') as HTMLButtonElement
+    const titleElement = leaderboardScreen.querySelector('#leaderboardTitle') as HTMLElement
     
-    // Mouse event listeners
+    // Mode toggle function
+    const toggleMode = async () => {
+      LeaderboardScreen.currentMode = LeaderboardScreen.currentMode === 'original' ? 'rogue' : 'original'
+      
+      // Update title and button text
+      if (LeaderboardScreen.currentMode === 'rogue') {
+        titleElement.textContent = '★ ROGUE HIGH SCORES ★'
+        modeToggleButton.textContent = 'SWITCH TO ARCADE MODE'
+        titleElement.style.color = 'var(--color-magenta, #FF00FF)'
+        titleElement.style.textShadow = '4px 4px 0 var(--color-cyan, #00FFFF), -2px -2px 0 var(--color-orange, #FF6600), 0 0 30px var(--color-magenta, #FF00FF)'
+      } else {
+        titleElement.textContent = '★ ARCADE HIGH SCORES ★'
+        modeToggleButton.textContent = 'SWITCH TO ROGUE MODE'
+        titleElement.style.color = 'var(--color-yellow, #FFFF00)'
+        titleElement.style.textShadow = '4px 4px 0 var(--color-orange, #FF6600), -2px -2px 0 var(--color-magenta, #FF00FF), 0 0 30px var(--color-yellow, #FFFF00)'
+      }
+      
+      // Refresh scores
+      if (scoresContainer) {
+        await LeaderboardScreen.displayHighScoresInElement(scoresContainer, isExpanded)
+      }
+    }
+    
+    // Mouse event listeners - Toggle Button
+    modeToggleButton.addEventListener('mouseenter', () => {
+      if (audioManager) audioManager.playButtonHoverSound()
+    })
+    modeToggleButton.addEventListener('click', async () => {
+      if (audioManager) audioManager.playButtonPressSound()
+      await toggleMode()
+    })
+    
+    // Mouse event listeners - Back Button
     backButton.addEventListener('mouseenter', () => {
       if (audioManager) audioManager.playButtonHoverSound()
     })
@@ -288,8 +345,14 @@ export class LeaderboardScreen {
     LeaderboardScreen.keyboardListener = (e: KeyboardEvent) => {
       const key = e.code.toLowerCase()
       
-      // Select button (Space/Enter/Escape to go back)
-      if (key === 'space' || key === 'enter' || key === 'escape') {
+      // Toggle mode with Tab or Left/Right arrows
+      if (key === 'tab' || key === 'arrowleft' || key === 'arrowright' || key === 'keya' || key === 'keyd') {
+        e.preventDefault()
+        if (audioManager) audioManager.playButtonPressSound()
+        toggleMode()
+      }
+      // Go back (Space/Enter/Escape)
+      else if (key === 'space' || key === 'enter' || key === 'escape') {
         e.preventDefault()
         if (audioManager) audioManager.playButtonPressSound()
         cleanupFullscreen()
@@ -309,6 +372,19 @@ export class LeaderboardScreen {
       
       const now = Date.now()
       if (now - LeaderboardScreen.lastGamepadInput < LeaderboardScreen.inputCooldown) return
+      
+      // Shoulder buttons (LB/RB or L1/R1) or D-pad left/right to toggle mode
+      const leftBumper = gamepad.buttons[4]?.pressed  // LB/L1
+      const rightBumper = gamepad.buttons[5]?.pressed // RB/R1
+      const dpadLeft = gamepad.buttons[14]?.pressed
+      const dpadRight = gamepad.buttons[15]?.pressed
+      
+      if (leftBumper || rightBumper || dpadLeft || dpadRight) {
+        if (audioManager) audioManager.playButtonPressSound()
+        toggleMode()
+        LeaderboardScreen.lastGamepadInput = now
+        return
+      }
       
       // A button (Xbox) / X button (PlayStation) or B button to go back
       const aButton = gamepad.buttons[0]?.pressed // A/X - Select
@@ -342,7 +418,8 @@ export class LeaderboardScreen {
 
   private static async displayHighScoresInElement(container: HTMLElement, expanded: boolean = false): Promise<void> {
     try {
-      const highScores = await ScoreManager.getHighScores()
+      // Get scores for the current mode
+      const highScores = await ScoreManager.getHighScores(LeaderboardScreen.currentMode as import('../../core/GameState').GameMode)
       
       if (highScores.length === 0) {
         container.innerHTML = `
@@ -488,5 +565,6 @@ export class LeaderboardScreen {
 
     // Reset state
     LeaderboardScreen.lastGamepadInput = 0
+    LeaderboardScreen.currentMode = 'original' // Reset to Arcade mode
   }
 }

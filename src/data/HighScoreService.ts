@@ -34,11 +34,12 @@ export class LocalStorageHighScoreService implements IHighScoreService {
 
       const highScores = await this.getHighScores()
       
-      // Check if this is actually a high score
-      if (highScores.length >= this.MAX_SCORES) {
-        const lowestScore = highScores[highScores.length - 1].score
+      // Check if this is actually a high score FOR THIS GAME MODE
+      const modeScores = highScores.filter(s => s.gameMode === sanitized.gameMode)
+      if (modeScores.length >= this.MAX_SCORES) {
+        const lowestScore = modeScores[modeScores.length - 1].score
         if (sanitized.score <= lowestScore) {
-          return false // Not a high score
+          return false // Not a high score for this mode
         }
       }
 
@@ -53,8 +54,11 @@ export class LocalStorageHighScoreService implements IHighScoreService {
         return this.parseDate(b.date).getTime() - this.parseDate(a.date).getTime()
       })
       
-      // Keep only top scores
-      const trimmedScores = highScores.slice(0, this.MAX_SCORES)
+      // Keep top MAX_SCORES per game mode
+      const arcadeScores = highScores.filter(s => s.gameMode === 'original').slice(0, this.MAX_SCORES)
+      const rogueScores = highScores.filter(s => s.gameMode === 'rogue').slice(0, this.MAX_SCORES)
+      const testScores = highScores.filter(s => s.gameMode === 'test').slice(0, this.MAX_SCORES)
+      const trimmedScores = [...arcadeScores, ...rogueScores, ...testScores]
       
       // Save to localStorage
       if (this.isLocalStorageAvailable()) {
@@ -170,6 +174,16 @@ export class LocalStorageHighScoreService implements IHighScoreService {
       return false
     }
 
+    // Validate gameMode (required)
+    if (!entry.gameMode || typeof entry.gameMode !== 'string') {
+      return false
+    }
+
+    const validModes = ['original', 'rogue', 'test']
+    if (!validModes.includes(entry.gameMode)) {
+      return false
+    }
+
     return true
   }
 
@@ -180,7 +194,8 @@ export class LocalStorageHighScoreService implements IHighScoreService {
       survivedTime: Math.max(0, entry.survivedTime),
       level: Math.max(1, Math.floor(entry.level)),
       date: entry.date || '12/29/25',
-      location: entry.location || 'LOCAL'
+      location: entry.location || 'LOCAL',
+      gameMode: entry.gameMode || 'original' // Default to original/arcade mode
     }
   }
 

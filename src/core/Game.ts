@@ -2061,7 +2061,7 @@ export class Game {
     this.uiManager.setHUDVisibility(false)
     
     // Show game over screen with stats
-    GameScreens.showGameOverScreen(this.gameStats, () => this.showStartScreen()).catch(err => {
+    GameScreens.showGameOverScreen(this.gameStats, this.gameMode, () => this.showStartScreen()).catch(err => {
       console.error('Error showing game over screen:', err)
     })
   }
