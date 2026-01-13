@@ -611,8 +611,8 @@ export class Game {
     if (DEBUG_MODE) console.log('📷 Setting camera with offset:', cameraOffset)
     
     // Position player at bottom of screen for Rogue mode
-    // With frustumSize=30 and offset=12, player should be at camera.y - 12 to appear at bottom
-    const initialPlayerY = -8  // Start player at bottom third for bullet-hell positioning
+    // With frustumSize=30 and offset=12, player positioned to see engine trails and allow upward movement
+    const initialPlayerY = -2  // Position allows engine trails to be visible and upward movement to screen center
     this.player.getMesh().position.y = initialPlayerY
     
     // Camera target is above the player by the offset amount
