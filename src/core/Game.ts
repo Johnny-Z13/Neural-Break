@@ -960,16 +960,18 @@ export class Game {
     if (this.rogueWormholeExit) {
       this.sceneManager.removeFromScene(this.rogueWormholeExit.getMesh())
       this.rogueWormholeExit.destroy()
+      this.rogueWormholeExit = null
     }
 
     // Create new wormhole at exit distance above player
     this.rogueWormholeExit = new WormholeExit()
     const playerPos = this.player.getPosition()
-    this.rogueWormholeExit.setPosition(playerPos.x, playerPos.y + this.rogueExitDistance, 0)
+    const wormholeY = playerPos.y + this.rogueExitDistance
+    this.rogueWormholeExit.setPosition(playerPos.x, wormholeY, 0)
     this.sceneManager.addToScene(this.rogueWormholeExit.getMesh())
 
     if (DEBUG_MODE) {
-      console.log(`🌀 Wormhole exit spawned at Y=${playerPos.y + this.rogueExitDistance}`)
+      console.log(`🌀 Wormhole exit spawned at Y=${wormholeY} (Player at Y=${playerPos.y}, Distance=${this.rogueExitDistance})`)
     }
   }
 
@@ -2245,6 +2247,11 @@ export class Game {
       
       if (DEBUG_MODE) console.log(`✅ Player reset to position Y=${initialPlayerY}, Camera at Y=${cameraTargetY}`)
     }
+    
+    // 🌀 Reset wormhole animation state 🌀
+    this.isWormholeEntryAnimating = false
+    this.wormholeEntryTime = 0
+    if (DEBUG_MODE) console.log('✅ Wormhole animation state reset')
     
     // 🌀 Spawn new wormhole exit for next layer 🌀
     this.spawnRogueWormholeExit()
