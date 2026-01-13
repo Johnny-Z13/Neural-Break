@@ -258,13 +258,12 @@
       }
       
       /* ─────────────────────────────────────────────────────────────────
-         LEVEL INFO - Bottom Center
+         LEVEL INFO - Bottom Left
          ───────────────────────────────────────────────────────────────── */
       #level {
         bottom: var(--space-md);
-        left: 50%;
-        transform: translateX(-50%);
-        text-align: center;
+        left: var(--space-md);
+        text-align: left;
         font-size: var(--font-xs);
         white-space: nowrap;
         border-color: var(--color-magenta);
@@ -279,13 +278,12 @@
       }
       
       /* ─────────────────────────────────────────────────────────────────
-         POWER-UP - Above Level
+         POWER-UP - Above Level (Bottom Left)
          ───────────────────────────────────────────────────────────────── */
       #powerUp {
         bottom: calc(var(--space-md) + 45px);
-        left: 50%;
-        transform: translateX(-50%);
-        text-align: center;
+        left: var(--space-md);
+        text-align: left;
         font-size: var(--font-xs);
         border-color: var(--color-cyan);
       }
