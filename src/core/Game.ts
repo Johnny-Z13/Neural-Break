@@ -55,8 +55,7 @@ export class Game {
   private isPaused: boolean = false
   
   // 🎲 ROGUE MODE STATE 🎲
-  private rogueCurrentLayer: number = 1 // What layer player is currently ON
-  private rogueLayersCompleted: number = 0 // How many layers have been completed
+  private rogueLayersCompleted: number = 0 // How many layers have been completed (for stats)
   private rogueSelectedSpecialIds: Set<string> = new Set() // Track selected specials to prevent duplicates
   private rogueVerticalPosition: number = 0 // Current vertical ascent position
   private rogueScrollSpeed: number = 3.0 // Units per second - continuous upward flow
@@ -508,12 +507,12 @@ export class Game {
     this.gameMode = GameMode.ROGUE
     this.gameModeManager.setMode(GameMode.ROGUE) // Update mode manager
     this.isTestMode = false
-    this.rogueCurrentLayer = 1
+    this.levelManager.setRogueLayer(1) // Initialize layer tracking in LevelManager
     this.rogueLayersCompleted = 0
     this.rogueSelectedSpecialIds.clear() // Reset selected specials for new run
     this.rogueVerticalPosition = 0
     if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (ROGUE MODE):', this.gameState)
-    if (DEBUG_MODE) console.log(`🎲 Starting Rogue run at Layer ${this.rogueCurrentLayer}`)
+    if (DEBUG_MODE) console.log(`🎲 Starting Rogue run at Layer ${this.levelManager.getRogueLayer()}`)
     
     // 🎮 Apply mode-specific settings from GameModeManager
     const config = this.gameModeManager.getConfig()
@@ -1051,9 +1050,9 @@ export class Game {
     // Trigger staggered enemy destruction, THEN show choice screen
     if (DEBUG_MODE) {
       console.log('═════════════════════════════════════')
-      console.log(`🎲 LAYER ${this.rogueCurrentLayer} COMPLETE`)
+      console.log(`🎲 LAYER ${this.levelManager.getRogueLayer()} COMPLETE`)
       console.log(`   Layers Completed: ${this.rogueLayersCompleted}`)
-      console.log(`   Next Layer: ${this.rogueCurrentLayer + 1}`)
+      console.log(`   Next Layer: ${this.levelManager.getRogueLayer() + 1}`)
       console.log('═════════════════════════════════════')
     }
     
@@ -1144,7 +1143,7 @@ export class Game {
     // 🎲 Reset game mode to ORIGINAL
     this.gameMode = GameMode.ORIGINAL
     this.gameModeManager.setMode(GameMode.ORIGINAL)
-    this.rogueCurrentLayer = 1
+    this.levelManager.setRogueLayer(1)
     this.rogueLayersCompleted = 0
     this.rogueSelectedSpecialIds.clear()
     this.rogueVerticalPosition = 0
@@ -2198,22 +2197,18 @@ export class Game {
     }
     RogueChoiceScreen.cleanup()
     
-    // Advance to next layer
-    this.rogueCurrentLayer++
+    // Advance to next layer (this also resets objectives)
+    this.levelManager.advanceRogueLayer()
     
     if (DEBUG_MODE) {
       console.log('═════════════════════════════════════')
-      console.log(`🚀 STARTING LAYER ${this.rogueCurrentLayer}`)
+      console.log(`🚀 STARTING LAYER ${this.levelManager.getRogueLayer()}`)
       console.log(`   Total Layers Completed: ${this.rogueLayersCompleted}`)
       console.log('═════════════════════════════════════')
     }
     
     // Show layer notification with correct number
-    this.uiManager.showRogueLayerNotification(this.rogueCurrentLayer)
-    
-    // 🎲 DON'T call advanceLevel() - Rogue mode stays at level 998!
-    // Just reset the objectives so enemies keep spawning
-    this.levelManager.resetObjectives()
+    this.uiManager.showRogueLayerNotification(this.levelManager.getRogueLayer())
     
     // Clear all enemies and projectiles
     this.enemyManager.clearAllEnemies()
@@ -2234,7 +2229,7 @@ export class Game {
     
     // 🌀 Spawn new wormhole exit for next layer 🌀
     this.spawnRogueWormholeExit()
-    if (DEBUG_MODE) console.log(`🌀 New wormhole spawned for layer ${this.rogueCurrentLayer}`)
+    if (DEBUG_MODE) console.log(`🌀 New wormhole spawned for layer ${this.levelManager.getRogueLayer()}`)
     
     // Resume enemy spawning
     this.enemyManager.resumeSpawning()
