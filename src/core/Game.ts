@@ -2154,15 +2154,11 @@ export class Game {
       return
     }
     
-    // Guard against stale setTimeout callbacks - if we've already started next layer, don't show screen
-    if (this.gameState === GameStateType.PLAYING && this.isRunning) {
-      if (DEBUG_MODE) console.log('⚠️ Game already playing, ignoring stale showRogueChoiceScreen call')
-      return
-    }
-    
-    // Guard against showing screen if layer isn't completing
+    // Guard against stale setTimeout callbacks
+    // If rogueLayerCompleting is false, it means we've already moved past this layer
+    // (selected a special and continued to next layer)
     if (!this.rogueLayerCompleting) {
-      if (DEBUG_MODE) console.log('⚠️ Layer not completing, ignoring showRogueChoiceScreen call')
+      if (DEBUG_MODE) console.log('⚠️ Layer not completing (already continued), ignoring stale showRogueChoiceScreen call')
       return
     }
     
