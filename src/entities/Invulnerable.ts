@@ -14,14 +14,14 @@ export class Invulnerable {
   }
 
   private initialize(): void {
-    // 🌟 INVULNERABLE PICKUP - Glowing green star with rotating rings! 🌟
+    // 🌟 INVULNERABLE PICKUP - RICH EMERALD star with rotating rings! 🌟
     const group = new THREE.Group()
     
-    // === MAIN STAR - Green glowing core ===
+    // === MAIN STAR - Rich emerald glowing core ===
     const starShape = this.createStarShape(0.5, 0.25, 5)
     const starGeometry = new THREE.ShapeGeometry(starShape)
     const starMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00,
+      color: 0x22FF44, // RICH EMERALD
       transparent: true,
       opacity: 0.9,
       blending: THREE.AdditiveBlending,
@@ -30,12 +30,12 @@ export class Invulnerable {
     const star = new THREE.Mesh(starGeometry, starMaterial)
     group.add(star)
     
-    // === INNER GLOW - Bright white center ===
+    // === INNER GLOW - Bright emerald-white center ===
     const innerGlowGeometry = new THREE.CircleGeometry(0.2, 16)
     const innerGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFFFFFF,
+      color: 0xAAFFBB, // LIGHT EMERALD WHITE
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending
     })
     const innerGlow = new THREE.Mesh(innerGlowGeometry, innerGlowMaterial)
@@ -45,9 +45,9 @@ export class Invulnerable {
     // === OUTER RING 1 - Rotating slowly ===
     const ring1Geometry = new THREE.RingGeometry(0.6, 0.7, 32)
     const ring1Material = new THREE.MeshBasicMaterial({
-      color: 0x00FF00,
+      color: 0x22DD44, // RICH EMERALD
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.7,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending
     })
@@ -58,9 +58,9 @@ export class Invulnerable {
     // === OUTER RING 2 - Counter-rotating ===
     const ring2Geometry = new THREE.RingGeometry(0.75, 0.82, 32)
     const ring2Material = new THREE.MeshBasicMaterial({
-      color: 0x44FF44,
+      color: 0x55FF77, // BRIGHT EMERALD
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.6,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending
     })
@@ -72,9 +72,9 @@ export class Invulnerable {
     const particleCount = 12
     const particleGeometry = new THREE.CircleGeometry(0.08, 8)
     const particleMaterial = new THREE.MeshBasicMaterial({
-      color: 0x88FF88,
+      color: 0x77FF99, // LIGHT EMERALD particles
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending
     })
     
@@ -92,9 +92,9 @@ export class Invulnerable {
     // === OUTER GLOW - Large soft halo ===
     const outerGlowGeometry = new THREE.CircleGeometry(1.2, 32)
     const outerGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00,
+      color: 0x33EE55, // BRIGHT EMERALD halo
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.25,
       blending: THREE.AdditiveBlending
     })
     const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial)

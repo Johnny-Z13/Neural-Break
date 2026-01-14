@@ -17,13 +17,16 @@ export class GameOverScreen {
   private static lastGamepadInput: number = 0
   private static inputCooldown: number = 200 // ms
   private static gamepadDeadzone: number = 0.5
+  private static currentGameMode: import('../../core/GameState').GameMode = 'original' // Store current game mode
 
   static async create(
     stats: GameStats,
-    gameMode: import('../core/GameState').GameMode,
+    gameMode: import('../../core/GameState').GameMode,
     audioManager: AudioManager | null,
     onRestart: () => void
   ): Promise<HTMLElement> {
+    // Store game mode for later use
+    GameOverScreen.currentGameMode = gameMode
     // Start the starfield for menu consistency
     StarfieldManager.getInstance().start()
     
@@ -355,8 +358,8 @@ export class GameOverScreen {
     `
     document.head.appendChild(style)
 
-    // Display high scores
-    await GameOverScreen.displayHighScores('gameOverHighScoresList')
+    // Display high scores for current game mode
+    await GameOverScreen.displayHighScores('gameOverHighScoresList', gameMode)
 
     // Handle high score saving
     if (isNewHighScore) {
@@ -402,7 +405,7 @@ export class GameOverScreen {
             saveButton.style.background = '#003300'
             saveButton.style.borderColor = 'var(--color-green, #00FF00)'
             
-            await GameOverScreen.displayHighScores('gameOverHighScoresList')
+            await GameOverScreen.displayHighScores('gameOverHighScoresList', GameOverScreen.currentGameMode)
             
             const successMsg = document.createElement('div')
             successMsg.textContent = `★ ${playerName.toUpperCase()} SAVED ★`
@@ -632,7 +635,7 @@ export class GameOverScreen {
     `
   }
 
-  private static async displayHighScores(containerId: string): Promise<void> {
+  private static async displayHighScores(containerId: string, gameMode?: import('../../core/GameState').GameMode): Promise<void> {
     const container = document.getElementById(containerId)
     if (!container) {
       console.warn(`❌ High score container '${containerId}' not found!`)
@@ -640,7 +643,7 @@ export class GameOverScreen {
     }
 
     try {
-      const highScores = await ScoreManager.getHighScores()
+      const highScores = await ScoreManager.getHighScores(gameMode)
       
       if (highScores.length === 0) {
         container.innerHTML = `

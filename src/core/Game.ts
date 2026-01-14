@@ -475,14 +475,14 @@ export class Game {
     this.uiManager.setHUDVisibility(true)
     
     // Start ambient soundscape
-    this.audioManager.startAmbientSoundscape()
+    this.audioManager.startAmbientSoundscape();
     
     // Start the game loop
-    this.lastFrameTime = performance.now()
-    this.start()
+    (this as any).lastFrameTime = performance.now();
+    this.start();
     
     // Start scene transition
-    this.sceneManager.startTransition('zoomIn')
+    this.sceneManager.startTransition('zoom');
     
     if (DEBUG_MODE) console.log('✅ Test mode initialization complete!')
   }
@@ -621,7 +621,7 @@ export class Game {
     // Position player at bottom of screen for Rogue mode
     // With frustumSize=30 and offset=12, player positioned to see engine trails and allow upward movement
     // CRITICAL: Use setPosition() to update BOTH internal position AND mesh!
-    const initialPlayerY = 2  // Position higher up - more visible with engine trails below
+    const initialPlayerY = 6 // Position higher up - more visible with engine trails below
     const playerX = this.player.getPosition().x
     this.player.setPosition(playerX, initialPlayerY, 0)
     
@@ -736,7 +736,7 @@ export class Game {
     this.spawnRogueWormholeExit()
     
     if (DEBUG_MODE) {
-      console.log(`✅ Rogue mode initialized - Layer ${this.rogueLayer}`)
+      console.log(`✅ Rogue mode initialized - Layer ${this.rogueLayersCompleted + 1}`)
     }
     
     // CRITICAL: Ensure game loop is running!
@@ -2343,7 +2343,7 @@ export class Game {
       
       // Reset player position to bottom of screen for new layer
       // CRITICAL: Use setPosition() to update BOTH internal position AND mesh!
-      const initialPlayerY = 2  // Same as initial spawn position
+      const initialPlayerY = 6  // Same as initial spawn position
       const playerX = 0 // Reset X position to center
       
       if (DEBUG_MODE) console.log(`🔄 Resetting player position from Y=${this.player.getPosition().y.toFixed(2)} to Y=${initialPlayerY}, X=${playerX}`)
@@ -2376,13 +2376,17 @@ export class Game {
     
     // 🐛 FIX: Verify positions are correct before resuming
     if (DEBUG_MODE) {
-      const verifyPlayerPos = this.player.getPosition()
-      const verifyWormholePos = this.rogueWormholeExit?.getPosition()
-      console.log('═════════════════════════════════════')
-      console.log('📍 POSITION VERIFICATION:')
-      console.log(`   Player: Y=${verifyPlayerPos.y.toFixed(2)}`)
-      console.log(`   Wormhole: Y=${verifyWormholePos?.y.toFixed(2) || 'N/A'}`)
-      console.log(`   Distance: ${((verifyWormholePos?.y || 0) - verifyPlayerPos.y).toFixed(2)}`)
+      const verifyPlayerPos = this.player.getPosition();
+      // Explicitly cast rogueWormholeExit as any to avoid type error if type is never/unknown
+      let verifyWormholePos: { x: number, y: number, z: number } | undefined = undefined;
+      if (this.rogueWormholeExit && typeof (this.rogueWormholeExit as any).getPosition === 'function') {
+        verifyWormholePos = (this.rogueWormholeExit as any).getPosition();
+      }
+
+      console.log('═════════════════════════════════════');
+      console.log('📍 POSITION VERIFICATION:');
+      console.log(`   Player: Y=${verifyPlayerPos.y.toFixed(2)}`);
+      console.log(`   Wormhole: Y=${verifyWormholePos ? verifyWormholePos.y.toFixed(2) : 'N/A'}`);
       console.log('═════════════════════════════════════')
     }
     

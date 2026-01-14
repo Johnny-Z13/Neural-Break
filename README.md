@@ -1,385 +1,270 @@
-# Neural Break
+# 🎮 Neural Break
 
-A cyberpunk survival game built with Three.js and TypeScript. Experience 30 minutes of escalating intensity as you battle through waves of digital entities in a neural network environment.
+A cyberpunk survival shooter built with Three.js and TypeScript. Battle through 30 minutes of escalating intensity in a neural network environment.
 
-## 🎮 Game Overview
-
-Neural Break is a top-down survival shooter where players must survive for 30 minutes against increasingly difficult waves of enemies. The game features:
-
-- **Cyberpunk Aesthetic**: Immersive digital environment with neural network themes
-- **Progressive Difficulty**: Escalating challenge from tutorial to brutal finale
-- **Combat System**: Projectile-based weapons with upgrade mechanics
-- **Multiple Enemy Types**: DataMites, ScanDrones, ChaosWorms, VoidSpheres, CrystalShardSwarms, Fizzers, UFOs, and Bosses
-- **XP Progression**: Level up and improve your neural coherence
-- **Speedrun Optimization**: Designed for competitive play and replayability
-- **🎮 Full Gamepad Support**: Native Xbox/PlayStation controller support with haptic feedback!
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
-
-### Installation
-```bash
-git clone <repository-url>
-cd neural-break
-npm install
-```
-
-### Development
-```bash
-npm run dev
-```
-Opens the game at `http://localhost:3000` with hot reload enabled.
-
-### Build
-```bash
-npm run build
-```
-Creates optimized production build with Three.js chunking.
-
-### Preview
-```bash
-npm run preview
-```
-Preview the production build locally.
-
-## 🎯 Controls
-
-### In-Game Controls
-
-**Keyboard:**
-- **WASD / Arrow Keys**: Movement
-- **Space**: Fire weapon
-- **Shift**: Dash (when available)
-- **Escape**: Pause game
-
-**Gamepad (Xbox/PlayStation):**
-- **Left Stick**: Analog movement
-- **D-Pad**: Digital movement
-- **A (Xbox) / X (PlayStation)**: Fire weapon
-- **B (Xbox) / Circle (PlayStation)**: Dash
-- **Right Trigger / Left Trigger**: Fire weapon (alternative)
-- **Right Bumper**: Dash (alternative)
-- **Start Button**: Pause game
-- **Vibration**: Haptic feedback for hits, kills, and explosions
-
-### Menu Navigation
-
-**All menus support keyboard, mouse, and gamepad navigation!**
-
-**Keyboard:**
-- **↑/↓ or W/S**: Navigate vertically
-- **←/→ or A/D**: Navigate horizontally
-- **Space / Enter**: Select
-- **Escape**: Back (where applicable)
-
-**Mouse:**
-- **Hover**: Highlight button
-- **Click**: Select
-
-**Gamepad:**
-- **D-Pad / Left Stick**: Navigate
-- **A Button**: Select
-- **B Button**: Back (where applicable)
-
-See [MENU_NAVIGATION_GUIDE.md](MENU_NAVIGATION_GUIDE.md) for detailed menu navigation documentation.
-
-## 🏗️ Architecture
-
-### Core Systems
-
-| System | Description |
-|--------|-------------|
-| **Game** | Central coordinator managing all systems and game state |
-| **SceneManager** | Three.js scene, camera, and rendering pipeline |
-| **Player** | Player entity with movement, health, and progression |
-| **EnemyManager** | Spawning, updating, and managing all enemy entities |
-| **LevelManager** | Progressive difficulty scaling and wave management |
-| **WeaponSystem** | Projectile-based combat system with upgrades |
-| **InputManager** | Keyboard input handling |
-| **UIManager** | HUD elements and game interface |
-| **AudioManager** | Sound effects and audio feedback |
-| **AudioVisualReactiveSystem** | Dynamic visual effects synchronized with audio |
-| **EffectsSystem** | Visual effects and particle systems |
-| **GameTimer** | 30-minute countdown timer |
-| **ScoreManager** | High score tracking and leaderboard management |
-
-### Project Structure
-
-```
-src/
-├── main.ts                 # Entry point and game initialization
-├── config/                 # Configuration modules
-│   ├── index.ts           # Centralized config exports
-│   ├── balance.config.ts  # ⭐ MASTER BALANCE CONFIG - All gameplay values
-│   ├── game.config.ts     # Game-specific configuration
-│   ├── enemy.config.ts    # Enemy configuration
-│   └── visual.config.ts   # Visual effects configuration
-├── core/                   # Core game systems
-│   ├── Game.ts            # Main game coordinator
-│   ├── GameState.ts       # State management and scoring
-│   ├── GameStateManager.ts # 🆕 Modular state transitions & death animation
-│   ├── CollisionSystem.ts # 🆕 Modular collision detection & response
-│   ├── GameTimer.ts       # Timer system
-│   ├── LevelManager.ts    # Difficulty progression
-│   ├── InputManager.ts    # Input handling
-│   ├── EnemyManager.ts    # Enemy spawning/management (optimized spatial grid)
-│   ├── PickupManager.ts   # Base class for pickup management
-│   ├── PowerUpManager.ts  # Power-up spawning and collection
-│   ├── MedPackManager.ts  # Health pack management
-│   ├── SpeedUpManager.ts  # Speed boost management
-│   ├── ShieldManager.ts   # Shield pickup management
-│   └── InvulnerableManager.ts # Invulnerable pickup management
-├── entities/               # Game entities
-│   ├── Player.ts          # Player entity
-│   ├── Enemy.ts           # Base enemy class
-│   ├── DataMite.ts        # Basic fast enemy
-│   ├── ScanDrone.ts       # Surveillance enemy
-│   ├── ChaosWorm.ts       # Unpredictable enemy
-│   ├── VoidSphere.ts      # Area denial enemy
-│   ├── CrystalShardSwarm.ts # Multi-unit enemy
-│   ├── Fizzer.ts          # Chaos reward enemy (high multiplier spawn)
-│   ├── UFO.ts             # Late-game intelligent craft with laser
-│   ├── Boss.ts            # Boss enemy
-│   ├── PowerUp.ts         # Power-up pickup
-│   ├── MedPack.ts         # Health pickup
-│   ├── SpeedUp.ts         # Speed boost pickup
-│   ├── Shield.ts          # Shield pickup
-│   ├── Invulnerable.ts    # Invulnerable pickup
-│   └── index.ts           # Entity exports
-├── weapons/                # Combat system
-│   ├── WeaponSystem.ts    # Weapon management
-│   ├── Projectile.ts      # Player projectiles
-│   └── EnemyProjectile.ts # Enemy projectiles
-├── graphics/               # Rendering and visual effects
-│   ├── SceneManager.ts    # Three.js scene management (throttled zoom)
-│   ├── EffectsSystem.ts   # Main effects coordinator (cleaned up)
-│   ├── AudioVisualReactiveSystem.ts # Audio-reactive visuals
-│   ├── EnergyBarrier.ts   # Arena boundary visual
-│   ├── Starfield.ts       # Background starfield
-│   ├── StarfieldManager.ts # Starfield management
-│   └── effects/           # Modular effect systems
-│       ├── ParticlePool.ts      # Base particle system
-│       ├── SpecializedParticlePool.ts # 🆕 Generic specialized pool (consolidated)
-│       ├── ExplosionEffects.ts  # Explosion and impact effects
-│       ├── ScreenEffects.ts     # Screen-wide visual effects
-│       └── VectorParticles.ts   # Vector-style particles
-├── ui/                     # User interface
-│   ├── UIManager.ts       # HUD management
-│   ├── GameScreens.ts     # Screen coordinator
-│   └── screens/           # Individual screen components
-│       ├── StartScreen.ts        # Main menu screen
-│       ├── LeaderboardScreen.ts  # High score leaderboard
-│       ├── GameOverScreen.ts     # Game over screen
-│       ├── PauseScreen.ts        # In-game pause menu
-│       └── ScreenTransitions.ts  # Transition animations
-├── audio/                  # Audio system
-│   ├── AudioManager.ts    # Sound management
-│   ├── AudioPool.ts       # Sound limiting and priority system
-│   └── MusicManager.ts    # Background music management
-├── utils/                  # Utilities
-│   └── LocationService.ts # Browser geolocation service
-└── data/                   # Data services
-    ├── HighScoreService.ts # High score persistence
-    └── HIGH_SCORE_SETUP.md # High score setup guide
-```
-
-## 🎨 Technical Features
-
-- **Three.js Integration**: Modern WebGL rendering with orthographic camera
-- **TypeScript**: Full type safety and modern JavaScript features
-- **Entity Component System (ECS)**: Efficient entity management with proper cleanup
-- **Collision Detection**: Optimized spatial grid for O(neighbors) instead of O(n) collision checks
-- **Performance Optimized**: Entity pooling, particle pooling, throttled camera zoom, and efficient resource management
-- **Modular Design**: Clean separation of concerns with system-based architecture
-- **Visual Effects**: Comprehensive particle systems, screen effects, and audio-reactive visuals
-- **Generic Particle Pools**: Consolidated specialized particle pools eliminate code duplication
-- **Screen Management**: Modular UI screens with smooth transitions
-- **Configuration Management**: Centralized config system for easy tuning
-- **High Score System**: LocalStorage and API-based high score tracking
-- **TWEEN.js**: Smooth animations and transitions
-
-### Performance Optimizations (Jan 2026)
-
-- **Spatial Grid Collision**: Enemy death chain damage uses spatial grid for O(neighbors) lookup
-- **Throttled Dynamic Zoom**: Camera zoom recalculates every 50ms instead of every frame
-- **Consolidated Particle Pools**: Generic `SpecializedParticlePool<T>` class eliminates ~400 lines of duplication
-- **Modular Architecture**: `CollisionSystem` and `GameStateManager` extracted from Game.ts
-- **Cleaned Effects System**: Removed ~300 lines of legacy/deprecated code
-- **Removed Backup Files**: Eliminated orphaned `.bak` files from codebase
-
-## 🔧 Development
-
-### Game States
-- **START_SCREEN**: Initial menu
-- **PLAYING**: Active gameplay
-- **GAME_OVER**: End screen with statistics
-
-### Enemy Types
-- **DataMite**: Fast, basic enemies with simple movement
-- **ScanDrone**: Surveillance units with detection abilities and radar sweep (shoots bullets)
-- **ChaosWorm**: Unpredictable movement patterns with segmented body and multi-stage death
-- **VoidSphere**: Area denial enemies with void effects and burst-fire projectiles
-- **CrystalShardSwarm**: Multi-unit coordinated attacks with crystal formations
-- **Fizzer**: ⚡ Tiny electric chaos orb that spawns when player achieves high multiplier (x5/x8/x11) without taking damage - fast, erratic, hard to hit, fires rapid bullet bursts
-- **UFO**: 🛸 Intelligent alien craft appearing in late game (level 5+) - organic curved movement patterns, charges and fires laser beams (10% damage - reduced for testing)
-- **Boss**: Powerful end-level enemies with unique attack patterns
-
-### Key Design Patterns
-- **Entity Management**: All entities follow initialize/update/cleanup pattern
-- **Inheritance**: Base classes for common functionality (Enemy, PickupManager)
-- **System Communication**: Decoupled systems communicate through the main Game class
-- **Resource Cleanup**: Proper disposal prevents memory leaks during restarts
-- **Modularization**: Large systems split into focused modules (EffectsSystem, GameScreens)
-- **Configuration**: Centralized config with DEBUG_MODE flag for development
-- **Component-Based UI**: Screen components with shared transition utilities
-
-## 📋 Game Design
-
-Neural Break is based on a comprehensive Product Requirements Document focusing on:
-- Tutorial progression to brutal endgame
-- Balanced weapon upgrade systems
-- Professional visual effects with Three.js shaders
-- Speedrun-optimized gameplay mechanics
-
-## 🛠️ Technologies
-
-- **Three.js**: 3D graphics and WebGL rendering
-- **TypeScript**: Type-safe JavaScript development
-- **Vite**: Fast build tool and dev server
-- **Web Audio API**: Immersive sound design
-- **TWEEN.js**: Animation library for smooth transitions
-- **LocalStorage API**: Client-side high score persistence
-
-## 📄 License
-
-ISC License
-
-## 🚧 Development Status
-
-Active development - see commit history for latest updates and features.
-
-### Recent Improvements
-
-#### January 2026 - Codebase Optimization 🧹
-- ✅ **🗑️ Removed Bloat**: Deleted 4 orphaned `.bak` files
-- ✅ **🧹 Cleaned EffectsSystem**: Removed ~300 lines of `_LEGACY` and `_DEPRECATED` methods
-- ✅ **🔧 Consolidated Particle Pools**: Generic `SpecializedParticlePool<T>` base class eliminates duplication
-- ✅ **📦 Modularized Game.ts**: Extracted `CollisionSystem` and `GameStateManager` for better maintainability
-- ✅ **⚡ Optimized Enemy Death Chain**: Uses spatial grid for O(neighbors) collision instead of O(n)
-- ✅ **🎬 Throttled Dynamic Zoom**: Recalculates every 50ms instead of every frame for better FPS
-- ✅ **📝 Updated README**: Reflects new architecture and optimizations
-
-#### Previous Improvements
-- ✅ **🐛 FIXED: UFO Spawns Use LevelManager!** - Removed hardcoded spawn rates, configs now work as expected!
-- ✅ **🐛 FIXED: Power-Ups Now Spawn!** - Critical bug fix: spawn logic was broken, now working perfectly!
-- ✅ **🎁 Generous Power-Up Spawns** - 2x more pickups, regular intervals, fully configurable in balance.config!
-- ✅ **🧹 Clean Level Transitions** - Zero enemies persist, invulnerable cleared, power-ups carry over correctly!
-- ✅ **🎯 Enemy Hit Feedback** - ALL enemies flash RED + satisfying "ping" sound when hit (but not killed)!
-- ✅ **🎆 Level Transition Fireworks** - Staggered enemy deaths (0.1s) create spectacular cascading explosions!
-- ✅ **🏆 Consistent Notifications** - "LEVEL COMPLETE" matches INVULNERABLE style, perfectly centered
-- ✅ **💥 Enhanced Death Sequences** - ALL enemies trigger death animations during transitions
-- ✅ **Objective-Based Level System** - Clear goals, dramatic transitions, satisfying progression
-- ✅ **Full Gamepad Support** - Xbox/PlayStation controllers with vibration feedback
-- ✅ **Centralized Balance System** - All gameplay values in one config file
-- ✅ Modularized UI screens (StartScreen, LeaderboardScreen, GameOverScreen)
-- ✅ Refactored EffectsSystem into focused modules
-- ✅ Split enemy classes into individual files
-- ✅ Created PickupManager base class for shared pickup logic
-- ✅ Centralized configuration system
-- ✅ Enhanced visual effects with audio-reactive systems
-- ✅ Improved code organization and maintainability
-- ✅ Added Fizzer enemy - chaos reward for skilled players with high multiplier streaks
-- ✅ Added UFO enemy - late-game intelligent craft with devastating laser beam attack
-- ✅ Updated threat database on title screen with new enemies
-- ✅ Integrated UFO laser collision detection in game loop
-
-## 📝 Code Organization
-
-The codebase follows best practices for maintainability:
-- **Separation of Concerns**: Each system has a single responsibility
-- **Modular Architecture**: Large files split into focused modules
-- **Type Safety**: Full TypeScript coverage with proper interfaces
-- **Configuration Management**: Centralized config for easy tuning
-- **Debug Mode**: Conditional logging and debug features via DEBUG_MODE flag
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-repo/neural-break)
 
 ---
 
-## ⚖️ Game Balance & Tuning
+## 🚀 Quick Start
 
-**All gameplay values are now in ONE file**: `src/config/balance.config.ts`
+```bash
+# Clone and install
+git clone <repository-url>
+cd neural-break
+npm install
 
-### Quick Balance Editing
+# Start development server
+npm run dev
 
-1. Open `src/config/balance.config.ts`
-2. Find the section (Player, Enemies, Weapons, Pickups, etc.)
-3. Edit values
-4. Save - game auto-reloads!
+# Build for production
+npm run build
 
-**No more hunting for magic numbers!**
-
-### What You Can Tune
-
-- **Player**: Speed, health, dash, power-ups, shields
-- **Weapons**: Damage, fire rate, heat system, projectile speed
-- **Enemies**: Health, speed, damage, fire rates, death effects (ALL 8 enemy types)
-  - DataMite, ScanDrone, Fizzer, UFO, ChaosWorm, VoidSphere, CrystalSwarm, Boss
-- **Pickups**: Spawn rates, heal amounts, magnetism
-- **Scoring**: Points, multipliers, bonuses
-- **Level Scaling**: Difficulty progression, enemy scaling
-- **World**: Size, boundaries, spawn zones
-- **Visual Effects**: Screen shake, zoom, particles
-
-### Balance System Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│   balance.config.ts (Master Config)         │
-│                                              │
-│  ┌────────────────────────────────────┐    │
-│  │ PLAYER • WEAPONS • PICKUPS         │    │
-│  │ 8 ENEMY TYPES • SCORING • LEVELS   │    │
-│  │ WORLD • FEEDBACK                   │    │
-│  └────────────────────────────────────┘    │
-└─────────────────┬───────────────────────────┘
-                  │ Imported by
-         ┌────────┴────────┬────────────┬─────────┐
-         │                 │            │         │
-    ┌────▼────┐    ┌──────▼─────┐ ┌────▼────┐ ┌─▼──────┐
-    │ Player  │    │  Enemies   │ │ Weapons │ │Pickups │
-    │  .ts    │    │  (8 types) │ │  .ts    │ │  .ts   │
-    └─────────┘    └────────────┘ └─────────┘ └────────┘
-         │                 │            │         │
-         └─────────────────┴────────────┴─────────┘
-                           │
-                    ┌──────▼───────┐
-                    │   Game Loop  │
-                    └──────────────┘
+# Deploy to Vercel
+npm install -g vercel
+vercel
 ```
 
-**One file controls everything!**
+**First time deploying?** See [📖 Deployment Guide](#-deployment)
 
-### Documentation
+---
 
-- **`BALANCE_TUNING_GUIDE.md`** - Complete guide to tuning the game
-- **`src/config/balance.config.ts`** - Master config file with comments
+## ✨ Features
 
-### Example: Make Game Easier
+### 🎮 Game Modes
+- **Original Mode**: Classic 30-minute survival arcade
+- **Rogue Mode**: Procedural progression with special abilities
+
+### 🏆 Global Leaderboards
+- Separate top 10 for each game mode
+- Online persistence (Vercel deployment)
+- Real-time competition
+
+### 🎯 Combat & Progression
+- 8 unique enemy types (DataMite, ScanDrone, ChaosWorm, VoidSphere, Crystal Swarm, Fizzer, UFO, Boss)
+- Weapon upgrades and power-ups
+- Arcade-style multiplier system
+- Objective-based level progression
+
+### 🕹️ Full Controller Support
+- Xbox and PlayStation controllers
+- Haptic feedback
+- Menu navigation with gamepad
+- Smooth analog movement
+
+---
+
+## 🎯 Controls
+
+### Keyboard
+| Action | Keys |
+|--------|------|
+| Move | `WASD` or Arrow Keys |
+| Fire | `Space` |
+| Dash | `Shift` |
+| Pause | `Escape` |
+
+### Gamepad (Xbox/PlayStation)
+| Action | Button |
+|--------|--------|
+| Move | Left Stick / D-Pad |
+| Fire | `A` / `X` or Triggers |
+| Dash | `B` / `Circle` or RB |
+| Pause | `Start` |
+
+**All menus** support keyboard, mouse, and gamepad navigation!
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── config/              # ⭐ All gameplay values in balance.config.ts
+├── core/                # Game systems (Game, Managers, State)
+├── entities/            # Player, enemies, pickups
+├── weapons/             # Combat system
+├── graphics/            # Rendering, effects, particles
+├── ui/                  # Screens and HUD
+├── audio/               # Sound system
+├── data/                # High score persistence
+└── utils/               # Helper utilities
+
+api/                     # Serverless functions (Vercel)
+└── highscores.ts        # Global leaderboard API
+```
+
+---
+
+## 🔧 Development
+
+### Game Balance
+
+**All gameplay values in one file**: `src/config/balance.config.ts`
 
 ```typescript
-// In balance.config.ts
+// Easy to tune - just edit and save!
 PLAYER: {
-  BASE_HEALTH: 150,        // Was 100
-  BASE_SPEED: 7.5,         // Was 6.25
-  DASH_COOLDOWN: 2.0,      // Was 3.0
+  BASE_HEALTH: 100,
+  BASE_SPEED: 6.25,
+  DASH_COOLDOWN: 3.0,
 }
 
 WEAPONS: {
-  BASE_DAMAGE: 15,         // Was 10
-  BASE_FIRE_RATE: 0.1,     // Was 0.15 (faster firing)
+  BASE_DAMAGE: 10,
+  BASE_FIRE_RATE: 0.15,
 }
 ```
 
-Save and the game instantly updates!
+**See**: [`BALANCE_TUNING_GUIDE.md`](BALANCE_TUNING_GUIDE.md)
+
+### Adding Game Modes
+
+Want to add a new mode? See [`HOW_TO_ADD_NEW_GAME_MODES.md`](HOW_TO_ADD_NEW_GAME_MODES.md)
+
+### Code Architecture
+
+- **Modular Systems**: Each system has single responsibility
+- **TypeScript**: Full type safety
+- **Spatial Grid**: Optimized O(neighbors) collision detection
+- **Entity Pooling**: Efficient memory management
+- **Centralized Config**: Easy balance tuning
+
+---
+
+## 🌐 Deployment
+
+### Quick Deploy to Vercel
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Deploy
+vercel
+
+# 3. Set environment variable
+# In Vercel Dashboard: Settings → Environment Variables
+# Add: VITE_USE_API_HIGHSCORES = true
+
+# 4. Go to production
+vercel --prod
+```
+
+### Features After Deployment
+
+✅ **Global Leaderboards**: All players see same scores  
+✅ **Automatic Fallback**: Uses localStorage if API fails  
+✅ **Mode Separation**: Original and Rogue have own top 10  
+✅ **Free Hosting**: Vercel free tier is perfect for indie games  
+
+### Storage Options
+
+**Current**: In-memory (resets on deployment) - great for testing  
+**Upgrade**: Vercel KV (permanent storage) - see deployment guide
+
+**See**: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for complete guide
+
+---
+
+## 📚 Documentation
+
+### 🚀 Start Here
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Setup guide for new developers
+- **[README.md](README.md)** - This file - project overview
+
+### 🎮 For Players
+- [`docs/CONTROLS.md`](docs/CONTROLS.md) - Complete controls reference
+- [`docs/HIGH_SCORES.md`](docs/HIGH_SCORES.md) - Leaderboard system guide
+
+### 💻 For Developers
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) - Deploy to Vercel with online scores
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - System architecture and patterns
+- [`BALANCE_TUNING_GUIDE.md`](BALANCE_TUNING_GUIDE.md) - Edit gameplay values
+- [`BALANCE_QUICK_REFERENCE.md`](BALANCE_QUICK_REFERENCE.md) - Quick balance reference
+- [`HOW_TO_ADD_NEW_GAME_MODES.md`](HOW_TO_ADD_NEW_GAME_MODES.md) - Extend the game
+- [`LEVEL_SYSTEM.md`](LEVEL_SYSTEM.md) - Level progression details
+
+### 📝 Reference
+- [`CHANGELOG.md`](CHANGELOG.md) - Version history
+- [`CLAUDE.md`](CLAUDE.md) - AI assistant collaboration notes
+- `src/config/balance.config.ts` - Master config file (commented)
+
+---
+
+## 🛠️ Technologies
+
+| Tech | Purpose |
+|------|---------|
+| **Three.js** | WebGL rendering |
+| **TypeScript** | Type-safe development |
+| **Vite** | Fast dev server & builds |
+| **Vercel** | Serverless deployment |
+| **TWEEN.js** | Smooth animations |
+| **Web Audio API** | Sound system |
+
+---
+
+## 🎨 Recent Updates
+
+### January 2026 - Online Leaderboards 🌐
+- ✅ Global high scores via Vercel API
+- ✅ Separate leaderboards per game mode
+- ✅ Automatic environment detection
+- ✅ Smart localStorage fallback
+
+### January 2026 - Code Cleanup 🧹
+- ✅ Removed ~700 lines of legacy code
+- ✅ Consolidated particle pools
+- ✅ Extracted modular systems
+- ✅ Optimized collision detection
+
+**Full changelog**: See [`CHANGELOG.md`](CHANGELOG.md)
+
+---
+
+## 🤝 Contributing
+
+This is a personal project, but suggestions are welcome!
+
+1. Fork the repo
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+ISC License - see LICENSE file
+
+---
+
+## 🆘 Support
+
+**Issues?** Check the docs first:
+- Build problems → [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+- Balance questions → [`BALANCE_TUNING_GUIDE.md`](BALANCE_TUNING_GUIDE.md)
+- Architecture questions → [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+
+**Still stuck?** Open an issue with:
+- What you tried
+- Error messages
+- Environment (Node version, OS)
+
+---
+
+## 🎯 Development Roadmap
+
+- [ ] Progressive Web App support
+- [ ] More Rogue mode abilities
+- [ ] Social features (share scores)
+- [ ] Achievements system
+- [ ] Mobile controls
+
+---
+
+**Made with ❤️ using Three.js and TypeScript**
+
+**Play Now**: [your-vercel-url.vercel.app](#)

@@ -26,19 +26,19 @@ export class Shield {
   }
 
   private createMesh(): void {
-    // 🛡️ SHIELD - GREEN theme with 'S' letter! 🛡️
+    // 🛡️ SHIELD - RICH EMERALD GREEN with 'S' letter! 🛡️
     // Create base container
     const containerGeometry = new THREE.CircleGeometry(0.125, 8) // Scaled up
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
-    // 💚 GREEN GLOWING BASE 💚
+    // 💚 RICH EMERALD GLOWING BASE 💚
     const glowGeometry = new THREE.CircleGeometry(0.56, 32) // Scaled up
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // GREEN glow
+      color: 0x22DD44, // RICH EMERALD glow
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.7,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     })
@@ -46,22 +46,22 @@ export class Shield {
     glow.position.z = -0.01
     this.mesh.add(glow)
     
-    // 💫 OUTER GLOW RING 💫
+    // 💫 OUTER GLOW RING - BRIGHT EMERALD 💫
     const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32) // Scaled up
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // GREEN
+      color: 0x33FF55, // BRIGHT EMERALD
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     })
     const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial)
     this.mesh.add(outerRing)
     
-    // 🟢 INNER RING 🟢
+    // 🟢 INNER RING - DEEP EMERALD 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32) // Scaled up
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // Green
+      color: 0x22FF44, // DEEP EMERALD
       transparent: true,
       opacity: 0.9,
       blending: THREE.AdditiveBlending,
@@ -77,7 +77,7 @@ export class Shield {
     for (let i = 0; i < 12; i++) {
       const particleGeometry = new THREE.CircleGeometry(0.05, 6) // Scaled up
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00FF00, // GREEN particles
+        color: 0x44FF66, // BRIGHT EMERALD particles
         transparent: true,
         opacity: 0.9,
         blending: THREE.AdditiveBlending

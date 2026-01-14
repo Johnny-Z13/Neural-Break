@@ -1091,19 +1091,24 @@ export class SceneManager {
   // Creates illusion of traveling upward - closer stars move faster!
   // See src/config/modes.config.ts for configuration values
   setStarfieldDownwardFlow(enabled: boolean): void {
-    if (!this.starfieldVelocities || !this.starfieldSpeedLayers) return
+    if (!this.starfieldVelocities || !this.starfieldSpeedLayers) {
+      console.warn('⚠️ Starfield arrays not initialized - cannot set flow mode!')
+      return
+    }
     
     const starCount = this.starfieldVelocities.length / 2
+    
     for (let i = 0; i < starCount; i++) {
       const i2 = i * 2
       const speedLayer = this.starfieldSpeedLayers[i] // 0.2-1.5 depth multiplier
       
       if (enabled) {
         // 🚀 ROGUE MODE: Parallax downward flow!
-        // Base speed: 3-6 units/sec, multiplied by depth layer
+        // Base speed: 5-10 units/sec (INCREASED for more visible scrolling)
+        // Multiplied by depth layer for parallax effect
         // Closer stars (high layer) move MUCH faster than distant stars
-        const baseSpeed = 3.0 + Math.random() * 3.0
-        const parallaxSpeed = baseSpeed * speedLayer  // 0.6 to 9.0 units/sec!
+        const baseSpeed = 5.0 + Math.random() * 5.0  // Increased from 3-6 to 5-10
+        const parallaxSpeed = baseSpeed * speedLayer  // 1.0 to 15.0 units/sec!
         
         // Slight horizontal wobble (more for closer stars)
         this.starfieldVelocities[i2] = (Math.random() - 0.5) * 0.5 * speedLayer
@@ -1116,7 +1121,7 @@ export class SceneManager {
       }
     }
     
-    console.log(`🌌 Starfield flow: ${enabled ? 'ROGUE (parallax downward)' : 'ARCADE (ambient drift)'}`)
+    console.log(`🌌 Starfield: ${enabled ? 'ROGUE MODE (fast parallax downward)' : 'ARCADE MODE (ambient drift)'}`)
   }
 
   // 🎬 DYNAMIC ZOOM SYSTEM - Procedural zoom based on gameplay! 🎬

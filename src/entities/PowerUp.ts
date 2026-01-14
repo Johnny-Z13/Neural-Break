@@ -26,17 +26,17 @@ export class PowerUp {
   }
 
   private createMesh(): void {
-    // 🔷 POWER-UP - Now GREEN theme with 'P' letter! 🔷
+    // 🔷 POWER-UP - RICH EMERALD GREEN with 'P' letter! 🔷
     // Create base container
     const containerGeometry = new THREE.CircleGeometry(0.125, 8) // Scaled up
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
-    // 💚 VIBRANT GREEN GLOWING BASE 💚
+    // 💚 RICH EMERALD GLOWING BASE 💚
     const glowGeometry = new THREE.CircleGeometry(0.56, 32) // Scaled up from 0.45
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00DD44, // VIBRANT MID-DEEP GREEN glow
+      color: 0x22DD44, // RICH EMERALD glow
       transparent: true,
       opacity: 0.8, // More opaque for stronger glow
       blending: THREE.AdditiveBlending,
@@ -46,10 +46,10 @@ export class PowerUp {
     glow.position.z = -0.01
     this.mesh.add(glow)
     
-    // 💫 OUTER GLOW RING - LIGHTER GREEN 💫
+    // 💫 OUTER GLOW RING - BRIGHT EMERALD 💫
     const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32) // Scaled up from 0.5, 0.65
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x44FF66, // LIGHTER GREEN for outer ring
+      color: 0x55FF77, // BRIGHT EMERALD for outer ring
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -58,10 +58,10 @@ export class PowerUp {
     const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial)
     this.mesh.add(outerRing)
     
-    // 🟢 INNER RING - DEEP VIBRANT GREEN 🟢
+    // 🟢 INNER RING - DEEP EMERALD 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32) // Scaled up from 0.35, 0.42
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00EE33, // VIBRANT DEEP GREEN
+      color: 0x22EE44, // DEEP EMERALD
       transparent: true,
       opacity: 0.95,
       blending: THREE.AdditiveBlending,
@@ -73,13 +73,13 @@ export class PowerUp {
     // ✨ 'P' LETTER - WEAPON POWER! ✨
     this.createLetterP()
     
-    // 💫 ENERGY PARTICLES - Lighter green, more special! 💫
+    // 💫 ENERGY PARTICLES - Rich emerald tones! 💫
     for (let i = 0; i < 12; i++) {
       const particleGeometry = new THREE.CircleGeometry(0.06, 8) // Slightly larger, more segments
-      // Alternate between vibrant green and lighter green for variety
+      // Alternate between bright and deep emerald for variety
       const isLighter = i % 2 === 0
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: isLighter ? 0x66FF88 : 0x22EE44, // LIGHTER GREEN & VIBRANT GREEN mix
+        color: isLighter ? 0x77FF99 : 0x33EE55, // LIGHT EMERALD & DEEP EMERALD mix
         transparent: true,
         opacity: 0.85,
         blending: THREE.AdditiveBlending

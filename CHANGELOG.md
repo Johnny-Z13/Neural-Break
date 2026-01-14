@@ -1,0 +1,130 @@
+# Changelog
+
+All notable changes to Neural Break will be documented in this file.
+
+---
+
+## [Unreleased]
+
+### Added
+- Global online leaderboards via Vercel API
+- Separate high score tables for Original and Rogue modes
+- Automatic environment detection (local vs production)
+- Smart fallback to localStorage if API fails
+- Comprehensive deployment documentation
+
+### Changed
+- Updated README with cleaner structure
+- Organized documentation into `/docs` folder
+- Improved high score system architecture
+
+---
+
+## [1.2.0] - 2026-01-14
+
+### Added
+- **Online High Scores**: Global leaderboards via Vercel deployment
+- **Hybrid Storage System**: Automatic API/localStorage detection
+- **Mode-Specific Leaderboards**: Separate top 10 for Original and Rogue
+- **Vercel Deployment**: Serverless API endpoint for scores
+- **Documentation Overhaul**: Clean, organized docs for developers
+
+### Changed
+- High score system now supports both local and online storage
+- Leaderboard screen properly filters by game mode
+- Game over screen displays only current mode's scores
+- Improved error handling and fallbacks
+
+### Fixed
+- Player spawn position adjusted (Y=6 for better visibility)
+- Fixed `rogueLayer` property error in Game.ts
+- Game over screen now shows correct mode's high scores
+
+---
+
+## [1.1.0] - 2026-01-10
+
+### Added
+- **Codebase Optimization**: Removed ~700 lines of legacy code
+- **Consolidated Particle Pools**: Generic `SpecializedParticlePool<T>`
+- **Modular Architecture**: Extracted `CollisionSystem` and `GameStateManager`
+- **Spatial Grid Optimization**: O(neighbors) collision detection
+
+### Changed
+- Throttled dynamic zoom (50ms instead of per-frame)
+- Cleaned EffectsSystem (~300 lines removed)
+- Improved code organization
+
+### Removed
+- 4 orphaned `.bak` files
+- ~300 lines of `_LEGACY` and `_DEPRECATED` methods
+
+---
+
+## [1.0.0] - 2026-01-05
+
+### Added
+- **Rogue Mode**: Procedural progression with special abilities
+- **Centralized Balance System**: All values in `balance.config.ts`
+- **Full Gamepad Support**: Xbox/PlayStation controllers
+- **Haptic Feedback**: Controller vibration
+- **Menu Navigation**: Keyboard and gamepad support everywhere
+- **Two New Enemies**: Fizzer and UFO
+- **Level System**: Objective-based progression
+- **Enhanced Visual Effects**: Staggered explosions, improved particles
+
+### Changed
+- Major code refactoring for maintainability
+- Modularized UI screens
+- Split EffectsSystem into focused modules
+- Improved entity management
+
+### Fixed
+- UFO spawns now use LevelManager properly
+- Power-ups spawn consistently
+- Level transitions clean enemies properly
+- Enemy hit feedback for all types
+
+---
+
+## [0.9.0] - 2025-12-20
+
+### Added
+- **8 Enemy Types**: Complete enemy roster
+- **Boss Encounters**: End-level challenges
+- **Power-Up System**: Weapon upgrades, health, shields, speed
+- **Combo System**: Chain kills for bonuses
+- **Multiplier System**: Maintain streaks for higher scores
+- **High Score System**: LocalStorage persistence
+- **Audio System**: Sound effects and feedback
+
+### Changed
+- Improved collision detection
+- Better particle effects
+- Enhanced visual feedback
+
+---
+
+## [0.5.0] - 2025-12-01
+
+### Added
+- **Core Gameplay**: 30-minute survival mode
+- **Basic Enemies**: DataMite, ScanDrone, ChaosWorm
+- **Player Movement**: Keyboard controls
+- **Weapon System**: Projectile-based combat
+- **Three.js Integration**: WebGL rendering
+- **TypeScript**: Full type safety
+
+---
+
+## Notes
+
+### Version Format
+- Major: Breaking changes or major features
+- Minor: New features, backwards compatible
+- Patch: Bug fixes and small improvements
+
+### Links
+- [GitHub Repository](#)
+- [Live Demo](#)
+- [Documentation](./README.md)

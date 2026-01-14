@@ -27,44 +27,44 @@ export class MedPack {
   }
 
   private createMesh(): void {
-    // 💚 HEALTH PACK - GREEN CROSS ON GREEN GLOW! 💚
+    // 💚 HEALTH PACK - RICH EMERALD GREEN CROSS! 💚
     // Create base container
     const containerGeometry = new THREE.SphereGeometry(0.125, 4, 4) // Scaled up
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
-    // 💚 GREEN GLOWING BASE - Health pickup! 💚
+    // 💚 RICH EMERALD GLOWING BASE - Health pickup! 💚
     // OPTIMIZED: Reduced from 16x16 to 8x8 for performance
     const glowGeometry = new THREE.SphereGeometry(0.5, 8, 8)
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // GREEN glow
+      color: 0x22DD44, // RICH EMERALD GREEN glow
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.6,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending
     })
     this.glowMesh = new THREE.Mesh(glowGeometry, glowMaterial)
     this.mesh.add(this.glowMesh)
     
-    // 💫 ADDITIONAL GREEN AURA - Extra glow layer! 💫
+    // 💫 ADDITIONAL EMERALD AURA - Extra glow layer! 💫
     // OPTIMIZED: Reduced from 16x16 to 8x8 for performance
     const outerGlowGeometry = new THREE.SphereGeometry(0.625, 8, 8)
     const outerGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00,
+      color: 0x33EE55, // BRIGHT EMERALD
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.4,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending
     })
     const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial)
     this.mesh.add(outerGlow)
     
-    // ✨ MAIN CROSS - BRIGHT GREEN medical cross! ✨
-    // Vertical bar - GREEN!
+    // ✨ MAIN CROSS - BRIGHT EMERALD medical cross! ✨
+    // Vertical bar - RICH EMERALD!
     const verticalGeometry = new THREE.BoxGeometry(0.15, 0.56, 0.06) // Scaled up
     const verticalMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // GREEN cross
+      color: 0x22FF44, // RICH EMERALD GREEN cross
       transparent: true,
       opacity: 0.95,
       blending: THREE.AdditiveBlending
@@ -72,10 +72,10 @@ export class MedPack {
     const verticalBar = new THREE.Mesh(verticalGeometry, verticalMaterial)
     this.mesh.add(verticalBar)
     
-    // Horizontal bar - GREEN!
+    // Horizontal bar - RICH EMERALD!
     const horizontalGeometry = new THREE.BoxGeometry(0.56, 0.15, 0.06) // Scaled up
     const horizontalMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // GREEN cross
+      color: 0x22FF44, // RICH EMERALD GREEN cross
       transparent: true,
       opacity: 0.95,
       blending: THREE.AdditiveBlending
@@ -83,10 +83,10 @@ export class MedPack {
     const horizontalBar = new THREE.Mesh(horizontalGeometry, horizontalMaterial)
     this.mesh.add(horizontalBar)
     
-    // 💚 MID-GREEN INNER CROSS - Bright center highlight! 💚
+    // 💚 BRIGHT INNER CROSS - Glowing center highlight! 💚
     const innerVerticalGeometry = new THREE.BoxGeometry(0.075, 0.44, 0.075) // Scaled up
     const innerMaterial = new THREE.MeshBasicMaterial({
-      color: 0x66FF66, // Mid-green inner (not white!)
+      color: 0x77FF99, // LIGHT EMERALD inner
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending
@@ -100,10 +100,10 @@ export class MedPack {
     innerHorizontal.position.z = 0.01
     this.mesh.add(innerHorizontal)
     
-    // 💚 GREEN WIREFRAME OUTLINE 💚
+    // 💚 EMERALD WIREFRAME OUTLINE 💚
     const wireframeGeometry = new THREE.SphereGeometry(0.5, 12, 12) // Scaled up
     const wireframeMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // GREEN wireframe
+      color: 0x33FF55, // EMERALD GREEN wireframe
       wireframe: true,
       transparent: true,
       opacity: 0.9,
@@ -119,7 +119,7 @@ export class MedPack {
     for (let i = 0; i < 10; i++) {
       const particleGeometry = new THREE.SphereGeometry(0.04, 6, 6) // Scaled up
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00FF00, // GREEN particles
+        color: 0x44FF66, // BRIGHT EMERALD particles
         transparent: true,
         opacity: 0.9,
         blending: THREE.AdditiveBlending
@@ -156,12 +156,12 @@ export class MedPack {
     const rotSpeed = this.isMagnetized ? this.rotationSpeed * 3 : this.rotationSpeed
     this.mesh.rotation.z += deltaTime * rotSpeed
 
-    // 💚 ANIMATE GREEN GLOW - Pulsing green aura! 💚
+    // 💚 ANIMATE EMERALD GLOW - Pulsing rich green aura! 💚
     if (this.glowMesh) {
       const glowMaterial = this.glowMesh.material as THREE.MeshBasicMaterial
-      glowMaterial.opacity = 0.4 + Math.sin(this.pulseTime * 6) * 0.3 // Faster for "fizz"
+      glowMaterial.opacity = 0.5 + Math.sin(this.pulseTime * 6) * 0.3 // Faster for "fizz"
       this.glowMesh.scale.setScalar(1 + Math.sin(this.pulseTime * 7) * 0.2)
-      glowMaterial.color.setHex(0x00FF00) // Ensure it stays green
+      glowMaterial.color.setHex(0x22DD44) // Rich emerald green
     }
     
     // Animate outer glow if it exists
@@ -169,10 +169,8 @@ export class MedPack {
       const outerGlow = this.mesh.children[1] as THREE.Mesh
       if (outerGlow && outerGlow !== this.glowMesh) {
         const outerGlowMaterial = outerGlow.material as THREE.MeshBasicMaterial
-        if (outerGlowMaterial.color.getHex() === 0x00FF00) {
-          outerGlowMaterial.opacity = 0.2 + Math.sin(this.pulseTime * 4) * 0.2
-          outerGlow.scale.setScalar(1 + Math.sin(this.pulseTime * 5) * 0.3)
-        }
+        outerGlowMaterial.opacity = 0.3 + Math.sin(this.pulseTime * 4) * 0.2
+        outerGlow.scale.setScalar(1 + Math.sin(this.pulseTime * 5) * 0.3)
       }
     }
     

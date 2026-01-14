@@ -7,8 +7,9 @@ import { HighScoreEntry } from '../core/GameState'
 
 export interface IHighScoreService {
   saveHighScore(entry: HighScoreEntry): Promise<boolean>
-  getHighScores(): Promise<HighScoreEntry[]>
+  getHighScores(gameMode?: string): Promise<HighScoreEntry[]>
   clearAllScores(): Promise<void>
+  getLastPlayerName?(): string
 }
 
 /**
@@ -87,7 +88,7 @@ export class LocalStorageHighScoreService implements IHighScoreService {
     }
   }
 
-  async getHighScores(): Promise<HighScoreEntry[]> {
+  async getHighScores(gameMode?: string): Promise<HighScoreEntry[]> {
     try {
       if (!this.isLocalStorageAvailable()) {
         return []
@@ -101,7 +102,12 @@ export class LocalStorageHighScoreService implements IHighScoreService {
       const parsed = JSON.parse(stored) as HighScoreEntry[]
       
       // Validate all entries
-      const validScores = parsed.filter(entry => this.validateEntry(entry))
+      let validScores = parsed.filter(entry => this.validateEntry(entry))
+      
+      // Filter by game mode if specified
+      if (gameMode) {
+        validScores = validScores.filter(entry => entry.gameMode === gameMode)
+      }
       
       // Re-sort in case of corruption
       validScores.sort((a, b) => {
@@ -245,11 +251,12 @@ export class LocalStorageHighScoreService implements IHighScoreService {
 }
 
 /**
- * API High Score Service (for future backend integration)
- * TODO: Implement when backend is ready
+ * API High Score Service (for Vercel deployment with online persistence)
+ * Uses serverless function at /api/highscores
  */
 export class APIHighScoreService implements IHighScoreService {
   private readonly API_URL = import.meta.env.VITE_API_URL || '/api/highscores'
+  private readonly LAST_NAME_KEY = 'neural_break_last_player_name' // Still store last name locally
 
   async saveHighScore(entry: HighScoreEntry): Promise<boolean> {
     try {
@@ -266,6 +273,18 @@ export class APIHighScoreService implements IHighScoreService {
       }
 
       const result = await response.json()
+      
+      if (result.success) {
+        // 💾 REMEMBER LAST PLAYER NAME locally for convenience! 💾
+        try {
+          localStorage.setItem(this.LAST_NAME_KEY, entry.name)
+        } catch (e) {
+          // Ignore localStorage errors
+        }
+        
+        console.log(`✅ High score saved to online leaderboard: ${entry.name} - ${entry.score}`)
+      }
+      
       return result.success === true
     } catch (error) {
       console.error('❌ Error saving high score to API:', error)
@@ -273,9 +292,14 @@ export class APIHighScoreService implements IHighScoreService {
     }
   }
 
-  async getHighScores(): Promise<HighScoreEntry[]> {
+  async getHighScores(gameMode?: string): Promise<HighScoreEntry[]> {
     try {
-      const response = await fetch(`${this.API_URL}`, {
+      // Build URL with optional game mode filter
+      const url = gameMode 
+        ? `${this.API_URL}?mode=${encodeURIComponent(gameMode)}`
+        : this.API_URL
+        
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -298,11 +322,86 @@ export class APIHighScoreService implements IHighScoreService {
     // Not typically available via API for security
     console.warn('⚠️ clearAllScores not available via API')
   }
+  
+  // 💾 GET LAST PLAYER NAME - From local storage for convenience! 💾
+  getLastPlayerName(): string {
+    try {
+      const lastName = localStorage.getItem(this.LAST_NAME_KEY)
+      return lastName || ''
+    } catch (error) {
+      console.warn('⚠️ Error getting last player name:', error)
+    }
+    return ''
+  }
+}
+
+/**
+ * Hybrid High Score Service
+ * Automatically uses API for online persistence when available,
+ * falls back to localStorage for local development
+ */
+export class HybridHighScoreService implements IHighScoreService {
+  private apiService: APIHighScoreService
+  private localService: LocalStorageHighScoreService
+  private useAPI: boolean
+
+  constructor() {
+    this.apiService = new APIHighScoreService()
+    this.localService = new LocalStorageHighScoreService()
+    this.useAPI = import.meta.env.VITE_USE_API_HIGHSCORES === 'true'
+    
+    if (this.useAPI) {
+      console.log('🌐 Using Online API High Score Service (Vercel deployment)')
+    } else {
+      console.log('💾 Using Local Storage High Score Service (development mode)')
+    }
+  }
+
+  async saveHighScore(entry: HighScoreEntry): Promise<boolean> {
+    if (this.useAPI) {
+      // Try API first, fallback to local storage on failure
+      const success = await this.apiService.saveHighScore(entry)
+      if (!success) {
+        console.warn('⚠️ API save failed, falling back to localStorage')
+        return await this.localService.saveHighScore(entry)
+      }
+      return success
+    } else {
+      return await this.localService.saveHighScore(entry)
+    }
+  }
+
+  async getHighScores(gameMode?: string): Promise<HighScoreEntry[]> {
+    if (this.useAPI) {
+      // Try API first, fallback to local storage on failure
+      const scores = await this.apiService.getHighScores(gameMode)
+      if (scores.length === 0) {
+        console.warn('⚠️ API returned no scores, checking localStorage')
+        return await this.localService.getHighScores()
+      }
+      return scores
+    } else {
+      return await this.localService.getHighScores()
+    }
+  }
+
+  async clearAllScores(): Promise<void> {
+    // Clear both local and API (if implemented)
+    await this.localService.clearAllScores()
+    if (this.useAPI) {
+      await this.apiService.clearAllScores()
+    }
+  }
+  
+  getLastPlayerName(): string {
+    // Always use local storage for last name (convenience feature)
+    return this.localService.getLastPlayerName()
+  }
 }
 
 /**
  * Factory to get the appropriate service
- * Can be configured via environment variable or config
+ * Uses HybridHighScoreService which automatically handles API/localStorage
  */
 export class HighScoreServiceFactory {
   private static instance: IHighScoreService | null = null
@@ -312,17 +411,9 @@ export class HighScoreServiceFactory {
       return this.instance
     }
 
-    // Check if API mode is enabled (use import.meta.env for Vite)
-    const useAPI = import.meta.env.VITE_USE_API_HIGHSCORES === 'true'
+    // Use hybrid service that automatically switches between API and localStorage
+    this.instance = new HybridHighScoreService()
     
-    if (useAPI) {
-      console.log('📡 Using API High Score Service')
-      this.instance = new APIHighScoreService()
-    } else {
-      console.log('💾 Using LocalStorage High Score Service')
-      this.instance = new LocalStorageHighScoreService()
-    }
-
     return this.instance
   }
 
