@@ -58,6 +58,7 @@ export class Game {
   private rogueLayersCompleted: number = 0 // How many layers have been completed (for stats)
   private rogueSelectedSpecialIds: Set<string> = new Set() // Track selected specials to prevent duplicates
   private rogueLayerCompleting: boolean = false // Guard against multiple layer completion calls
+  private rogueChoiceScreenTimeoutId: ReturnType<typeof setTimeout> | null = null // Track setTimeout to cancel stale callbacks
   private rogueVerticalPosition: number = 0 // Current vertical ascent position
   private rogueScrollSpeed: number = 3.0 // Units per second - continuous upward flow
   private rogueWormholeExit: WormholeExit | null = null // End-of-layer portal
@@ -511,6 +512,11 @@ export class Game {
     this.levelManager.setRogueLayer(1) // Initialize layer tracking in LevelManager
     this.rogueLayersCompleted = 0
     this.rogueLayerCompleting = false // Reset layer completion flag
+    // Cancel any pending choice screen timeout from previous run
+    if (this.rogueChoiceScreenTimeoutId !== null) {
+      clearTimeout(this.rogueChoiceScreenTimeoutId)
+      this.rogueChoiceScreenTimeoutId = null
+    }
     this.rogueSelectedSpecialIds.clear() // Reset selected specials for new run
     this.rogueVerticalPosition = 0
     if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (ROGUE MODE):', this.gameState)
@@ -1084,8 +1090,16 @@ export class Game {
     // Clear all enemies with staggered death animations
     this.clearAllEnemies()
     
+    // Cancel any existing timeout (prevents stale callbacks)
+    if (this.rogueChoiceScreenTimeoutId !== null) {
+      clearTimeout(this.rogueChoiceScreenTimeoutId)
+      this.rogueChoiceScreenTimeoutId = null
+    }
+    
     // Wait for enemy death animations to complete, then show choice screen
-    setTimeout(() => {
+    // Store the timeout ID so we can cancel it if needed
+    this.rogueChoiceScreenTimeoutId = setTimeout(() => {
+      this.rogueChoiceScreenTimeoutId = null // Clear reference
       this.showRogueChoiceScreen()
     }, 2000) // 2 seconds for staggered deaths to play out
   }
@@ -1171,6 +1185,11 @@ export class Game {
     this.levelManager.setRogueLayer(1)
     this.rogueLayersCompleted = 0
     this.rogueLayerCompleting = false
+    // Cancel any pending choice screen timeout
+    if (this.rogueChoiceScreenTimeoutId !== null) {
+      clearTimeout(this.rogueChoiceScreenTimeoutId)
+      this.rogueChoiceScreenTimeoutId = null
+    }
     this.rogueSelectedSpecialIds.clear()
     this.rogueVerticalPosition = 0
     
@@ -1407,8 +1426,10 @@ export class Game {
     
     // 🎯 CHECK FOR OBJECTIVE COMPLETION (Mode-specific)
     // Some modes (like ROGUE) don't use objectives - they have their own progression
-    if (this.gameModeManager.usesObjectiveSystem() && this.levelManager.checkObjectivesComplete()) {
+    const usesObjectives = this.gameModeManager.usesObjectiveSystem()
+    if (usesObjectives && this.levelManager.checkObjectivesComplete()) {
       // Objectives complete! Start level transition
+      if (DEBUG_MODE) console.log('🎯 OBJECTIVE COMPLETION TRIGGERED! usesObjectives:', usesObjectives, 'mode:', this.gameMode)
       this.startLevelTransition()
     }
     
@@ -2133,6 +2154,18 @@ export class Game {
       return
     }
     
+    // Guard against stale setTimeout callbacks - if we've already started next layer, don't show screen
+    if (this.gameState === GameStateType.PLAYING && this.isRunning) {
+      if (DEBUG_MODE) console.log('⚠️ Game already playing, ignoring stale showRogueChoiceScreen call')
+      return
+    }
+    
+    // Guard against showing screen if layer isn't completing
+    if (!this.rogueLayerCompleting) {
+      if (DEBUG_MODE) console.log('⚠️ Layer not completing, ignoring showRogueChoiceScreen call')
+      return
+    }
+    
     if (DEBUG_MODE) console.log('🎲 Layer complete! Showing Rogue choice screen...')
     
     // Pause game loop
@@ -2216,6 +2249,13 @@ export class Game {
   
   // 🎲 ROGUE MODE: Continue to next layer after choice 🎲
   private continueRogueLayer(): void {
+    // Cancel any pending choice screen timeout (prevents stale callbacks)
+    if (this.rogueChoiceScreenTimeoutId !== null) {
+      clearTimeout(this.rogueChoiceScreenTimeoutId)
+      this.rogueChoiceScreenTimeoutId = null
+      if (DEBUG_MODE) console.log('⏱️ Cancelled pending choice screen timeout')
+    }
+    
     // Remove choice screen
     const choiceScreen = document.getElementById('rogueChoiceScreen')
     if (choiceScreen) {
