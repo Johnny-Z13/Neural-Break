@@ -57,6 +57,7 @@ export class Game {
   // 🎲 ROGUE MODE STATE 🎲
   private rogueLayersCompleted: number = 0 // How many layers have been completed (for stats)
   private rogueSelectedSpecialIds: Set<string> = new Set() // Track selected specials to prevent duplicates
+  private rogueLayerCompleting: boolean = false // Guard against multiple layer completion calls
   private rogueVerticalPosition: number = 0 // Current vertical ascent position
   private rogueScrollSpeed: number = 3.0 // Units per second - continuous upward flow
   private rogueWormholeExit: WormholeExit | null = null // End-of-layer portal
@@ -509,6 +510,7 @@ export class Game {
     this.isTestMode = false
     this.levelManager.setRogueLayer(1) // Initialize layer tracking in LevelManager
     this.rogueLayersCompleted = 0
+    this.rogueLayerCompleting = false // Reset layer completion flag
     this.rogueSelectedSpecialIds.clear() // Reset selected specials for new run
     this.rogueVerticalPosition = 0
     if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (ROGUE MODE):', this.gameState)
@@ -958,6 +960,7 @@ export class Game {
   private spawnRogueWormholeExit(): void {
     // Clean up existing wormhole
     if (this.rogueWormholeExit) {
+      if (DEBUG_MODE) console.log(`🌀 Cleaning up old wormhole at Y=${this.rogueWormholeExit.getPosition().y.toFixed(2)}`)
       this.sceneManager.removeFromScene(this.rogueWormholeExit.getMesh())
       this.rogueWormholeExit.destroy()
       this.rogueWormholeExit = null
@@ -971,16 +974,27 @@ export class Game {
     this.sceneManager.addToScene(this.rogueWormholeExit.getMesh())
 
     if (DEBUG_MODE) {
-      console.log(`🌀 Wormhole exit spawned at Y=${wormholeY} (Player at Y=${playerPos.y}, Distance=${this.rogueExitDistance})`)
+      console.log(`🌀 NEW wormhole spawned at Y=${wormholeY.toFixed(2)} (Player at Y=${playerPos.y.toFixed(2)}, Distance=${this.rogueExitDistance})`)
+      console.log(`   For Layer: ${this.levelManager.getRogueLayer()}`)
     }
   }
 
   private checkRogueWormholeCollision(): void {
     if (!this.rogueWormholeExit || !this.player || this.isWormholeEntryAnimating) return
+    
+    // Extra guard: don't check collision if layer is completing
+    if (this.rogueLayerCompleting) return
 
     const playerPos = this.player.getPosition()
+    const wormholePos = this.rogueWormholeExit.getPosition()
+    
     if (this.rogueWormholeExit.containsPoint(playerPos)) {
-      if (DEBUG_MODE) console.log('🌀 Player entered wormhole! Starting entry animation...')
+      if (DEBUG_MODE) {
+        console.log('🌀 Player entered wormhole! Starting entry animation...')
+        console.log(`   Player Y: ${playerPos.y.toFixed(2)}, Wormhole Y: ${wormholePos.y.toFixed(2)}`)
+        console.log(`   Distance: ${(wormholePos.y - playerPos.y).toFixed(2)}`)
+        console.log(`   Current Layer: ${this.levelManager.getRogueLayer()}`)
+      }
       this.startWormholeEntryAnimation()
     }
   }
@@ -1034,7 +1048,12 @@ export class Game {
   }
 
   private completeRogueLayer(): void {
-    // Guard against multiple calls (wormhole collision might trigger multiple times)
+    // Guard against multiple calls
+    if (this.rogueLayerCompleting) {
+      if (DEBUG_MODE) console.log('⚠️ Layer completion already in progress, ignoring')
+      return
+    }
+    
     if (this.isWormholeEntryAnimating) {
       if (DEBUG_MODE) console.log('⚠️ Wormhole animation still playing, ignoring')
       return
@@ -1045,6 +1064,9 @@ export class Game {
       if (DEBUG_MODE) console.log('⚠️ Choice screen already exists, ignoring duplicate call')
       return
     }
+    
+    // Mark layer as completing
+    this.rogueLayerCompleting = true
     
     // Increment layers completed counter
     this.rogueLayersCompleted++
@@ -1147,6 +1169,7 @@ export class Game {
     this.gameModeManager.setMode(GameMode.ORIGINAL)
     this.levelManager.setRogueLayer(1)
     this.rogueLayersCompleted = 0
+    this.rogueLayerCompleting = false
     this.rogueSelectedSpecialIds.clear()
     this.rogueVerticalPosition = 0
     
@@ -2251,7 +2274,8 @@ export class Game {
     // 🌀 Reset wormhole animation state 🌀
     this.isWormholeEntryAnimating = false
     this.wormholeEntryTime = 0
-    if (DEBUG_MODE) console.log('✅ Wormhole animation state reset')
+    this.rogueLayerCompleting = false  // Reset layer completion flag
+    if (DEBUG_MODE) console.log('✅ Wormhole animation state reset, layer completion flag reset')
     
     // 🌀 Spawn new wormhole exit for next layer 🌀
     this.spawnRogueWormholeExit()
