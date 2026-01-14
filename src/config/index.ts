@@ -3,7 +3,7 @@
  * All game configuration constants and flags
  */
 
-export const DEBUG_MODE = true // TEMPORARILY ENABLED FOR DEBUGGING
+export const DEBUG_MODE = false
 
 // Re-export all config modules
 export * from './game.config'
