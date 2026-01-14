@@ -64,6 +64,7 @@ export class Game {
   private rogueWormholeExit: WormholeExit | null = null // End-of-layer portal
   private rogueExitDistance: number = 180 // Distance to exit (60 seconds @ 3.0 speed)
   private rogueSideBarriers: RogueSideBarriers | null = null // Left/right boundaries
+  private rogueCollisionCooldown: number = 0 // 🐛 FIX: Frame delay to prevent immediate collision after layer reset
   
   // 🌀 WORMHOLE ENTRY ANIMATION STATE 🌀
   private isWormholeEntryAnimating: boolean = false
@@ -512,6 +513,7 @@ export class Game {
     this.levelManager.setRogueLayer(1) // Initialize layer tracking in LevelManager
     this.rogueLayersCompleted = 0
     this.rogueLayerCompleting = false // Reset layer completion flag
+    this.rogueCollisionCooldown = 0.5 // 🐛 FIX: Initial collision cooldown to prevent premature detection
     // Cancel any pending choice screen timeout from previous run
     if (this.rogueChoiceScreenTimeoutId !== null) {
       clearTimeout(this.rogueChoiceScreenTimeoutId)
@@ -965,9 +967,9 @@ export class Game {
 
   // 🌀 ROGUE MODE: Wormhole Exit Management 🌀
   private spawnRogueWormholeExit(): void {
-    // Clean up existing wormhole
+    // Clean up existing wormhole (if any - may have been cleaned up already)
     if (this.rogueWormholeExit) {
-      if (DEBUG_MODE) console.log(`🌀 Cleaning up old wormhole at Y=${this.rogueWormholeExit.getPosition().y.toFixed(2)}`)
+      if (DEBUG_MODE) console.log(`🌀 Cleaning up existing wormhole at Y=${this.rogueWormholeExit.getPosition().y.toFixed(2)}`)
       this.sceneManager.removeFromScene(this.rogueWormholeExit.getMesh())
       this.rogueWormholeExit.destroy()
       this.rogueWormholeExit = null
@@ -976,12 +978,19 @@ export class Game {
     // Create new wormhole at exit distance above player
     this.rogueWormholeExit = new WormholeExit()
     const playerPos = this.player.getPosition()
+    
+    // 🐛 DEBUG: Log the player position we're using for wormhole placement
+    if (DEBUG_MODE) {
+      console.log(`📍 spawnRogueWormholeExit() using player position: X=${playerPos.x.toFixed(2)}, Y=${playerPos.y.toFixed(2)}`)
+    }
+    
     const wormholeY = playerPos.y + this.rogueExitDistance
-    this.rogueWormholeExit.setPosition(playerPos.x, wormholeY, 0)
+    this.rogueWormholeExit.setPosition(0, wormholeY, 0) // 🐛 FIX: Always center wormhole at X=0
     this.sceneManager.addToScene(this.rogueWormholeExit.getMesh())
 
     if (DEBUG_MODE) {
       console.log(`🌀 NEW wormhole spawned at Y=${wormholeY.toFixed(2)} (Player at Y=${playerPos.y.toFixed(2)}, Distance=${this.rogueExitDistance})`)
+      console.log(`   Expected travel distance: ${this.rogueExitDistance} units`)
       console.log(`   For Layer: ${this.levelManager.getRogueLayer()}`)
     }
   }
@@ -991,9 +1000,20 @@ export class Game {
     
     // Extra guard: don't check collision if layer is completing
     if (this.rogueLayerCompleting) return
+    
+    // 🐛 FIX: Skip collision check during cooldown period after layer reset
+    if (this.rogueCollisionCooldown > 0) {
+      if (DEBUG_MODE) console.log(`⏳ Collision check skipped (cooldown: ${this.rogueCollisionCooldown.toFixed(2)}s)`)
+      return
+    }
 
     const playerPos = this.player.getPosition()
     const wormholePos = this.rogueWormholeExit.getPosition()
+    
+    // 🐛 DEBUG: Log positions on every check to catch issues
+    if (DEBUG_MODE && Math.random() < 0.01) { // Log occasionally
+      console.log(`📍 Collision check: Player Y=${playerPos.y.toFixed(2)}, Wormhole Y=${wormholePos.y.toFixed(2)}, Distance=${(wormholePos.y - playerPos.y).toFixed(2)}`)
+    }
     
     if (this.rogueWormholeExit.containsPoint(playerPos)) {
       if (DEBUG_MODE) {
@@ -1031,11 +1051,11 @@ export class Game {
     const wormholePos = this.rogueWormholeExit.getPosition()
     
     // Move player toward wormhole center
+    // 🐛 FIX: Use setPosition() to update BOTH internal position AND mesh position
     if (this.wormholeEntryStartPos) {
-      const currentPos = this.player.getPosition()
-      currentPos.x = THREE.MathUtils.lerp(this.wormholeEntryStartPos.x, wormholePos.x, easeProgress)
-      currentPos.y = THREE.MathUtils.lerp(this.wormholeEntryStartPos.y, wormholePos.y, easeProgress)
-      this.player.getMesh().position.copy(currentPos)
+      const newX = THREE.MathUtils.lerp(this.wormholeEntryStartPos.x, wormholePos.x, easeProgress)
+      const newY = THREE.MathUtils.lerp(this.wormholeEntryStartPos.y, wormholePos.y, easeProgress)
+      this.player.setPosition(newX, newY, 0)
     }
     
     // Rotate player (spiral effect)
@@ -1077,6 +1097,12 @@ export class Game {
     
     // Increment layers completed counter
     this.rogueLayersCompleted++
+    
+    // 🚀 HIDE PLAYER - They've entered the wormhole, don't show until next layer
+    if (this.player) {
+      this.player.getMesh().visible = false
+      if (DEBUG_MODE) console.log('👻 Player hidden after entering wormhole')
+    }
     
     // Trigger staggered enemy destruction, THEN show choice screen
     if (DEBUG_MODE) {
@@ -1185,6 +1211,7 @@ export class Game {
     this.levelManager.setRogueLayer(1)
     this.rogueLayersCompleted = 0
     this.rogueLayerCompleting = false
+    this.rogueCollisionCooldown = 0 // 🐛 FIX: Reset collision cooldown
     // Cancel any pending choice screen timeout
     if (this.rogueChoiceScreenTimeoutId !== null) {
       clearTimeout(this.rogueChoiceScreenTimeoutId)
@@ -1359,6 +1386,11 @@ export class Game {
       const scrollSpeed = this.gameModeManager.getScrollSpeed()
       const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
       
+      // 🐛 FIX: Decrement collision cooldown
+      if (this.rogueCollisionCooldown > 0) {
+        this.rogueCollisionCooldown -= deltaTime
+      }
+      
       // Increment vertical position (ascent)
       this.rogueVerticalPosition += scrollSpeed * deltaTime
       
@@ -1384,8 +1416,9 @@ export class Game {
       const playerY = playerPos.y
       if (playerY < visibleBottom) {
         // Soft push upward - player can still move freely but gets nudged
+        // 🐛 FIX: Use setPosition() to update BOTH internal position AND mesh
         const pushAmount = (visibleBottom - playerY) * 0.15
-        this.player.getMesh().position.y = playerY + pushAmount
+        this.player.setPosition(playerPos.x, playerY + pushAmount, 0)
       }
       
       // 🌀 Update wormhole exit animation and check collision 🌀
@@ -2282,19 +2315,44 @@ export class Game {
       effectsSystem.cleanup()
     }
     
+    // 🐛 FIX: DESTROY OLD WORMHOLE FIRST before resetting player position!
+    // This prevents any collision issues with the old wormhole
+    if (this.rogueWormholeExit) {
+      if (DEBUG_MODE) console.log(`🗑️ Destroying old wormhole at Y=${this.rogueWormholeExit.getPosition().y.toFixed(2)}`)
+      this.sceneManager.removeFromScene(this.rogueWormholeExit.getMesh())
+      this.rogueWormholeExit.destroy()
+      this.rogueWormholeExit = null
+    }
+    
+    // 🌀 Reset wormhole animation state BEFORE resetting player 🌀
+    this.isWormholeEntryAnimating = false
+    this.wormholeEntryTime = 0
+    this.rogueLayerCompleting = false  // Reset layer completion flag
+    if (DEBUG_MODE) console.log('✅ Wormhole destroyed and animation state reset')
+    
+    // 🐛 FIX: Set collision cooldown BEFORE spawning new wormhole
+    // This gives the player time before collision checks begin
+    this.rogueCollisionCooldown = 1.0  // Increased to 1 second for safety
+    if (DEBUG_MODE) console.log('⏳ Collision cooldown set to 1.0 seconds')
+    
     // 🌀 Reset player appearance and position 🌀
     if (this.player) {
+      // Reset visual state
       this.player.getMesh().scale.set(1, 1, 1)
       this.player.getMesh().rotation.z = 0
       
       // Reset player position to bottom of screen for new layer
       // CRITICAL: Use setPosition() to update BOTH internal position AND mesh!
       const initialPlayerY = 2  // Same as initial spawn position
-      const playerX = this.player.getPosition().x // Keep horizontal position
+      const playerX = 0 // Reset X position to center
       
-      if (DEBUG_MODE) console.log(`🔄 Resetting player position from Y=${this.player.getPosition().y.toFixed(2)} to Y=${initialPlayerY}`)
+      if (DEBUG_MODE) console.log(`🔄 Resetting player position from Y=${this.player.getPosition().y.toFixed(2)} to Y=${initialPlayerY}, X=${playerX}`)
       this.player.setPosition(playerX, initialPlayerY, 0)
-      if (DEBUG_MODE) console.log(`✅ Player internal position now: Y=${this.player.getPosition().y.toFixed(2)}`)
+      if (DEBUG_MODE) console.log(`✅ Player position after setPosition(): X=${this.player.getPosition().x.toFixed(2)}, Y=${this.player.getPosition().y.toFixed(2)}`)
+      
+      // 🚀 SHOW PLAYER - They've selected their special, spawn them at start position!
+      this.player.getMesh().visible = true
+      if (DEBUG_MODE) console.log('👤 Player visible again at start position')
       
       // Reset vertical scroll position for new layer
       this.rogueVerticalPosition = initialPlayerY
@@ -2309,25 +2367,39 @@ export class Game {
       camera.position.set(playerX, cameraTargetY, 10)
       camera.lookAt(playerX, cameraTargetY, 0)
       
-      if (DEBUG_MODE) console.log(`✅ Player reset to position Y=${initialPlayerY}, Camera at Y=${cameraTargetY}`)
+      if (DEBUG_MODE) console.log(`✅ Camera reset to Y=${cameraTargetY}`)
     }
     
-    // 🌀 Reset wormhole animation state 🌀
-    this.isWormholeEntryAnimating = false
-    this.wormholeEntryTime = 0
-    this.rogueLayerCompleting = false  // Reset layer completion flag
-    if (DEBUG_MODE) console.log('✅ Wormhole animation state reset, layer completion flag reset')
-    
-    // 🌀 Spawn new wormhole exit for next layer 🌀
+    // 🌀 NOW spawn new wormhole exit for next layer (after player is in position) 🌀
     this.spawnRogueWormholeExit()
     if (DEBUG_MODE) console.log(`🌀 New wormhole spawned for layer ${this.levelManager.getRogueLayer()}`)
+    
+    // 🐛 FIX: Verify positions are correct before resuming
+    if (DEBUG_MODE) {
+      const verifyPlayerPos = this.player.getPosition()
+      const verifyWormholePos = this.rogueWormholeExit?.getPosition()
+      console.log('═════════════════════════════════════')
+      console.log('📍 POSITION VERIFICATION:')
+      console.log(`   Player: Y=${verifyPlayerPos.y.toFixed(2)}`)
+      console.log(`   Wormhole: Y=${verifyWormholePos?.y.toFixed(2) || 'N/A'}`)
+      console.log(`   Distance: ${((verifyWormholePos?.y || 0) - verifyPlayerPos.y).toFixed(2)}`)
+      console.log('═════════════════════════════════════')
+    }
     
     // Resume enemy spawning
     this.enemyManager.resumeSpawning()
     
-    // Return to playing state and resume game loop
+    // Return to playing state and restart game loop
     this.gameState = GameStateType.PLAYING
-    this.isRunning = true  // Resume without restarting the entire loop
+    
+    // 🐛 FIX: Properly restart the game loop instead of just setting the flag
+    // The loop may have stopped when isRunning was set to false in showRogueChoiceScreen()
+    if (!this.isRunning) {
+      if (DEBUG_MODE) console.log('🔄 Game loop was stopped - restarting via start()')
+      this.start()
+    } else {
+      if (DEBUG_MODE) console.log('✅ Game loop still running - continuing')
+    }
     
     if (DEBUG_MODE) console.log('✅ Game resumed - Layer started')
   }
