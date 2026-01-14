@@ -7,10 +7,20 @@ import { StarfieldManager } from '../../graphics/StarfieldManager'
  * 80s Arcade / Cyberpunk Aesthetic
  * Uses unified design system CSS variables
  * Features enlarged, legible stats display
+ * 
+ * 🎮 Supports keyboard and gamepad navigation!
  */
 export class GameOverScreen {
+  private static selectedButtonIndex: number = 0
+  private static keyboardListener: ((e: KeyboardEvent) => void) | null = null
+  private static gamepadInterval: number | null = null
+  private static lastGamepadInput: number = 0
+  private static inputCooldown: number = 200 // ms
+  private static gamepadDeadzone: number = 0.5
+
   static async create(
     stats: GameStats,
+    gameMode: import('../core/GameState').GameMode,
     audioManager: AudioManager | null,
     onRestart: () => void
   ): Promise<HTMLElement> {
@@ -18,7 +28,7 @@ export class GameOverScreen {
     StarfieldManager.getInstance().start()
     
     const finalScore = ScoreManager.calculateScore(stats)
-    const isNewHighScore = await ScoreManager.isHighScore(finalScore)
+    const isNewHighScore = await ScoreManager.isHighScore(finalScore, gameMode)
     
     const gameOverScreen = document.createElement('div')
     gameOverScreen.id = 'gameOverScreen'
@@ -375,7 +385,8 @@ export class GameOverScreen {
           survivedTime: stats.survivedTime,
           level: stats.level,
           date: date,
-          location: location
+          location: location,
+          gameMode: gameMode
         }
         
         nameInput.disabled = true
@@ -471,7 +482,131 @@ export class GameOverScreen {
       onRestart()
     })
 
+    // 🎮 KEYBOARD & GAMEPAD NAVIGATION
+    // Collect all interactive buttons (excluding Save button and name input)
+    const saveButton = gameOverScreen.querySelector('#saveButton') as HTMLButtonElement | null
+    const buttons: HTMLButtonElement[] = []
+    
+    // Add Save button if it exists (high score entry)
+    if (saveButton && isNewHighScore) {
+      buttons.push(saveButton)
+    }
+    
+    // Always add Restart button
+    buttons.push(restartButton)
+    
+    // Initialize selection
+    GameOverScreen.selectedButtonIndex = 0
+    GameOverScreen.updateButtonSelection(buttons, audioManager, true)
+    
+    // Mouse hover updates selection
+    buttons.forEach((btn, idx) => {
+      btn.addEventListener('mouseenter', () => {
+        GameOverScreen.selectedButtonIndex = idx
+        GameOverScreen.updateButtonSelection(buttons, audioManager)
+      })
+    })
+
+    // 🎮 KEYBOARD NAVIGATION
+    GameOverScreen.keyboardListener = (e: KeyboardEvent) => {
+      const key = e.code.toLowerCase()
+      const nameInput = gameOverScreen.querySelector('#nameInput') as HTMLInputElement | null
+      
+      // If name input is focused, don't intercept navigation keys
+      if (nameInput && document.activeElement === nameInput) {
+        if (key === 'enter') {
+          e.preventDefault()
+          if (saveButton && !saveButton.disabled) {
+            saveButton.click()
+          }
+        }
+        return
+      }
+      
+      // Navigate left/right or up/down
+      if (key === 'arrowleft' || key === 'keya' || key === 'arrowup' || key === 'keyw') {
+        e.preventDefault()
+        GameOverScreen.selectedButtonIndex = Math.max(0, GameOverScreen.selectedButtonIndex - 1)
+        GameOverScreen.updateButtonSelection(buttons, audioManager)
+      } else if (key === 'arrowright' || key === 'keyd' || key === 'arrowdown' || key === 'keys') {
+        e.preventDefault()
+        GameOverScreen.selectedButtonIndex = Math.min(buttons.length - 1, GameOverScreen.selectedButtonIndex + 1)
+        GameOverScreen.updateButtonSelection(buttons, audioManager)
+      }
+      // Activate selected button
+      else if (key === 'space' || key === 'enter') {
+        e.preventDefault()
+        const selectedButton = buttons[GameOverScreen.selectedButtonIndex]
+        if (selectedButton && !selectedButton.disabled) {
+          if (audioManager) audioManager.playButtonPressSound()
+          selectedButton.click()
+        }
+      }
+    }
+    
+    document.addEventListener('keydown', GameOverScreen.keyboardListener)
+
+    // 🎮 GAMEPAD NAVIGATION
+    GameOverScreen.gamepadInterval = window.setInterval(() => {
+      const gamepads = navigator.getGamepads()
+      const gamepad = gamepads[0]
+      
+      if (!gamepad) return
+      
+      const now = Date.now()
+      if (now - GameOverScreen.lastGamepadInput < GameOverScreen.inputCooldown) return
+      
+      // D-pad or left stick navigation
+      const dpadLeft = gamepad.buttons[14]?.pressed
+      const dpadRight = gamepad.buttons[15]?.pressed
+      const dpadUp = gamepad.buttons[12]?.pressed
+      const dpadDown = gamepad.buttons[13]?.pressed
+      const leftStickX = gamepad.axes[0] || 0
+      const leftStickY = gamepad.axes[1] || 0
+      
+      if (dpadLeft || dpadUp || leftStickX < -GameOverScreen.gamepadDeadzone || leftStickY < -GameOverScreen.gamepadDeadzone) {
+        GameOverScreen.selectedButtonIndex = Math.max(0, GameOverScreen.selectedButtonIndex - 1)
+        GameOverScreen.updateButtonSelection(buttons, audioManager)
+        GameOverScreen.lastGamepadInput = now
+      } else if (dpadRight || dpadDown || leftStickX > GameOverScreen.gamepadDeadzone || leftStickY > GameOverScreen.gamepadDeadzone) {
+        GameOverScreen.selectedButtonIndex = Math.min(buttons.length - 1, GameOverScreen.selectedButtonIndex + 1)
+        GameOverScreen.updateButtonSelection(buttons, audioManager)
+        GameOverScreen.lastGamepadInput = now
+      }
+      
+      // A button to activate
+      const aButton = gamepad.buttons[0]?.pressed
+      if (aButton) {
+        const selectedButton = buttons[GameOverScreen.selectedButtonIndex]
+        if (selectedButton && !selectedButton.disabled) {
+          if (audioManager) audioManager.playButtonPressSound()
+          selectedButton.click()
+        }
+        GameOverScreen.lastGamepadInput = now
+      }
+    }, 50)
+
     return gameOverScreen
+  }
+
+  // 🎮 Update visual selection state of buttons
+  private static updateButtonSelection(
+    buttons: HTMLButtonElement[], 
+    audioManager: AudioManager | null,
+    silent: boolean = false
+  ): void {
+    buttons.forEach((btn, idx) => {
+      if (idx === GameOverScreen.selectedButtonIndex) {
+        btn.style.transform = 'scale(1.08)'
+        btn.style.filter = 'brightness(1.3)'
+        btn.style.boxShadow = '0 0 30px currentColor, 0 0 60px currentColor, var(--shadow-pixel, 4px 4px 0) currentColor'
+        if (!silent && audioManager) audioManager.playButtonHoverSound()
+      } else {
+        btn.style.transform = 'scale(1)'
+        btn.style.filter = 'brightness(1)'
+        btn.style.boxShadow = '0 0 20px currentColor, var(--shadow-pixel, 4px 4px 0) currentColor'
+      }
+    })
   }
 
   private static createStatRow(label: string, value: string, labelColor: string, valueColor: string, highlight: boolean = false): string {
@@ -561,5 +696,21 @@ export class GameOverScreen {
     if (styleEl) {
       styleEl.remove()
     }
+    
+    // Clean up keyboard listener
+    if (GameOverScreen.keyboardListener) {
+      document.removeEventListener('keydown', GameOverScreen.keyboardListener)
+      GameOverScreen.keyboardListener = null
+    }
+    
+    // Clean up gamepad polling
+    if (GameOverScreen.gamepadInterval !== null) {
+      clearInterval(GameOverScreen.gamepadInterval)
+      GameOverScreen.gamepadInterval = null
+    }
+    
+    // Reset state
+    GameOverScreen.selectedButtonIndex = 0
+    GameOverScreen.lastGamepadInput = 0
   }
 }

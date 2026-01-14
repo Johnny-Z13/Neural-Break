@@ -55,14 +55,16 @@ export class Game {
   private isPaused: boolean = false
   
   // 🎲 ROGUE MODE STATE 🎲
-  private rogueCurrentLayer: number = 1 // What layer player is currently ON
-  private rogueLayersCompleted: number = 0 // How many layers have been completed
+  private rogueLayersCompleted: number = 0 // How many layers have been completed (for stats)
   private rogueSelectedSpecialIds: Set<string> = new Set() // Track selected specials to prevent duplicates
+  private rogueLayerCompleting: boolean = false // Guard against multiple layer completion calls
+  private rogueChoiceScreenTimeoutId: ReturnType<typeof setTimeout> | null = null // Track setTimeout to cancel stale callbacks
   private rogueVerticalPosition: number = 0 // Current vertical ascent position
   private rogueScrollSpeed: number = 3.0 // Units per second - continuous upward flow
   private rogueWormholeExit: WormholeExit | null = null // End-of-layer portal
   private rogueExitDistance: number = 180 // Distance to exit (60 seconds @ 3.0 speed)
   private rogueSideBarriers: RogueSideBarriers | null = null // Left/right boundaries
+  private rogueCollisionCooldown: number = 0 // 🐛 FIX: Frame delay to prevent immediate collision after layer reset
   
   // 🌀 WORMHOLE ENTRY ANIMATION STATE 🌀
   private isWormholeEntryAnimating: boolean = false
@@ -508,12 +510,19 @@ export class Game {
     this.gameMode = GameMode.ROGUE
     this.gameModeManager.setMode(GameMode.ROGUE) // Update mode manager
     this.isTestMode = false
-    this.rogueCurrentLayer = 1
+    this.levelManager.setRogueLayer(1) // Initialize layer tracking in LevelManager
     this.rogueLayersCompleted = 0
+    this.rogueLayerCompleting = false // Reset layer completion flag
+    this.rogueCollisionCooldown = 0.5 // 🐛 FIX: Initial collision cooldown to prevent premature detection
+    // Cancel any pending choice screen timeout from previous run
+    if (this.rogueChoiceScreenTimeoutId !== null) {
+      clearTimeout(this.rogueChoiceScreenTimeoutId)
+      this.rogueChoiceScreenTimeoutId = null
+    }
     this.rogueSelectedSpecialIds.clear() // Reset selected specials for new run
     this.rogueVerticalPosition = 0
     if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (ROGUE MODE):', this.gameState)
-    if (DEBUG_MODE) console.log(`🎲 Starting Rogue run at Layer ${this.rogueCurrentLayer}`)
+    if (DEBUG_MODE) console.log(`🎲 Starting Rogue run at Layer ${this.levelManager.getRogueLayer()}`)
     
     // 🎮 Apply mode-specific settings from GameModeManager
     const config = this.gameModeManager.getConfig()
@@ -606,19 +615,25 @@ export class Game {
     }
     
     // Set camera to follow player with vertical offset (bullet hell style - player at bottom)
-    const playerPos = this.player.getPosition()
     const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
     if (DEBUG_MODE) console.log('📷 Setting camera with offset:', cameraOffset)
     
+    // Position player at bottom of screen for Rogue mode
+    // With frustumSize=30 and offset=12, player positioned to see engine trails and allow upward movement
+    // CRITICAL: Use setPosition() to update BOTH internal position AND mesh!
+    const initialPlayerY = 2  // Position higher up - more visible with engine trails below
+    const playerX = this.player.getPosition().x
+    this.player.setPosition(playerX, initialPlayerY, 0)
+    
     // Camera target is above the player by the offset amount
-    const cameraTargetY = playerPos.y + cameraOffset
-    this.sceneManager.setCameraTarget(new THREE.Vector3(playerPos.x, cameraTargetY, 0))
+    const cameraTargetY = initialPlayerY + cameraOffset
+    this.sceneManager.setCameraTarget(new THREE.Vector3(playerX, cameraTargetY, 0))
     
     // Force camera to update immediately with offset applied
     const camera = this.sceneManager.getCamera()
-    camera.position.set(playerPos.x, cameraTargetY, 10)
-    camera.lookAt(playerPos.x, cameraTargetY, 0)
-    if (DEBUG_MODE) console.log('📷 Camera positioned at:', camera.position.clone(), 'with offset:', cameraOffset)
+    camera.position.set(playerX, cameraTargetY, 10)
+    camera.lookAt(playerX, cameraTargetY, 0)
+    if (DEBUG_MODE) console.log(`📷 Camera positioned at: ${camera.position.y}, Player at: ${initialPlayerY}, Offset: ${cameraOffset}`)
     
     // Reset weapon system
     this.weaponSystem = new WeaponSystem()
@@ -952,29 +967,61 @@ export class Game {
 
   // 🌀 ROGUE MODE: Wormhole Exit Management 🌀
   private spawnRogueWormholeExit(): void {
-    // Clean up existing wormhole
+    // Clean up existing wormhole (if any - may have been cleaned up already)
     if (this.rogueWormholeExit) {
+      if (DEBUG_MODE) console.log(`🌀 Cleaning up existing wormhole at Y=${this.rogueWormholeExit.getPosition().y.toFixed(2)}`)
       this.sceneManager.removeFromScene(this.rogueWormholeExit.getMesh())
       this.rogueWormholeExit.destroy()
+      this.rogueWormholeExit = null
     }
 
     // Create new wormhole at exit distance above player
     this.rogueWormholeExit = new WormholeExit()
     const playerPos = this.player.getPosition()
-    this.rogueWormholeExit.setPosition(playerPos.x, playerPos.y + this.rogueExitDistance, 0)
+    
+    // 🐛 DEBUG: Log the player position we're using for wormhole placement
+    if (DEBUG_MODE) {
+      console.log(`📍 spawnRogueWormholeExit() using player position: X=${playerPos.x.toFixed(2)}, Y=${playerPos.y.toFixed(2)}`)
+    }
+    
+    const wormholeY = playerPos.y + this.rogueExitDistance
+    this.rogueWormholeExit.setPosition(0, wormholeY, 0) // 🐛 FIX: Always center wormhole at X=0
     this.sceneManager.addToScene(this.rogueWormholeExit.getMesh())
 
     if (DEBUG_MODE) {
-      console.log(`🌀 Wormhole exit spawned at Y=${playerPos.y + this.rogueExitDistance}`)
+      console.log(`🌀 NEW wormhole spawned at Y=${wormholeY.toFixed(2)} (Player at Y=${playerPos.y.toFixed(2)}, Distance=${this.rogueExitDistance})`)
+      console.log(`   Expected travel distance: ${this.rogueExitDistance} units`)
+      console.log(`   For Layer: ${this.levelManager.getRogueLayer()}`)
     }
   }
 
   private checkRogueWormholeCollision(): void {
     if (!this.rogueWormholeExit || !this.player || this.isWormholeEntryAnimating) return
+    
+    // Extra guard: don't check collision if layer is completing
+    if (this.rogueLayerCompleting) return
+    
+    // 🐛 FIX: Skip collision check during cooldown period after layer reset
+    if (this.rogueCollisionCooldown > 0) {
+      if (DEBUG_MODE) console.log(`⏳ Collision check skipped (cooldown: ${this.rogueCollisionCooldown.toFixed(2)}s)`)
+      return
+    }
 
     const playerPos = this.player.getPosition()
+    const wormholePos = this.rogueWormholeExit.getPosition()
+    
+    // 🐛 DEBUG: Log positions on every check to catch issues
+    if (DEBUG_MODE && Math.random() < 0.01) { // Log occasionally
+      console.log(`📍 Collision check: Player Y=${playerPos.y.toFixed(2)}, Wormhole Y=${wormholePos.y.toFixed(2)}, Distance=${(wormholePos.y - playerPos.y).toFixed(2)}`)
+    }
+    
     if (this.rogueWormholeExit.containsPoint(playerPos)) {
-      if (DEBUG_MODE) console.log('🌀 Player entered wormhole! Starting entry animation...')
+      if (DEBUG_MODE) {
+        console.log('🌀 Player entered wormhole! Starting entry animation...')
+        console.log(`   Player Y: ${playerPos.y.toFixed(2)}, Wormhole Y: ${wormholePos.y.toFixed(2)}`)
+        console.log(`   Distance: ${(wormholePos.y - playerPos.y).toFixed(2)}`)
+        console.log(`   Current Layer: ${this.levelManager.getRogueLayer()}`)
+      }
       this.startWormholeEntryAnimation()
     }
   }
@@ -1004,11 +1051,11 @@ export class Game {
     const wormholePos = this.rogueWormholeExit.getPosition()
     
     // Move player toward wormhole center
+    // 🐛 FIX: Use setPosition() to update BOTH internal position AND mesh position
     if (this.wormholeEntryStartPos) {
-      const currentPos = this.player.getPosition()
-      currentPos.x = THREE.MathUtils.lerp(this.wormholeEntryStartPos.x, wormholePos.x, easeProgress)
-      currentPos.y = THREE.MathUtils.lerp(this.wormholeEntryStartPos.y, wormholePos.y, easeProgress)
-      this.player.getMesh().position.copy(currentPos)
+      const newX = THREE.MathUtils.lerp(this.wormholeEntryStartPos.x, wormholePos.x, easeProgress)
+      const newY = THREE.MathUtils.lerp(this.wormholeEntryStartPos.y, wormholePos.y, easeProgress)
+      this.player.setPosition(newX, newY, 0)
     }
     
     // Rotate player (spiral effect)
@@ -1028,7 +1075,12 @@ export class Game {
   }
 
   private completeRogueLayer(): void {
-    // Guard against multiple calls (wormhole collision might trigger multiple times)
+    // Guard against multiple calls
+    if (this.rogueLayerCompleting) {
+      if (DEBUG_MODE) console.log('⚠️ Layer completion already in progress, ignoring')
+      return
+    }
+    
     if (this.isWormholeEntryAnimating) {
       if (DEBUG_MODE) console.log('⚠️ Wormhole animation still playing, ignoring')
       return
@@ -1040,23 +1092,40 @@ export class Game {
       return
     }
     
+    // Mark layer as completing
+    this.rogueLayerCompleting = true
+    
     // Increment layers completed counter
     this.rogueLayersCompleted++
+    
+    // 🚀 HIDE PLAYER - They've entered the wormhole, don't show until next layer
+    if (this.player) {
+      this.player.getMesh().visible = false
+      if (DEBUG_MODE) console.log('👻 Player hidden after entering wormhole')
+    }
     
     // Trigger staggered enemy destruction, THEN show choice screen
     if (DEBUG_MODE) {
       console.log('═════════════════════════════════════')
-      console.log(`🎲 LAYER ${this.rogueCurrentLayer} COMPLETE`)
+      console.log(`🎲 LAYER ${this.levelManager.getRogueLayer()} COMPLETE`)
       console.log(`   Layers Completed: ${this.rogueLayersCompleted}`)
-      console.log(`   Next Layer: ${this.rogueCurrentLayer + 1}`)
+      console.log(`   Next Layer: ${this.levelManager.getRogueLayer() + 1}`)
       console.log('═════════════════════════════════════')
     }
     
     // Clear all enemies with staggered death animations
     this.clearAllEnemies()
     
+    // Cancel any existing timeout (prevents stale callbacks)
+    if (this.rogueChoiceScreenTimeoutId !== null) {
+      clearTimeout(this.rogueChoiceScreenTimeoutId)
+      this.rogueChoiceScreenTimeoutId = null
+    }
+    
     // Wait for enemy death animations to complete, then show choice screen
-    setTimeout(() => {
+    // Store the timeout ID so we can cancel it if needed
+    this.rogueChoiceScreenTimeoutId = setTimeout(() => {
+      this.rogueChoiceScreenTimeoutId = null // Clear reference
       this.showRogueChoiceScreen()
     }, 2000) // 2 seconds for staggered deaths to play out
   }
@@ -1139,8 +1208,15 @@ export class Game {
     // 🎲 Reset game mode to ORIGINAL
     this.gameMode = GameMode.ORIGINAL
     this.gameModeManager.setMode(GameMode.ORIGINAL)
-    this.rogueCurrentLayer = 1
+    this.levelManager.setRogueLayer(1)
     this.rogueLayersCompleted = 0
+    this.rogueLayerCompleting = false
+    this.rogueCollisionCooldown = 0 // 🐛 FIX: Reset collision cooldown
+    // Cancel any pending choice screen timeout
+    if (this.rogueChoiceScreenTimeoutId !== null) {
+      clearTimeout(this.rogueChoiceScreenTimeoutId)
+      this.rogueChoiceScreenTimeoutId = null
+    }
     this.rogueSelectedSpecialIds.clear()
     this.rogueVerticalPosition = 0
     
@@ -1310,6 +1386,11 @@ export class Game {
       const scrollSpeed = this.gameModeManager.getScrollSpeed()
       const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
       
+      // 🐛 FIX: Decrement collision cooldown
+      if (this.rogueCollisionCooldown > 0) {
+        this.rogueCollisionCooldown -= deltaTime
+      }
+      
       // Increment vertical position (ascent)
       this.rogueVerticalPosition += scrollSpeed * deltaTime
       
@@ -1335,8 +1416,9 @@ export class Game {
       const playerY = playerPos.y
       if (playerY < visibleBottom) {
         // Soft push upward - player can still move freely but gets nudged
+        // 🐛 FIX: Use setPosition() to update BOTH internal position AND mesh
         const pushAmount = (visibleBottom - playerY) * 0.15
-        this.player.getMesh().position.y = playerY + pushAmount
+        this.player.setPosition(playerPos.x, playerY + pushAmount, 0)
       }
       
       // 🌀 Update wormhole exit animation and check collision 🌀
@@ -1377,8 +1459,10 @@ export class Game {
     
     // 🎯 CHECK FOR OBJECTIVE COMPLETION (Mode-specific)
     // Some modes (like ROGUE) don't use objectives - they have their own progression
-    if (this.gameModeManager.usesObjectiveSystem() && this.levelManager.checkObjectivesComplete()) {
+    const usesObjectives = this.gameModeManager.usesObjectiveSystem()
+    if (usesObjectives && this.levelManager.checkObjectivesComplete()) {
       // Objectives complete! Start level transition
+      if (DEBUG_MODE) console.log('🎯 OBJECTIVE COMPLETION TRIGGERED! usesObjectives:', usesObjectives, 'mode:', this.gameMode)
       this.startLevelTransition()
     }
     
@@ -2057,7 +2141,7 @@ export class Game {
     this.uiManager.setHUDVisibility(false)
     
     // Show game over screen with stats
-    GameScreens.showGameOverScreen(this.gameStats, () => this.showStartScreen()).catch(err => {
+    GameScreens.showGameOverScreen(this.gameStats, this.gameMode, () => this.showStartScreen()).catch(err => {
       console.error('Error showing game over screen:', err)
     })
   }
@@ -2100,6 +2184,14 @@ export class Game {
     // Guard against multiple calls - check if screen already exists
     if (document.getElementById('rogueChoiceScreen')) {
       if (DEBUG_MODE) console.log('⚠️ Choice screen already exists, ignoring duplicate call')
+      return
+    }
+    
+    // Guard against stale setTimeout callbacks
+    // If rogueLayerCompleting is false, it means we've already moved past this layer
+    // (selected a special and continued to next layer)
+    if (!this.rogueLayerCompleting) {
+      if (DEBUG_MODE) console.log('⚠️ Layer not completing (already continued), ignoring stale showRogueChoiceScreen call')
       return
     }
     
@@ -2186,6 +2278,13 @@ export class Game {
   
   // 🎲 ROGUE MODE: Continue to next layer after choice 🎲
   private continueRogueLayer(): void {
+    // Cancel any pending choice screen timeout (prevents stale callbacks)
+    if (this.rogueChoiceScreenTimeoutId !== null) {
+      clearTimeout(this.rogueChoiceScreenTimeoutId)
+      this.rogueChoiceScreenTimeoutId = null
+      if (DEBUG_MODE) console.log('⏱️ Cancelled pending choice screen timeout')
+    }
+    
     // Remove choice screen
     const choiceScreen = document.getElementById('rogueChoiceScreen')
     if (choiceScreen) {
@@ -2193,22 +2292,18 @@ export class Game {
     }
     RogueChoiceScreen.cleanup()
     
-    // Advance to next layer
-    this.rogueCurrentLayer++
+    // Advance to next layer (this also resets objectives)
+    this.levelManager.advanceRogueLayer()
     
     if (DEBUG_MODE) {
       console.log('═════════════════════════════════════')
-      console.log(`🚀 STARTING LAYER ${this.rogueCurrentLayer}`)
+      console.log(`🚀 STARTING LAYER ${this.levelManager.getRogueLayer()}`)
       console.log(`   Total Layers Completed: ${this.rogueLayersCompleted}`)
       console.log('═════════════════════════════════════')
     }
     
     // Show layer notification with correct number
-    this.uiManager.showRogueLayerNotification(this.rogueCurrentLayer)
-    
-    // 🎲 DON'T call advanceLevel() - Rogue mode stays at level 998!
-    // Just reset the objectives so enemies keep spawning
-    this.levelManager.resetObjectives()
+    this.uiManager.showRogueLayerNotification(this.levelManager.getRogueLayer())
     
     // Clear all enemies and projectiles
     this.enemyManager.clearAllEnemies()
@@ -2220,25 +2315,93 @@ export class Game {
       effectsSystem.cleanup()
     }
     
-    // 🌀 Reset player appearance (scale and rotation) 🌀
-    if (this.player) {
-      this.player.getMesh().scale.set(1, 1, 1)
-      this.player.getMesh().rotation.z = 0
-      if (DEBUG_MODE) console.log('✅ Player scale and rotation reset')
+    // 🐛 FIX: DESTROY OLD WORMHOLE FIRST before resetting player position!
+    // This prevents any collision issues with the old wormhole
+    if (this.rogueWormholeExit) {
+      if (DEBUG_MODE) console.log(`🗑️ Destroying old wormhole at Y=${this.rogueWormholeExit.getPosition().y.toFixed(2)}`)
+      this.sceneManager.removeFromScene(this.rogueWormholeExit.getMesh())
+      this.rogueWormholeExit.destroy()
+      this.rogueWormholeExit = null
     }
     
-    // 🌀 Spawn new wormhole exit for next layer 🌀
+    // 🌀 Reset wormhole animation state BEFORE resetting player 🌀
+    this.isWormholeEntryAnimating = false
+    this.wormholeEntryTime = 0
+    this.rogueLayerCompleting = false  // Reset layer completion flag
+    if (DEBUG_MODE) console.log('✅ Wormhole destroyed and animation state reset')
+    
+    // 🐛 FIX: Set collision cooldown BEFORE spawning new wormhole
+    // This gives the player time before collision checks begin
+    this.rogueCollisionCooldown = 1.0  // Increased to 1 second for safety
+    if (DEBUG_MODE) console.log('⏳ Collision cooldown set to 1.0 seconds')
+    
+    // 🌀 Reset player appearance and position 🌀
+    if (this.player) {
+      // Reset visual state
+      this.player.getMesh().scale.set(1, 1, 1)
+      this.player.getMesh().rotation.z = 0
+      
+      // Reset player position to bottom of screen for new layer
+      // CRITICAL: Use setPosition() to update BOTH internal position AND mesh!
+      const initialPlayerY = 2  // Same as initial spawn position
+      const playerX = 0 // Reset X position to center
+      
+      if (DEBUG_MODE) console.log(`🔄 Resetting player position from Y=${this.player.getPosition().y.toFixed(2)} to Y=${initialPlayerY}, X=${playerX}`)
+      this.player.setPosition(playerX, initialPlayerY, 0)
+      if (DEBUG_MODE) console.log(`✅ Player position after setPosition(): X=${this.player.getPosition().x.toFixed(2)}, Y=${this.player.getPosition().y.toFixed(2)}`)
+      
+      // 🚀 SHOW PLAYER - They've selected their special, spawn them at start position!
+      this.player.getMesh().visible = true
+      if (DEBUG_MODE) console.log('👤 Player visible again at start position')
+      
+      // Reset vertical scroll position for new layer
+      this.rogueVerticalPosition = initialPlayerY
+      
+      // Update camera to follow player at new position
+      const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
+      const cameraTargetY = initialPlayerY + cameraOffset
+      this.sceneManager.setCameraTarget(new THREE.Vector3(playerX, cameraTargetY, 0))
+      
+      // Force camera to update immediately
+      const camera = this.sceneManager.getCamera()
+      camera.position.set(playerX, cameraTargetY, 10)
+      camera.lookAt(playerX, cameraTargetY, 0)
+      
+      if (DEBUG_MODE) console.log(`✅ Camera reset to Y=${cameraTargetY}`)
+    }
+    
+    // 🌀 NOW spawn new wormhole exit for next layer (after player is in position) 🌀
     this.spawnRogueWormholeExit()
-    if (DEBUG_MODE) console.log(`🌀 New wormhole spawned for layer ${this.rogueLayer}`)
+    if (DEBUG_MODE) console.log(`🌀 New wormhole spawned for layer ${this.levelManager.getRogueLayer()}`)
+    
+    // 🐛 FIX: Verify positions are correct before resuming
+    if (DEBUG_MODE) {
+      const verifyPlayerPos = this.player.getPosition()
+      const verifyWormholePos = this.rogueWormholeExit?.getPosition()
+      console.log('═════════════════════════════════════')
+      console.log('📍 POSITION VERIFICATION:')
+      console.log(`   Player: Y=${verifyPlayerPos.y.toFixed(2)}`)
+      console.log(`   Wormhole: Y=${verifyWormholePos?.y.toFixed(2) || 'N/A'}`)
+      console.log(`   Distance: ${((verifyWormholePos?.y || 0) - verifyPlayerPos.y).toFixed(2)}`)
+      console.log('═════════════════════════════════════')
+    }
     
     // Resume enemy spawning
     this.enemyManager.resumeSpawning()
     
-    // Return to playing state
+    // Return to playing state and restart game loop
     this.gameState = GameStateType.PLAYING
     
-    // Restart game loop
-    this.start()
+    // 🐛 FIX: Properly restart the game loop instead of just setting the flag
+    // The loop may have stopped when isRunning was set to false in showRogueChoiceScreen()
+    if (!this.isRunning) {
+      if (DEBUG_MODE) console.log('🔄 Game loop was stopped - restarting via start()')
+      this.start()
+    } else {
+      if (DEBUG_MODE) console.log('✅ Game loop still running - continuing')
+    }
+    
+    if (DEBUG_MODE) console.log('✅ Game resumed - Layer started')
   }
 
   private updateLevelTransition(deltaTime: number): void {

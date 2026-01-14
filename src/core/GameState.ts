@@ -37,6 +37,7 @@ export interface HighScoreEntry {
   level: number
   date: string
   location: string // Country code (e.g., "UK", "USA", "POL")
+  gameMode: GameMode // Track which mode the score was achieved in
 }
 
 import { HighScoreServiceFactory, LocalStorageHighScoreService } from '../data/HighScoreService'
@@ -79,17 +80,26 @@ export class ScoreManager {
 
   /**
    * Get high scores using the configured service
+   * @param gameMode Optional filter for specific game mode
    */
-  static async getHighScores(): Promise<HighScoreEntry[]> {
+  static async getHighScores(gameMode?: GameMode): Promise<HighScoreEntry[]> {
     const service = HighScoreServiceFactory.getService()
-    return await service.getHighScores()
+    const allScores = await service.getHighScores()
+    
+    // Filter by game mode if specified
+    if (gameMode) {
+      return allScores.filter(score => score.gameMode === gameMode)
+    }
+    
+    return allScores
   }
 
   /**
    * Check if a score qualifies as a high score
+   * @param gameMode Check against specific game mode leaderboard
    */
-  static async isHighScore(score: number): Promise<boolean> {
-    const highScores = await this.getHighScores()
+  static async isHighScore(score: number, gameMode: GameMode): Promise<boolean> {
+    const highScores = await this.getHighScores(gameMode)
     if (highScores.length < this.MAX_HIGH_SCORES) return true
     return score > highScores[highScores.length - 1].score
   }

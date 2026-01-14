@@ -47,19 +47,44 @@ Preview the production build locally.
 
 ## 🎯 Controls
 
-### Keyboard
+### In-Game Controls
+
+**Keyboard:**
 - **WASD / Arrow Keys**: Movement
 - **Space**: Fire weapon
 - **Shift**: Dash (when available)
+- **Escape**: Pause game
 
-### Gamepad (Xbox/PlayStation)
+**Gamepad (Xbox/PlayStation):**
 - **Left Stick**: Analog movement
 - **D-Pad**: Digital movement
 - **A (Xbox) / X (PlayStation)**: Fire weapon
 - **B (Xbox) / Circle (PlayStation)**: Dash
 - **Right Trigger / Left Trigger**: Fire weapon (alternative)
 - **Right Bumper**: Dash (alternative)
+- **Start Button**: Pause game
 - **Vibration**: Haptic feedback for hits, kills, and explosions
+
+### Menu Navigation
+
+**All menus support keyboard, mouse, and gamepad navigation!**
+
+**Keyboard:**
+- **↑/↓ or W/S**: Navigate vertically
+- **←/→ or A/D**: Navigate horizontally
+- **Space / Enter**: Select
+- **Escape**: Back (where applicable)
+
+**Mouse:**
+- **Hover**: Highlight button
+- **Click**: Select
+
+**Gamepad:**
+- **D-Pad / Left Stick**: Navigate
+- **A Button**: Select
+- **B Button**: Back (where applicable)
+
+See [MENU_NAVIGATION_GUIDE.md](MENU_NAVIGATION_GUIDE.md) for detailed menu navigation documentation.
 
 ## 🏗️ Architecture
 

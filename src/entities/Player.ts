@@ -1343,6 +1343,17 @@ export class Player {
     return this.position.clone()
   }
 
+  /**
+   * Set player position (updates both internal position and mesh)
+   * Use this instead of directly setting mesh.position!
+   */
+  setPosition(x: number, y: number, z: number = 0): void {
+    this.position.set(x, y, z)
+    if (this.mesh) {
+      this.mesh.position.set(x, y, z)
+    }
+  }
+
   getHealth(): number {
     return this.health
   }
