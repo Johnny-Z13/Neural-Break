@@ -1,6 +1,7 @@
 import { GameStats, HighScoreEntry, ScoreManager } from '../../core/GameState'
 import { AudioManager } from '../../audio/AudioManager'
 import { StarfieldManager } from '../../graphics/StarfieldManager'
+import { LeaderboardScreen } from './LeaderboardScreen'
 
 /**
  * NEURAL BREAK - Game Over Screen
@@ -424,6 +425,7 @@ export class GameOverScreen {
             `
             gameOverScreen.appendChild(successMsg)
             
+            // Auto-advance to leaderboard after 2 seconds
             setTimeout(() => {
               if (nameInput.parentElement) {
                 nameInput.parentElement.style.opacity = '0'
@@ -433,6 +435,19 @@ export class GameOverScreen {
                 }, 300)
               }
               successMsg.remove()
+              
+              // Navigate to leaderboard screen with the appropriate mode
+              GameOverScreen.cleanup()
+              LeaderboardScreen.show(
+                audioManager,
+                () => {
+                  // Back button returns to game over screen
+                  LeaderboardScreen.cleanup()
+                  document.body.appendChild(gameOverScreen)
+                  GameOverScreen.setupKeyboardNavigation(gameOverScreen, audioManager)
+                },
+                GameOverScreen.currentGameMode // Start on the correct mode tab
+              )
             }, 2000)
           } else {
             saveButton.textContent = 'FAIL'

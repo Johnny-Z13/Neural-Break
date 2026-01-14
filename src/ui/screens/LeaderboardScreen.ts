@@ -83,7 +83,7 @@ export class LeaderboardScreen {
         <!-- TITLE -->
         <h1 id="leaderboardTitle" class="leaderboard-title" style="
           font-size: clamp(1.5rem, 4vw, 2.5rem);
-          margin-bottom: var(--space-sm, 0.5rem);
+          margin-bottom: var(--space-lg, 1.5rem);
           color: var(--color-yellow, #FFFF00);
           text-shadow: 
             4px 4px 0 var(--color-orange, #FF6600),
@@ -96,38 +96,16 @@ export class LeaderboardScreen {
           ★ ARCADE HIGH SCORES ★
         </h1>
         
-        <!-- MODE TOGGLE BUTTON -->
-        <button id="modeToggleButton" class="arcade-button" style="
-          background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
-          border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
-          color: var(--color-cyan, #00FFFF);
-          font-family: inherit;
-          font-size: clamp(0.6rem, 1.5vw, 0.8rem);
-          font-weight: bold;
-          padding: var(--space-xs, 0.5rem) var(--space-md, 1.5rem);
-          cursor: pointer;
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
-          box-shadow: 
-            0 0 20px var(--color-cyan-glow, rgba(0, 255, 255, 0.4)),
-            var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666);
-          transition: all 0.1s step-end;
-          margin-bottom: var(--space-md, 1rem);
-        ">
-          SWITCH TO ROGUE MODE
-        </button>
-        
         <!-- Decorative line -->
-        <div style="
+        <div id="decorativeLine" style="
           width: 100%;
           height: 4px;
           background: linear-gradient(90deg, 
             transparent 0%, 
-            var(--color-magenta, #FF00FF) 20%, 
-            var(--color-cyan, #00FFFF) 40%, 
+            var(--color-yellow, #FFFF00) 20%, 
+            var(--color-orange, #FF6600) 40%, 
             var(--color-yellow, #FFFF00) 60%, 
-            var(--color-magenta, #FF00FF) 80%, 
+            var(--color-orange, #FF6600) 80%, 
             transparent 100%);
           margin-bottom: var(--space-lg, 1.5rem);
           box-shadow: 0 0 15px currentColor;
@@ -143,12 +121,14 @@ export class LeaderboardScreen {
             var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666),
             inset 0 0 25px rgba(0, 255, 255, 0.08);
           min-height: 280px;
-          max-height: 58vh;
+          max-height: 50vh;
           overflow-y: auto;
         "></div>
         
-        <!-- BUTTONS -->
-        <div style="display: flex; gap: var(--space-md, 1rem); justify-content: center; margin-top: var(--space-lg, 1.5rem);">
+        <!-- BUTTONS CONTAINER -->
+        <div style="display: flex; flex-direction: column; gap: var(--space-md, 1rem); align-items: center; margin-top: var(--space-lg, 1.5rem);">
+          
+          <!-- BACK BUTTON -->
           <button id="backButton" class="arcade-button" style="
             background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
             border: var(--border-thick, 4px) solid var(--color-red, #FF4444);
@@ -168,6 +148,27 @@ export class LeaderboardScreen {
           ">
             ◀ BACK TO MENU
           </button>
+          
+          <!-- MODE TOGGLE BUTTON -->
+          <button id="modeToggleButton" class="arcade-button" style="
+            background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
+            border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
+            color: var(--color-cyan, #00FFFF);
+            font-family: inherit;
+            font-size: clamp(0.6rem, 1.5vw, 0.8rem);
+            font-weight: bold;
+            padding: var(--space-xs, 0.5rem) var(--space-md, 1.5rem);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
+            box-shadow: 
+              0 0 20px var(--color-cyan-glow, rgba(0, 255, 255, 0.4)),
+              var(--shadow-pixel, 4px 4px 0) var(--color-cyan-dark, #006666);
+            transition: all 0.1s step-end;
+          ">
+            SWITCH TO ROGUE MODE
+          </button>
         </div>
       </div>
       
@@ -186,7 +187,7 @@ export class LeaderboardScreen {
       ">
         <div style="margin-bottom: 0.3rem;">▲ TOP NEURAL HACKERS ▲</div>
         <div style="font-size: 0.6em; color: var(--color-cyan, #00FFFF); text-shadow: 0 0 8px var(--color-cyan, #00FFFF);">
-          SPACE/ESC OR 🎮 TO RETURN
+          TAB/ARROWS TO TOGGLE • SPACE/ESC TO RETURN
         </div>
       </div>
     `
@@ -293,26 +294,49 @@ export class LeaderboardScreen {
       // No-op: fullscreen functionality removed
     }
 
-    // Get button references
+    // Get element references
     const backButton = leaderboardScreen.querySelector('#backButton') as HTMLButtonElement
     const modeToggleButton = leaderboardScreen.querySelector('#modeToggleButton') as HTMLButtonElement
     const titleElement = leaderboardScreen.querySelector('#leaderboardTitle') as HTMLElement
+    const decorativeLine = leaderboardScreen.querySelector('#decorativeLine') as HTMLElement
     
     // Mode toggle function
     const toggleMode = async () => {
       LeaderboardScreen.currentMode = LeaderboardScreen.currentMode === 'original' ? 'rogue' : 'original'
       
-      // Update title and button text
+      // Update title, decorative line, and scores container
       if (LeaderboardScreen.currentMode === 'rogue') {
+        // ROGUE MODE - Purple vibes
         titleElement.textContent = '★ ROGUE HIGH SCORES ★'
         modeToggleButton.textContent = 'SWITCH TO ARCADE MODE'
-        titleElement.style.color = 'var(--color-magenta, #FF00FF)'
-        titleElement.style.textShadow = '4px 4px 0 var(--color-cyan, #00FFFF), -2px -2px 0 var(--color-orange, #FF6600), 0 0 30px var(--color-magenta, #FF00FF)'
+        titleElement.style.color = '#AA00FF' // Purple
+        titleElement.style.textShadow = '4px 4px 0 #FF00FF, -2px -2px 0 #8800DD, 0 0 30px #AA00FF'
+        
+        // Purple decorative line
+        decorativeLine.style.background = 'linear-gradient(90deg, transparent 0%, #AA00FF 20%, #FF00FF 40%, #AA00FF 60%, #FF00FF 80%, transparent 100%)'
+        
+        // Purple-themed scores container
+        if (scoresContainer) {
+          scoresContainer.style.border = '4px solid #AA00FF'
+          scoresContainer.style.boxShadow = '0 0 28px rgba(170, 0, 255, 0.5), 4px 4px 0 #660099, inset 0 0 25px rgba(170, 0, 255, 0.12)'
+          scoresContainer.style.background = 'linear-gradient(180deg, rgba(20, 0, 30, 0.9) 0%, rgba(30, 0, 40, 0.9) 100%)'
+        }
       } else {
+        // ARCADE MODE - Yellow vibes
         titleElement.textContent = '★ ARCADE HIGH SCORES ★'
         modeToggleButton.textContent = 'SWITCH TO ROGUE MODE'
-        titleElement.style.color = 'var(--color-yellow, #FFFF00)'
-        titleElement.style.textShadow = '4px 4px 0 var(--color-orange, #FF6600), -2px -2px 0 var(--color-magenta, #FF00FF), 0 0 30px var(--color-yellow, #FFFF00)'
+        titleElement.style.color = '#FFFF00' // Yellow
+        titleElement.style.textShadow = '4px 4px 0 #FF6600, -2px -2px 0 #FF00FF, 0 0 30px #FFFF00'
+        
+        // Yellow decorative line
+        decorativeLine.style.background = 'linear-gradient(90deg, transparent 0%, #FFFF00 20%, #FF6600 40%, #FFFF00 60%, #FF6600 80%, transparent 100%)'
+        
+        // Cyan-themed scores container
+        if (scoresContainer) {
+          scoresContainer.style.border = '4px solid #00FFFF'
+          scoresContainer.style.boxShadow = '0 0 28px rgba(0, 255, 255, 0.35), 4px 4px 0 #006666, inset 0 0 25px rgba(0, 255, 255, 0.08)'
+          scoresContainer.style.background = 'linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 10, 20, 0.9) 100%)'
+        }
       }
       
       // Refresh scores

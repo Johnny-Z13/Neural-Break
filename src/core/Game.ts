@@ -22,6 +22,8 @@ import { InvulnerableManager } from './InvulnerableManager'
 import { WormholeExit } from '../graphics/WormholeExit'
 import { RogueSideBarriers } from '../graphics/RogueSideBarriers'
 import { GameModeManager } from './GameModeManager'
+import { AttractMode } from './AttractMode'
+import { StarfieldManager } from '../graphics/StarfieldManager'
 import { DEBUG_MODE } from '../config'
 
 export class Game {
@@ -39,6 +41,7 @@ export class Game {
   private gameTimer: GameTimer
   private levelManager: LevelManager
   private audioManager: AudioManager
+  private attractMode: AttractMode | null = null
   private isRunning: boolean = false
   private lastTime: number = 0
   
@@ -234,6 +237,21 @@ export class Game {
     this.gameState = GameStateType.START_SCREEN
     // Stop ambient soundscape on start screen
     this.audioManager.stopAmbientSoundscape()
+    
+    // 🎮 START ATTRACT MODE - Visual demo behind title screen
+    // Stop the 2D starfield canvas so we can see the 3D scene with enemies
+    StarfieldManager.getInstance().stop()
+    
+    // Initialize 3D starfield with attract mode - fast multi-directional movement!
+    this.sceneManager.setStarfieldDownwardFlow(false, 'attract')
+    console.log('🌌 3D Starfield initialized with ATTRACT mode - fast movement!')
+    
+    if (!this.attractMode) {
+      this.attractMode = new AttractMode(this.sceneManager.getScene())
+    }
+    this.attractMode.start()
+    console.log('🎮 Attract Mode: Started (2D starfield stopped, 3D scene visible)')
+    
     console.log('🎮 Calling GameScreens.showStartScreen with callbacks:', {
       startNewGame: !!this.startNewGame,
       startTestMode: !!this.startTestMode,
@@ -529,7 +547,7 @@ export class Game {
     
     // Boundaries
     this.sceneManager.setEnergyBarrierVisible(config.usesCircularBoundary)
-    this.sceneManager.setStarfieldDownwardFlow(config.starfieldFlowsDown)
+    this.sceneManager.setStarfieldDownwardFlow(config.starfieldFlowsDown, this.gameMode)
     
     // Side barriers (if mode uses them)
     if (config.usesSideBoundaries) {
@@ -1132,10 +1150,16 @@ export class Game {
 
   private cleanupGameObjects(): void {
     if (DEBUG_MODE) console.log('🧹 Starting cleanup...')
-    
+
     // Stop the current game loop
     this.stop()
     if (DEBUG_MODE) console.log('✅ Game loop stopped')
+    
+    // 🎮 STOP ATTRACT MODE if running
+    if (this.attractMode && this.attractMode.isRunning()) {
+      this.attractMode.stop()
+      if (DEBUG_MODE) console.log('✅ Attract Mode stopped')
+    }
     
     // Clean up existing player
     if (this.player) {
@@ -1237,7 +1261,7 @@ export class Game {
     
     // Restore energy barrier visibility
     this.sceneManager.setEnergyBarrierVisible(true)
-    this.sceneManager.setStarfieldDownwardFlow(false) // Restore normal starfield
+    this.sceneManager.setStarfieldDownwardFlow(false, 'arcade') // Restore arcade starfield
     
     // Reset rogue mutations on player and weapon system
     if (this.player) {
@@ -1368,6 +1392,11 @@ export class Game {
     
     // Always update scene manager for background animations and effects
     this.sceneManager.update(deltaTime)
+    
+    // 🎮 UPDATE ATTRACT MODE if on start screen
+    if (this.gameState === GameStateType.START_SCREEN && this.attractMode && this.attractMode.isRunning()) {
+      this.attractMode.update(deltaTime)
+    }
     
     // Only update gameplay if playing
     if (this.gameState !== GameStateType.PLAYING) {

@@ -92,20 +92,14 @@ export class StartScreen {
       <div class="start-content" style="position: relative; z-index: 1; max-width: 950px; width: 100%; display: flex; flex-direction: column; align-items: center;">
         
         <!-- MAIN TITLE -->
-        <div class="title-container" style="margin-bottom: var(--space-md, 1rem);">
+        <div class="title-container" style="margin-bottom: var(--space-md, 1rem); text-align: center;">
           <h1 class="game-title" style="
             font-size: clamp(1.8rem, 5vw, 3.5rem);
             font-weight: bold;
             letter-spacing: 0.2em;
             margin: 0;
             text-transform: uppercase;
-            color: var(--color-cyan, #00FFFF);
-            text-shadow: 
-              4px 4px 0 var(--color-magenta, #FF00FF),
-              -2px -2px 0 var(--color-yellow, #FFFF00),
-              0 0 30px var(--color-cyan, #00FFFF),
-              0 0 60px var(--color-cyan, #00FFFF);
-            animation: titleFlicker 0.1s infinite, titleGlow 2s ease-in-out infinite alternate;
+            animation: arcadeColorCycle 3s linear infinite, titleFlicker 0.1s infinite;
           ">
             NEURAL BREAK
           </h1>
@@ -134,11 +128,15 @@ export class StartScreen {
           border: var(--border-thick, 4px) solid var(--color-red, #FF0000);
           padding: var(--space-md, 1.2rem) var(--space-lg, 1.5rem);
           max-width: 850px;
+          width: 100%;
           margin: 0 auto var(--space-md, 1rem);
           box-shadow: 
             0 0 35px rgba(255, 0, 0, 0.35),
             inset 0 0 25px rgba(255, 0, 0, 0.08),
             var(--shadow-pixel, 5px 5px 0) #660000;
+          text-align: center;
+          pointer-events: none;
+          animation: threatDatabaseWarning 0.5s step-end infinite;
         ">
           <h3 style="
             font-size: clamp(0.85rem, 1.8vw, 1.2rem);
@@ -180,6 +178,8 @@ export class StartScreen {
             letter-spacing: 0.2em;
             text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
             margin-bottom: var(--space-xs, 0.3rem);
+            text-align: center;
+            animation: selectModeFlash 1s ease-in-out infinite;
           ">▼ SELECT MODE ▼</div>
           
           <!-- GAME MODE BUTTONS ROW -->
@@ -279,45 +279,47 @@ export class StartScreen {
       <!-- CONTROLS LEGEND -->
       <div class="controls-legend" style="
         position: fixed;
-        bottom: var(--space-sm, 0.75rem);
+        bottom: var(--space-md, 1rem);
         left: 50%;
         transform: translateX(-50%);
         display: flex;
-        gap: var(--space-md, 1.2rem);
-        padding: var(--space-xs, 0.4rem) var(--space-md, 1rem);
+        gap: var(--space-lg, 1.5rem);
+        padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
         background: linear-gradient(180deg, var(--color-bg-panel, rgba(0, 0, 0, 0.95)) 0%, rgba(0, 10, 20, 0.95) 100%);
-        border: var(--border-medium, 3px) solid var(--color-cyan, #00FFFF);
+        border: var(--border-thick, 4px) solid var(--color-cyan, #00FFFF);
         box-shadow: 
-          0 0 18px var(--color-cyan-glow, rgba(0, 255, 255, 0.25)),
-          var(--shadow-pixel, 3px 3px 0) var(--color-cyan-dark, #006666);
+          0 0 25px rgba(0, 255, 255, 0.4),
+          inset 0 0 20px rgba(0, 255, 255, 0.08),
+          4px 4px 0 var(--color-cyan-dark, #006666);
         z-index: 1;
         flex-wrap: wrap;
         justify-content: center;
+        align-items: center;
         border-radius: 2px;
       ">
-        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.2rem;">
-          <div style="display: flex; gap: 2px;">
+        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem;">
+          <div style="display: flex; gap: 4px;">
             <span class="key-cap">W</span>
             <span class="key-cap">A</span>
             <span class="key-cap">S</span>
             <span class="key-cap">D</span>
           </div>
-          <span style="color: var(--color-cyan, #00FFFF); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-cyan, #00FFFF);">MOVE/MENU</span>
+          <span style="color: var(--color-cyan, #00FFFF); font-size: clamp(0.5rem, 1.2vw, 0.75rem); text-shadow: 0 0 8px var(--color-cyan, #00FFFF); letter-spacing: 0.05em;">MOVE/MENU</span>
         </div>
         
-        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.2rem;">
-          <span class="key-cap key-space" style="border-color: var(--color-orange, #FF6600); color: var(--color-orange, #FF6600);">SPACE</span>
-          <span style="color: var(--color-orange, #FF6600); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-orange, #FF6600);">FIRE/SELECT</span>
+        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem;">
+          <span class="key-cap key-space" style="border-color: var(--color-orange, #FF6600); color: var(--color-orange, #FF6600); box-shadow: 0 0 10px rgba(255, 102, 0, 0.5), 3px 3px 0 #883300;">SPACE</span>
+          <span style="color: var(--color-orange, #FF6600); font-size: clamp(0.5rem, 1.2vw, 0.75rem); text-shadow: 0 0 8px var(--color-orange, #FF6600); letter-spacing: 0.05em;">FIRE/SELECT</span>
         </div>
         
-        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.2rem;">
-          <span class="key-cap key-shift" style="border-color: var(--color-green, #00FF00); color: var(--color-green, #00FF00);">SHIFT</span>
-          <span style="color: var(--color-green, #00FF00); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-green, #00FF00);">DASH</span>
+        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem;">
+          <span class="key-cap key-shift" style="border-color: var(--color-green, #00FF00); color: var(--color-green, #00FF00); box-shadow: 0 0 10px rgba(0, 255, 0, 0.5), 3px 3px 0 #006600;">SHIFT</span>
+          <span style="color: var(--color-green, #00FF00); font-size: clamp(0.5rem, 1.2vw, 0.75rem); text-shadow: 0 0 8px var(--color-green, #00FF00); letter-spacing: 0.05em;">DASH</span>
         </div>
         
-        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.2rem;">
-          <span class="key-cap" style="border-color: var(--color-yellow, #FFFF00); color: var(--color-yellow, #FFFF00);">🎮</span>
-          <span style="color: var(--color-yellow, #FFFF00); font-size: clamp(0.4rem, 1vw, 0.6rem); text-shadow: 0 0 5px var(--color-yellow, #FFFF00);">GAMEPAD</span>
+        <div class="control-item" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem;">
+          <span class="key-cap" style="border-color: var(--color-yellow, #FFFF00); color: var(--color-yellow, #FFFF00); box-shadow: 0 0 10px rgba(255, 255, 0, 0.5), 3px 3px 0 #888800; font-size: clamp(0.9rem, 1.8vw, 1.2rem);">🎮</span>
+          <span style="color: var(--color-yellow, #FFFF00); font-size: clamp(0.5rem, 1.2vw, 0.75rem); text-shadow: 0 0 8px var(--color-yellow, #FFFF00); letter-spacing: 0.05em;">GAMEPAD</span>
         </div>
       </div>
       
@@ -363,12 +365,43 @@ export class StartScreen {
         0%, 90%, 100% { opacity: 1; }
         95% { opacity: 0.85; }
       }
-      
-      @keyframes titleGlow {
-        0% { filter: brightness(1) drop-shadow(0 0 20px var(--color-cyan, #00FFFF)); }
-        100% { filter: brightness(1.2) drop-shadow(0 0 40px var(--color-cyan, #00FFFF)); }
+
+      @keyframes arcadeColorCycle {
+        0% { 
+          color: #FF0000;
+          text-shadow: 4px 4px 0 #880000, -2px -2px 0 #FF6600, 0 0 30px #FF0000, 0 0 60px #FF0000;
+        }
+        16% { 
+          color: #FF6600;
+          text-shadow: 4px 4px 0 #883300, -2px -2px 0 #FFFF00, 0 0 30px #FF6600, 0 0 60px #FF6600;
+        }
+        33% { 
+          color: #FFFF00;
+          text-shadow: 4px 4px 0 #888800, -2px -2px 0 #00FF00, 0 0 30px #FFFF00, 0 0 60px #FFFF00;
+        }
+        50% { 
+          color: #00FF00;
+          text-shadow: 4px 4px 0 #008800, -2px -2px 0 #00FFFF, 0 0 30px #00FF00, 0 0 60px #00FF00;
+        }
+        66% { 
+          color: #00FFFF;
+          text-shadow: 4px 4px 0 #008888, -2px -2px 0 #0088FF, 0 0 30px #00FFFF, 0 0 60px #00FFFF;
+        }
+        83% { 
+          color: #FF00FF;
+          text-shadow: 4px 4px 0 #880088, -2px -2px 0 #FF0088, 0 0 30px #FF00FF, 0 0 60px #FF00FF;
+        }
+        100% { 
+          color: #FF0000;
+          text-shadow: 4px 4px 0 #880000, -2px -2px 0 #FF6600, 0 0 30px #FF0000, 0 0 60px #FF0000;
+        }
       }
-      
+
+      @keyframes selectModeFlash {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
       @keyframes subtitlePulse {
         0%, 100% { opacity: 0.8; transform: scale(1); }
         50% { opacity: 1; transform: scale(1.02); }
@@ -409,28 +442,49 @@ export class StartScreen {
         to { transform: rotate(360deg); }
       }
       
-      @keyframes bossWarning {
-        0%, 50% { border-color: #FF0000; box-shadow: 0 0 20px rgba(255, 0, 0, 0.6), 3px 3px 0 #660000; }
-        51%, 100% { border-color: #FFFF00; box-shadow: 0 0 20px rgba(255, 255, 0, 0.6), 3px 3px 0 #666600; }
+      @keyframes threatDatabaseWarning {
+        0%, 50% { 
+          border-color: #FF0000; 
+          box-shadow: 
+            0 0 35px rgba(255, 0, 0, 0.6),
+            inset 0 0 25px rgba(255, 0, 0, 0.15),
+            5px 5px 0 #660000;
+        }
+        51%, 100% { 
+          border-color: #FFFF00; 
+          box-shadow: 
+            0 0 35px rgba(255, 255, 0, 0.6),
+            inset 0 0 25px rgba(255, 255, 0, 0.15),
+            5px 5px 0 #666600;
+        }
       }
       
       .key-cap {
-        min-width: 24px;
-        height: 24px;
-        padding: 0 4px;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 8px;
         background: #111111;
-        border: 2px solid var(--color-cyan, #00FFFF);
+        border: 3px solid var(--color-cyan, #00FFFF);
         display: inline-flex;
         align-items: center;
         justify-content: center;
         color: var(--color-cyan, #00FFFF);
-        font-size: clamp(0.5rem, 1vw, 0.7rem);
+        font-size: clamp(0.7rem, 1.5vw, 1rem);
         font-weight: bold;
-        box-shadow: 0 0 8px rgba(0, 255, 255, 0.5), 2px 2px 0 var(--color-cyan-dark, #006666);
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.5), 3px 3px 0 var(--color-cyan-dark, #006666);
+        line-height: 1;
+        text-align: center;
       }
       
-      .key-space { width: 60px; }
-      .key-shift { width: 50px; }
+      .key-space { 
+        min-width: 90px;
+        padding: 0 12px;
+      }
+      
+      .key-shift { 
+        min-width: 75px;
+        padding: 0 10px;
+      }
       
       /* ARCADE BUTTON - Yellow/Gold theme */
       #arcadeButton:hover,
@@ -791,7 +845,6 @@ export class StartScreen {
   // ═══════════════════════════════════════════════════════════════════════════
   private static createEnemyCard(name: string, type: string, color: string, points: number, isBoss: boolean = false): string {
     const enemyVisual = StartScreen.getEnemyVisual(type)
-    const cardAnimation = isBoss ? 'animation: bossWarning 0.5s step-end infinite;' : ''
     const sizeClass = isBoss ? 'boss-card' : ''
     
     return `
@@ -809,7 +862,6 @@ export class StartScreen {
           0 0 15px ${color}55,
           inset 0 0 12px ${color}18,
           2px 2px 0 ${color}33;
-        ${cardAnimation}
       ">
         <!-- ENEMY VISUAL -->
         <div class="enemy-visual" style="

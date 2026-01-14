@@ -71,7 +71,7 @@ Each mode maintains its own **Top 10** high scores.
 | **NAME** | Player name (3 letters) |
 | **LVL** | Level reached |
 | **SCORE** | Final score |
-| **TIME** | Survival time (MM:SS) |
+| **TIME** | Survival time (HH:MM:SS) |
 | **LOC** | Location (ONLINE, city name) |
 | **DATE** | Date achieved |
 

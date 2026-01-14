@@ -415,7 +415,7 @@ export class SceneManager {
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
 
     const material = new THREE.PointsMaterial({
-      size: 1.5,
+      size: 3.0,  // Doubled from 1.5 for 100% larger stars
       vertexColors: true,
       transparent: true,
       opacity: 0.6,
@@ -744,7 +744,7 @@ export class SceneManager {
   }
 
   private updateCosmicStarfield(deltaTime: number): void {
-    // ✨ UPDATE COSMIC STARFIELD - Parallax scrolling for depth ✨
+    // ✨ UPDATE COSMIC STARFIELD - Mode-specific behavior ✨
     if (this.cosmicStarfield && this.starfieldVelocities) {
       const positions = this.cosmicStarfield.geometry.attributes.position.array as Float32Array
       const starCount = positions.length / 3
@@ -760,22 +760,60 @@ export class SceneManager {
         positions[i3] += this.starfieldVelocities[i2] * deltaTime
         positions[i3 + 1] += this.starfieldVelocities[i2 + 1] * deltaTime
         
-        // Wrap around when stars go off-screen (wider bounds for scrolling)
-        const wrapX = 60
-        const wrapY = 80  // Taller for vertical scrolling
-        
-        if (positions[i3] > wrapX) positions[i3] = -wrapX
-        if (positions[i3] < -wrapX) positions[i3] = wrapX
-        
-        // For vertical wrap, reposition relative to camera for seamless scrolling
-        if (positions[i3 + 1] < cameraY - wrapY) {
-          positions[i3 + 1] = cameraY + wrapY + Math.random() * 20
-          // Randomize X position when respawning for variety
-          positions[i3] = (Math.random() - 0.5) * wrapX * 2
-        }
-        if (positions[i3 + 1] > cameraY + wrapY) {
-          positions[i3 + 1] = cameraY - wrapY - Math.random() * 20
-          positions[i3] = (Math.random() - 0.5) * wrapX * 2
+        // Mode-specific wrapping behavior
+        if (this.starfieldMode === 'rogue') {
+          // 🚀 ROGUE MODE: Vertical scrolling with camera-relative wrapping
+          const wrapX = 80  // Wider horizontal bounds
+          const wrapY = 150  // Much taller for vertical scrolling across multiple layers
+          
+          if (positions[i3] > wrapX) positions[i3] = -wrapX
+          if (positions[i3] < -wrapX) positions[i3] = wrapX
+          
+          // Wrap relative to camera for seamless scrolling
+          // Stars below camera view respawn above
+          if (positions[i3 + 1] < cameraY - wrapY) {
+            positions[i3 + 1] = cameraY + wrapY + Math.random() * 30
+            positions[i3] = (Math.random() - 0.5) * wrapX * 2
+          }
+          // Stars above camera view respawn below (shouldn't happen often in upward scroll)
+          if (positions[i3 + 1] > cameraY + wrapY) {
+            positions[i3 + 1] = cameraY - wrapY - Math.random() * 30
+            positions[i3] = (Math.random() - 0.5) * wrapX * 2
+          }
+        } else if (this.starfieldMode === 'attract') {
+          // 🎮 ATTRACT MODE: Radial star tunnel - respawn at center when off-screen
+          const maxDist = 60  // Maximum distance from center
+          
+          const starX = positions[i3]
+          const starY = positions[i3 + 1]
+          const distFromCenter = Math.sqrt(starX * starX + starY * starY)
+          
+          // When star goes too far, respawn near center
+          if (distFromCenter > maxDist) {
+            // Respawn near center with slight random offset
+            const spawnDist = 0.5 + Math.random() * 2.0  // 0.5-2.5 units from center
+            const spawnAngle = Math.random() * Math.PI * 2
+            positions[i3] = Math.cos(spawnAngle) * spawnDist
+            positions[i3 + 1] = Math.sin(spawnAngle) * spawnDist
+            
+            // Recalculate velocity for new position (radial outward)
+            const newAngle = Math.atan2(positions[i3 + 1], positions[i3])
+            const speedLayer = this.starfieldSpeedLayers[i]
+            const baseSpeed = 3.0 + Math.random() * 6.0
+            const parallaxSpeed = baseSpeed * speedLayer
+            this.starfieldVelocities[i2] = Math.cos(newAngle) * parallaxSpeed
+            this.starfieldVelocities[i2 + 1] = Math.sin(newAngle) * parallaxSpeed
+          }
+        } else {
+          // 🎮 ARCADE/TEST MODE: Fixed-position wrapping (no camera tracking)
+          const wrapX = 50
+          const wrapY = 40  // Smaller bounds for centered view
+          
+          // Simple wrapping around fixed origin (0, 0)
+          if (positions[i3] > wrapX) positions[i3] = -wrapX
+          if (positions[i3] < -wrapX) positions[i3] = wrapX
+          if (positions[i3 + 1] > wrapY) positions[i3 + 1] = -wrapY
+          if (positions[i3 + 1] < -wrapY) positions[i3 + 1] = wrapY
         }
       }
       
@@ -1087,22 +1125,30 @@ export class SceneManager {
     }
   }
   
-  // 🎲 ROGUE MODE: Set starfield to flow downward with PARALLAX effect 🎲
-  // Creates illusion of traveling upward - closer stars move faster!
+  // 🌌 STARFIELD MODE TRACKING 🌌
+  private starfieldMode: 'arcade' | 'rogue' | 'test' | 'attract' = 'arcade'
+  
+  // 🎲 MODE-SPECIFIC STARFIELD: Set starfield behavior per game mode 🎲
+  // Creates different visual experiences for each mode
   // See src/config/modes.config.ts for configuration values
-  setStarfieldDownwardFlow(enabled: boolean): void {
-    if (!this.starfieldVelocities || !this.starfieldSpeedLayers) {
+  setStarfieldDownwardFlow(enabled: boolean, mode: 'arcade' | 'rogue' | 'test' | 'attract' = 'arcade'): void {
+    if (!this.starfieldVelocities || !this.starfieldSpeedLayers || !this.cosmicStarfield) {
       console.warn('⚠️ Starfield arrays not initialized - cannot set flow mode!')
       return
     }
     
+    // Store current mode for wrapping logic
+    this.starfieldMode = mode
+    
     const starCount = this.starfieldVelocities.length / 2
+    const positions = this.cosmicStarfield.geometry.attributes.position.array as Float32Array
     
     for (let i = 0; i < starCount; i++) {
       const i2 = i * 2
+      const i3 = i * 3
       const speedLayer = this.starfieldSpeedLayers[i] // 0.2-1.5 depth multiplier
       
-      if (enabled) {
+      if (mode === 'rogue') {
         // 🚀 ROGUE MODE: Parallax downward flow!
         // Base speed: 5-10 units/sec (INCREASED for more visible scrolling)
         // Multiplied by depth layer for parallax effect
@@ -1114,14 +1160,29 @@ export class SceneManager {
         this.starfieldVelocities[i2] = (Math.random() - 0.5) * 0.5 * speedLayer
         // Downward flow with parallax
         this.starfieldVelocities[i2 + 1] = -parallaxSpeed
+      } else if (mode === 'attract') {
+        // 🎮 ATTRACT MODE: Radial outward from center (flying through space!)
+        // Stars fly outward from center at different speeds based on depth
+        const baseSpeed = 3.0 + Math.random() * 6.0  // 3-9 units/sec base
+        const parallaxSpeed = baseSpeed * speedLayer  // 0.6 to 13.5 units/sec with depth
+        
+        // Calculate angle from center (0,0) to this star's current position
+        // This creates radial outward motion like flying through a star tunnel
+        const starX = positions[i3]
+        const starY = positions[i3 + 1]
+        const angle = Math.atan2(starY, starX)
+        
+        // Set velocity along the radial direction (outward from center)
+        this.starfieldVelocities[i2] = Math.cos(angle) * parallaxSpeed
+        this.starfieldVelocities[i2 + 1] = Math.sin(angle) * parallaxSpeed
       } else {
-        // ARCADE MODE: Subtle ambient drift in all directions
+        // ARCADE/TEST MODE: Subtle ambient drift in all directions
         this.starfieldVelocities[i2] = (Math.random() - 0.5) * 0.2
         this.starfieldVelocities[i2 + 1] = (Math.random() - 0.5) * 0.2
       }
     }
     
-    console.log(`🌌 Starfield: ${enabled ? 'ROGUE MODE (fast parallax downward)' : 'ARCADE MODE (ambient drift)'}`)
+    console.log(`🌌 Starfield: ${mode.toUpperCase()} MODE - ${mode === 'rogue' ? 'fast parallax downward' : mode === 'attract' ? 'radial outward (star tunnel)' : 'ambient drift'}`)
   }
 
   // 🎬 DYNAMIC ZOOM SYSTEM - Procedural zoom based on gameplay! 🎬
