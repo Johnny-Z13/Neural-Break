@@ -607,23 +607,24 @@ export class Game {
     }
     
     // Set camera to follow player with vertical offset (bullet hell style - player at bottom)
-    const playerPos = this.player.getPosition()
     const cameraOffset = this.gameModeManager.getCameraVerticalOffset()
     if (DEBUG_MODE) console.log('📷 Setting camera with offset:', cameraOffset)
     
     // Position player at bottom of screen for Rogue mode
     // With frustumSize=30 and offset=12, player positioned to see engine trails and allow upward movement
+    // CRITICAL: Use setPosition() to update BOTH internal position AND mesh!
     const initialPlayerY = 2  // Position higher up - more visible with engine trails below
-    this.player.getMesh().position.y = initialPlayerY
+    const playerX = this.player.getPosition().x
+    this.player.setPosition(playerX, initialPlayerY, 0)
     
     // Camera target is above the player by the offset amount
     const cameraTargetY = initialPlayerY + cameraOffset
-    this.sceneManager.setCameraTarget(new THREE.Vector3(playerPos.x, cameraTargetY, 0))
+    this.sceneManager.setCameraTarget(new THREE.Vector3(playerX, cameraTargetY, 0))
     
     // Force camera to update immediately with offset applied
     const camera = this.sceneManager.getCamera()
-    camera.position.set(playerPos.x, cameraTargetY, 10)
-    camera.lookAt(playerPos.x, cameraTargetY, 0)
+    camera.position.set(playerX, cameraTargetY, 10)
+    camera.lookAt(playerX, cameraTargetY, 0)
     if (DEBUG_MODE) console.log(`📷 Camera positioned at: ${camera.position.y}, Player at: ${initialPlayerY}, Offset: ${cameraOffset}`)
     
     // Reset weapon system
@@ -2251,9 +2252,13 @@ export class Game {
       this.player.getMesh().rotation.z = 0
       
       // Reset player position to bottom of screen for new layer
+      // CRITICAL: Use setPosition() to update BOTH internal position AND mesh!
       const initialPlayerY = 2  // Same as initial spawn position
-      const playerX = this.player.getMesh().position.x // Keep horizontal position
-      this.player.getMesh().position.set(playerX, initialPlayerY, 0)
+      const playerX = this.player.getPosition().x // Keep horizontal position
+      
+      if (DEBUG_MODE) console.log(`🔄 Resetting player position from Y=${this.player.getPosition().y.toFixed(2)} to Y=${initialPlayerY}`)
+      this.player.setPosition(playerX, initialPlayerY, 0)
+      if (DEBUG_MODE) console.log(`✅ Player internal position now: Y=${this.player.getPosition().y.toFixed(2)}`)
       
       // Reset vertical scroll position for new layer
       this.rogueVerticalPosition = initialPlayerY
