@@ -964,7 +964,7 @@ export class Game {
     this.lastDamageTaken = this.player.getHealth()
     
     if (DEBUG_MODE) {
-      console.log(`✅ New game initialized - Level ${this.levelManager.getCurrentLevel()}/10`)
+      console.log(`✅ New game initialized - Level ${this.levelManager.getCurrentLevel()}/99`)
     }
     
     // CRITICAL: Ensure game loop is running!

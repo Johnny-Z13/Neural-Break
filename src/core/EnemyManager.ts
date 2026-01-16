@@ -41,6 +41,9 @@ export class EnemyManager {
   private gridCellSize: number = 4.0 // Cell size for spatial partitioning
   private separationForce: number = 8.0 // Force multiplier for separation
   private separationRadius: number = 2.5 // Distance at which separation starts
+  
+  // 🔫 ORPHANED PROJECTILES - Projectiles from dead enemies that continue their path! 🔫
+  private orphanedProjectiles: EnemyProjectile[] = []
 
   initialize(sceneManager: SceneManager, player: Player): void {
     this.sceneManager = sceneManager
@@ -163,6 +166,9 @@ export class EnemyManager {
 
     // Remove dead enemies
     this.cleanupDeadEnemies()
+    
+    // 🔫 UPDATE ORPHANED PROJECTILES - Keep them moving after enemy death! 🔫
+    this.updateOrphanedProjectiles(deltaTime)
   }
   
   // 🔷 SPATIAL GRID UTILITIES 🔷
@@ -655,10 +661,47 @@ export class EnemyManager {
         // 💥 CHAIN REACTION - Apply death damage to nearby enemies! 💥
         this.applyDeathDamageToNearby(enemy)
         
-        // 🧹 CLEANUP: Call destroy to clean up projectiles before removing! 🧹
+        // 🔫 TRANSFER PROJECTILES TO ORPHANED POOL - They continue their path! 🔫
+        this.transferProjectilesToOrphaned(enemy)
+        
+        // 🧹 CLEANUP: Call destroy (now won't destroy projectiles since they're transferred)
         enemy.destroy()
         this.sceneManager.removeFromScene(enemy.getMesh())
         this.enemies.splice(i, 1)
+      }
+    }
+  }
+  
+  // 🔫 TRANSFER PROJECTILES FROM DYING ENEMY TO ORPHANED POOL 🔫
+  private transferProjectilesToOrphaned(enemy: Enemy): void {
+    // Get projectiles from enemy (if it has any)
+    let projectiles: EnemyProjectile[] = []
+    
+    if (enemy instanceof ScanDrone) {
+      projectiles = enemy.getProjectiles()
+      enemy.clearProjectilesForTransfer() // Clear without destroying
+    } else if (enemy instanceof Fizzer) {
+      projectiles = enemy.getProjectiles()
+      enemy.clearProjectilesForTransfer()
+    } else if (enemy instanceof VoidSphere) {
+      projectiles = enemy.getProjectiles()
+      enemy.clearProjectilesForTransfer()
+    } else if (enemy instanceof CrystalShardSwarm) {
+      projectiles = enemy.getProjectiles()
+      enemy.clearProjectilesForTransfer()
+    } else if (enemy instanceof Boss) {
+      projectiles = enemy.getProjectiles()
+      enemy.clearProjectilesForTransfer()
+    } else if (enemy instanceof ChaosWorm) {
+      projectiles = enemy.getProjectiles()
+      enemy.clearProjectilesForTransfer()
+    }
+    
+    // Add to orphaned pool
+    if (projectiles.length > 0) {
+      this.orphanedProjectiles.push(...projectiles)
+      if (DEBUG_MODE) {
+        console.log(`🔫 Transferred ${projectiles.length} projectiles to orphaned pool`)
       }
     }
   }
@@ -793,6 +836,9 @@ export class EnemyManager {
       this.sceneManager.removeFromScene(enemy.getMesh())
     }
     this.enemies = []
+    
+    // 🔫 ALSO CLEAR ORPHANED PROJECTILES! 🔫
+    this.clearOrphanedProjectiles()
   }
 
   getEnemies(): Enemy[] {
@@ -810,6 +856,9 @@ export class EnemyManager {
       this.sceneManager.removeFromScene(enemy.getMesh())
     }
     this.enemies = []
+    
+    // 🔫 CLEAR ORPHANED PROJECTILES TOO! 🔫
+    this.clearOrphanedProjectiles()
     
     // Reset spawn timers
     this.spawnTimer = 0
@@ -832,9 +881,11 @@ export class EnemyManager {
     return allProjectiles
   }
   
-  // 🔫 GET ALL ENEMY PROJECTILES (including ScanDrone + VoidSphere + Fizzer + ChaosWorm!) 🔫
+  // 🔫 GET ALL ENEMY PROJECTILES (including orphaned projectiles from dead enemies!) 🔫
   getAllEnemyProjectiles(): EnemyProjectile[] {
     const allProjectiles: EnemyProjectile[] = []
+    
+    // Get projectiles from alive enemies
     for (const enemy of this.enemies) {
       if (enemy.isAlive()) {
         if (enemy instanceof Boss) {
@@ -847,17 +898,39 @@ export class EnemyManager {
           allProjectiles.push(...enemy.getProjectiles())
         } else if (enemy instanceof ChaosWorm) {
           allProjectiles.push(...enemy.getProjectiles())
-        }
-      } else {
-        // 🔴 Include Fizzer + ChaosWorm projectiles even after death - let them finish trajectory! 🔴
-        if (enemy instanceof Fizzer) {
-          allProjectiles.push(...enemy.getProjectiles())
-        } else if (enemy instanceof ChaosWorm) {
+        } else if (enemy instanceof CrystalShardSwarm) {
           allProjectiles.push(...enemy.getProjectiles())
         }
       }
     }
+    
+    // 🔫 INCLUDE ORPHANED PROJECTILES - From dead enemies, still dangerous! 🔫
+    allProjectiles.push(...this.orphanedProjectiles)
+    
     return allProjectiles
+  }
+  
+  // 🔫 UPDATE ORPHANED PROJECTILES - Keep them moving after enemy death! 🔫
+  updateOrphanedProjectiles(deltaTime: number): void {
+    for (let i = this.orphanedProjectiles.length - 1; i >= 0; i--) {
+      const projectile = this.orphanedProjectiles[i]
+      projectile.update(deltaTime)
+      
+      // Remove dead projectiles
+      if (!projectile.isAlive()) {
+        this.sceneManager.removeFromScene(projectile.getMesh())
+        this.orphanedProjectiles.splice(i, 1)
+      }
+    }
+  }
+  
+  // 🧹 CLEAR ALL ORPHANED PROJECTILES (for level transitions)
+  clearOrphanedProjectiles(): void {
+    for (const projectile of this.orphanedProjectiles) {
+      this.sceneManager.removeFromScene(projectile.getMesh())
+    }
+    this.orphanedProjectiles = []
+    if (DEBUG_MODE) console.log('🧹 Orphaned projectiles cleared')
   }
   
   // 🎆 SET EFFECTS SYSTEM FOR SUPER JUICY EFFECTS! 🎆

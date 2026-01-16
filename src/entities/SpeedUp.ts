@@ -35,7 +35,7 @@ export class SpeedUp {
     // 💚 RICH EMERALD GLOWING BASE 💚
     const glowGeometry = new THREE.CircleGeometry(0.56, 32)
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22DD44, // RICH EMERALD glow
+      color: 0x00FF00, // BRIGHT GREEN glow (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.7,
       blending: THREE.AdditiveBlending,
@@ -48,7 +48,7 @@ export class SpeedUp {
     // 💫 OUTER GLOW RING - BRIGHT EMERALD 💫
     const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32)
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x33FF55, // BRIGHT EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -60,7 +60,7 @@ export class SpeedUp {
     // 🟢 INNER RING - DEEP EMERALD 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32)
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22FF44, // DEEP EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.9,
       blending: THREE.AdditiveBlending,
@@ -79,7 +79,7 @@ export class SpeedUp {
     for (let i = 0; i < 15; i++) {
       const particleGeometry = new THREE.CircleGeometry(0.045, 6)
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x44FF66, // BRIGHT EMERALD particles
+        color: 0x00FF00, // BRIGHT GREEN particles (matches INVULNERABLE notification)
         transparent: true,
         opacity: 0.9,
         blending: THREE.AdditiveBlending
@@ -144,7 +144,7 @@ export class SpeedUp {
 
   private createSpeedLines(): void {
     // Create motion blur lines to emphasize speed
-    const lineColor = 0x33FF55 // EMERALD speed lines
+    const lineColor = 0x00FF00 // BRIGHT GREEN speed lines (matches INVULNERABLE notification)
     const lineMaterial = new THREE.MeshBasicMaterial({
       color: lineColor,
       transparent: true,

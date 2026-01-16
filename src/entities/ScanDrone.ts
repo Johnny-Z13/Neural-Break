@@ -642,15 +642,24 @@ export class ScanDrone extends Enemy {
     }
   }
 
-  // 🧹 CLEANUP PROJECTILES ON DEATH 🧹
-  destroy(): void {
-    // Remove all projectiles from scene
-    for (const projectile of this.projectiles) {
-      if (this.sceneManager) {
-        this.sceneManager.removeFromScene(projectile.getMesh())
-      }
-    }
+  // 🔫 CLEAR PROJECTILES FOR TRANSFER (don't destroy - they continue their path!) 🔫
+  clearProjectilesForTransfer(): void {
+    // Don't remove from scene - they're being transferred to orphaned pool
     this.projectiles = []
+  }
+  
+  // 🧹 CLEANUP ON DEATH 🧹
+  destroy(): void {
+    // DON'T destroy projectiles here - they're transferred to orphaned pool first!
+    // If projectiles array is not empty, it means transfer wasn't called - destroy them
+    if (this.projectiles.length > 0) {
+      for (const projectile of this.projectiles) {
+        if (this.sceneManager) {
+          this.sceneManager.removeFromScene(projectile.getMesh())
+        }
+      }
+      this.projectiles = []
+    }
     
     // Clean up electric arcs
     this.electricArcs.forEach(arc => {

@@ -36,7 +36,7 @@ export class Shield {
     // 💚 RICH EMERALD GLOWING BASE 💚
     const glowGeometry = new THREE.CircleGeometry(0.56, 32) // Scaled up
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22DD44, // RICH EMERALD glow
+      color: 0x00FF00, // BRIGHT GREEN glow (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.7,
       blending: THREE.AdditiveBlending,
@@ -49,7 +49,7 @@ export class Shield {
     // 💫 OUTER GLOW RING - BRIGHT EMERALD 💫
     const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32) // Scaled up
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x33FF55, // BRIGHT EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -61,7 +61,7 @@ export class Shield {
     // 🟢 INNER RING - DEEP EMERALD 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32) // Scaled up
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22FF44, // DEEP EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.9,
       blending: THREE.AdditiveBlending,
@@ -77,7 +77,7 @@ export class Shield {
     for (let i = 0; i < 12; i++) {
       const particleGeometry = new THREE.CircleGeometry(0.05, 6) // Scaled up
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x44FF66, // BRIGHT EMERALD particles
+        color: 0x00FF00, // BRIGHT GREEN particles (matches INVULNERABLE notification)
         transparent: true,
         opacity: 0.9,
         blending: THREE.AdditiveBlending

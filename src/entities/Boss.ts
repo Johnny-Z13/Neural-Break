@@ -962,19 +962,24 @@ export class Boss extends Enemy {
     }
   }
 
+  // 🔫 CLEAR PROJECTILES FOR TRANSFER (don't destroy - they continue their path!) 🔫
+  clearProjectilesForTransfer(): void {
+    this.projectiles = []
+  }
+  
   /**
    * 🧹 CLEANUP - Remove all projectiles from scene
    */
   destroy(): void {
-    // Remove all projectiles from scene
-    if (this.sceneManager) {
+    // DON'T destroy projectiles here - they're transferred to orphaned pool first!
+    if (this.projectiles.length > 0 && this.sceneManager) {
       for (const projectile of this.projectiles) {
         this.sceneManager.removeFromScene(projectile.getMesh())
       }
+      this.projectiles = []
     }
-    this.projectiles = []
     
-    console.log('🧹 Boss projectiles cleaned up')
+    console.log('🧹 Boss cleanup complete')
   }
 }
 

@@ -2,6 +2,12 @@
  * Vercel Serverless Function - High Score API
  * Stores high scores in Vercel KV (Redis-based key-value store)
  * 
+ * ⚠️ IMPORTANT: For persistence, you must:
+ * 1. Run: vercel kv create neural-break-scores
+ * 2. Run: npm install @vercel/kv
+ * 3. Link your project: vercel link
+ * 4. Pull env vars: vercel env pull
+ * 
  * Endpoints:
  * - GET /api/highscores?mode=original|rogue - Get high scores for a mode
  * - POST /api/highscores - Save a new high score
@@ -23,10 +29,134 @@ interface HighScoreEntry {
 
 const MAX_SCORES_PER_MODE = 10
 const MAX_NAME_LENGTH = 20
+const KV_KEY = 'neural_break_highscores'
 
-// In-memory storage for development (replace with Vercel KV in production)
-// This will reset on each deployment but works for testing
+// ═══════════════════════════════════════════════════════════════════
+// STORAGE IMPLEMENTATION
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Check if Vercel KV is available (production)
+ */
+function isKVAvailable(): boolean {
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
+}
+
+/**
+ * Get scores from Vercel KV
+ */
+async function getScoresFromKV(): Promise<HighScoreEntry[]> {
+  if (!isKVAvailable()) {
+    return []
+  }
+  
+  try {
+    const response = await fetch(
+      `${process.env.KV_REST_API_URL}/get/${KV_KEY}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        },
+      }
+    )
+    
+    if (!response.ok) {
+      console.log('KV GET response not OK:', response.status)
+      return []
+    }
+    
+    const data = await response.json()
+    
+    // Vercel KV returns { result: <value> }
+    if (data.result) {
+      // If result is a string, parse it
+      if (typeof data.result === 'string') {
+        return JSON.parse(data.result)
+      }
+      // If result is already an array, return it
+      if (Array.isArray(data.result)) {
+        return data.result
+      }
+    }
+    
+    return []
+  } catch (error) {
+    console.error('Error getting scores from KV:', error)
+    return []
+  }
+}
+
+/**
+ * Save scores to Vercel KV
+ */
+async function saveScoresToKV(scores: HighScoreEntry[]): Promise<boolean> {
+  if (!isKVAvailable()) {
+    console.warn('⚠️ Vercel KV not available - scores will not persist!')
+    return false
+  }
+  
+  try {
+    const response = await fetch(
+      `${process.env.KV_REST_API_URL}/set/${KV_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scores),
+      }
+    )
+    
+    if (!response.ok) {
+      console.error('KV SET response not OK:', response.status)
+      return false
+    }
+    
+    console.log('✅ Scores saved to Vercel KV')
+    return true
+  } catch (error) {
+    console.error('Error saving scores to KV:', error)
+    return false
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FALLBACK: In-memory storage (for development/testing only)
+// ⚠️ WARNING: This resets on every deployment and cold start!
+// ═══════════════════════════════════════════════════════════════════
 let inMemoryScores: HighScoreEntry[] = []
+
+/**
+ * Get all scores (tries KV first, falls back to memory)
+ */
+async function getAllScores(): Promise<HighScoreEntry[]> {
+  if (isKVAvailable()) {
+    const kvScores = await getScoresFromKV()
+    if (kvScores.length > 0 || inMemoryScores.length === 0) {
+      return kvScores
+    }
+  }
+  return inMemoryScores
+}
+
+/**
+ * Save all scores (saves to KV if available, always updates memory)
+ */
+async function saveAllScores(scores: HighScoreEntry[]): Promise<boolean> {
+  inMemoryScores = scores
+  
+  if (isKVAvailable()) {
+    return await saveScoresToKV(scores)
+  }
+  
+  console.warn('⚠️ Vercel KV not configured - using in-memory storage (will reset!)')
+  return true
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VALIDATION & SANITIZATION
+// ═══════════════════════════════════════════════════════════════════
 
 /**
  * Validate high score entry
@@ -83,24 +213,10 @@ function sanitizeEntry(entry: HighScoreEntry): HighScoreEntry {
   }
 }
 
-/**
- * Parse date string in MM/DD/YY format for sorting
- */
-function parseDate(dateStr: string): Date {
-  const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
-  if (match) {
-    const month = parseInt(match[1], 10) - 1
-    const day = parseInt(match[2], 10)
-    let year = parseInt(match[3], 10)
-    if (year < 100) year += 2000
-    return new Date(year, month, day)
-  }
-  return new Date(dateStr)
-}
+// ═══════════════════════════════════════════════════════════════════
+// MAIN HANDLER
+// ═══════════════════════════════════════════════════════════════════
 
-/**
- * Main handler
- */
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -115,12 +231,15 @@ export default async function handler(
     return res.status(200).end()
   }
   
+  // Log storage mode for debugging
+  console.log(`📊 High Score API - KV Available: ${isKVAvailable()}`)
+  
   try {
     // GET - Retrieve high scores
     if (req.method === 'GET') {
       const { mode } = req.query
       
-      let scores = [...inMemoryScores]
+      let scores = await getAllScores()
       
       // Filter by mode if specified
       if (mode && typeof mode === 'string') {
@@ -153,8 +272,11 @@ export default async function handler(
       // Sanitize entry
       const sanitized = sanitizeEntry(entry)
       
+      // Get current scores
+      let allScores = await getAllScores()
+      
       // Check if this is actually a high score for this mode
-      const modeScores = inMemoryScores.filter(s => s.gameMode === sanitized.gameMode)
+      const modeScores = allScores.filter(s => s.gameMode === sanitized.gameMode)
       if (modeScores.length >= MAX_SCORES_PER_MODE) {
         // Sort to find lowest score
         modeScores.sort((a, b) => a.score - b.score)
@@ -169,10 +291,10 @@ export default async function handler(
       }
       
       // Add new score
-      inMemoryScores.push(sanitized)
+      allScores.push(sanitized)
       
       // Sort all scores
-      inMemoryScores.sort((a, b) => {
+      allScores.sort((a, b) => {
         if (b.score !== a.score) {
           return b.score - a.score
         }
@@ -180,21 +302,25 @@ export default async function handler(
       })
       
       // Keep top MAX_SCORES_PER_MODE per game mode
-      const originalScores = inMemoryScores
+      const originalScores = allScores
         .filter(s => s.gameMode === 'original')
         .slice(0, MAX_SCORES_PER_MODE)
-      const rogueScores = inMemoryScores
+      const rogueScores = allScores
         .filter(s => s.gameMode === 'rogue')
         .slice(0, MAX_SCORES_PER_MODE)
-      const testScores = inMemoryScores
+      const testScores = allScores
         .filter(s => s.gameMode === 'test')
         .slice(0, MAX_SCORES_PER_MODE)
       
-      inMemoryScores = [...originalScores, ...rogueScores, ...testScores]
+      const trimmedScores = [...originalScores, ...rogueScores, ...testScores]
+      
+      // Save to storage
+      const saved = await saveAllScores(trimmedScores)
       
       return res.status(200).json({ 
-        success: true,
-        entry: sanitized
+        success: saved,
+        entry: sanitized,
+        persistent: isKVAvailable()
       })
     }
     

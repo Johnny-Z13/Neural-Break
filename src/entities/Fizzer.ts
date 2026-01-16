@@ -566,14 +566,21 @@ export class Fizzer extends Enemy {
     }
   }
 
-  destroy(): void {
-    // 🧹 CLEANUP: Remove all projectiles from scene when Fizzer dies 🧹
-    for (const projectile of this.projectiles) {
-      if (this.sceneManager) {
-        this.sceneManager.removeFromScene(projectile.getMesh())
-      }
-    }
+  // 🔫 CLEAR PROJECTILES FOR TRANSFER (don't destroy - they continue their path!) 🔫
+  clearProjectilesForTransfer(): void {
     this.projectiles = []
+  }
+  
+  destroy(): void {
+    // DON'T destroy projectiles here - they're transferred to orphaned pool first!
+    if (this.projectiles.length > 0) {
+      for (const projectile of this.projectiles) {
+        if (this.sceneManager) {
+          this.sceneManager.removeFromScene(projectile.getMesh())
+        }
+      }
+      this.projectiles = []
+    }
     
     // Clean up electric bolts
     this.electricBolts.forEach(bolt => {

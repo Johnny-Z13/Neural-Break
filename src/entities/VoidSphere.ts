@@ -742,15 +742,22 @@ export class VoidSphere extends Enemy {
     }
   }
   
+  // 🔫 CLEAR PROJECTILES FOR TRANSFER (don't destroy - they continue their path!) 🔫
+  clearProjectilesForTransfer(): void {
+    this.projectiles = []
+  }
+  
   // Override destroy to cleanup projectiles
   destroy(): void {
-    // Cleanup projectiles
-    for (const projectile of this.projectiles) {
-      if (this.sceneManager) {
-        this.sceneManager.removeFromScene(projectile.getMesh())
+    // DON'T destroy projectiles here - they're transferred to orphaned pool first!
+    if (this.projectiles.length > 0) {
+      for (const projectile of this.projectiles) {
+        if (this.sceneManager) {
+          this.sceneManager.removeFromScene(projectile.getMesh())
+        }
       }
+      this.projectiles = []
     }
-    this.projectiles = []
     
     super.destroy()
   }

@@ -512,15 +512,22 @@ export class ChaosWorm extends Enemy {
     }
   }
 
+  // 🔫 CLEAR PROJECTILES FOR TRANSFER (don't destroy - they continue their path!) 🔫
+  clearProjectilesForTransfer(): void {
+    this.deathProjectiles = []
+  }
+  
   // 🧹 CLEANUP DEATH PROJECTILES WHEN WORM IS REMOVED 🧹
   destroy(): void {
-    // Remove all death projectiles from scene
-    for (const projectile of this.deathProjectiles) {
-      if (this.sceneManager) {
-        this.sceneManager.removeFromScene(projectile.getMesh())
+    // DON'T destroy projectiles here - they're transferred to orphaned pool first!
+    if (this.deathProjectiles.length > 0) {
+      for (const projectile of this.deathProjectiles) {
+        if (this.sceneManager) {
+          this.sceneManager.removeFromScene(projectile.getMesh())
+        }
       }
+      this.deathProjectiles = []
     }
-    this.deathProjectiles = []
     
     super.destroy()
   }

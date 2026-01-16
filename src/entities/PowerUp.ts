@@ -36,7 +36,7 @@ export class PowerUp {
     // 💚 RICH EMERALD GLOWING BASE 💚
     const glowGeometry = new THREE.CircleGeometry(0.56, 32) // Scaled up from 0.45
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22DD44, // RICH EMERALD glow
+      color: 0x00FF00, // BRIGHT GREEN glow (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.8, // More opaque for stronger glow
       blending: THREE.AdditiveBlending,
@@ -49,7 +49,7 @@ export class PowerUp {
     // 💫 OUTER GLOW RING - BRIGHT EMERALD 💫
     const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32) // Scaled up from 0.5, 0.65
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x55FF77, // BRIGHT EMERALD for outer ring
+      color: 0x00FF00, // BRIGHT GREEN for outer ring (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -61,7 +61,7 @@ export class PowerUp {
     // 🟢 INNER RING - DEEP EMERALD 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32) // Scaled up from 0.35, 0.42
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22EE44, // DEEP EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.95,
       blending: THREE.AdditiveBlending,
@@ -76,10 +76,9 @@ export class PowerUp {
     // 💫 ENERGY PARTICLES - Rich emerald tones! 💫
     for (let i = 0; i < 12; i++) {
       const particleGeometry = new THREE.CircleGeometry(0.06, 8) // Slightly larger, more segments
-      // Alternate between bright and deep emerald for variety
-      const isLighter = i % 2 === 0
+      // All particles use the same bright green
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: isLighter ? 0x77FF99 : 0x33EE55, // LIGHT EMERALD & DEEP EMERALD mix
+        color: 0x00FF00, // BRIGHT GREEN particles (matches INVULNERABLE notification)
         transparent: true,
         opacity: 0.85,
         blending: THREE.AdditiveBlending
@@ -172,9 +171,8 @@ export class PowerUp {
           0
         )
         const particleMaterial = child.material as THREE.MeshBasicMaterial
-        // Lighter particles have more varied opacity for special look
-        const isLighter = particleIndex % 2 === 0
-        const baseOpacity = isLighter ? 0.8 : 0.7
+        // All particles have the same bright green with varied opacity
+        const baseOpacity = 0.75
         particleMaterial.opacity = baseOpacity + Math.sin(this.pulseTime * 7 + particleIndex) * 0.2
       }
     }

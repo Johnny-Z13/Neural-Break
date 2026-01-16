@@ -819,10 +819,34 @@ export class Starfield {
     this.initStars()
     this.initDemoEnemies()
     this.effects = []
+    
+    // 🎬 PRE-CALCULATE 5 SECONDS OF ANIMATION - Hide spawn initialization!
+    console.log('🎬 Pre-calculating 5 seconds of starfield animation...')
+    const frameRate = 60
+    const preCalcSeconds = 5
+    const totalFrames = frameRate * preCalcSeconds
+    const deltaTime = 1 / frameRate
+    
+    for (let frame = 0; frame < totalFrames; frame++) {
+      // Update stars to their positions after 5 seconds
+      for (const star of this.stars) {
+        this.updateStar(star)
+      }
+      
+      // Update demo enemies so they're already wandering
+      for (const enemy of this.demoEnemies) {
+        this.updateDemoEnemy(enemy, deltaTime)
+      }
+      
+      // Update time counter
+      this.time += deltaTime
+    }
+    console.log('✅ Pre-calculation complete! Starting from 5 seconds in.')
+    
     this.isRunning = true
     this.lastTime = 0
     this.frameCount = 0
-    this.time = 0
+    // Keep the time at 5 seconds so animation continues from there
     
     // Add canvas to DOM
     document.body.insertBefore(this.canvas, document.body.firstChild)

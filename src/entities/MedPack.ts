@@ -38,7 +38,7 @@ export class MedPack {
     // OPTIMIZED: Reduced from 16x16 to 8x8 for performance
     const glowGeometry = new THREE.SphereGeometry(0.5, 8, 8)
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22DD44, // RICH EMERALD GREEN glow
+      color: 0x00FF00, // BRIGHT GREEN glow (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.6,
       side: THREE.BackSide,
@@ -51,7 +51,7 @@ export class MedPack {
     // OPTIMIZED: Reduced from 16x16 to 8x8 for performance
     const outerGlowGeometry = new THREE.SphereGeometry(0.625, 8, 8)
     const outerGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x33EE55, // BRIGHT EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.4,
       side: THREE.BackSide,
@@ -64,7 +64,7 @@ export class MedPack {
     // Vertical bar - RICH EMERALD!
     const verticalGeometry = new THREE.BoxGeometry(0.15, 0.56, 0.06) // Scaled up
     const verticalMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22FF44, // RICH EMERALD GREEN cross
+      color: 0x00FF00, // BRIGHT GREEN cross (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.95,
       blending: THREE.AdditiveBlending
@@ -75,7 +75,7 @@ export class MedPack {
     // Horizontal bar - RICH EMERALD!
     const horizontalGeometry = new THREE.BoxGeometry(0.56, 0.15, 0.06) // Scaled up
     const horizontalMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22FF44, // RICH EMERALD GREEN cross
+      color: 0x00FF00, // BRIGHT GREEN cross (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.95,
       blending: THREE.AdditiveBlending
@@ -86,7 +86,7 @@ export class MedPack {
     // 💚 BRIGHT INNER CROSS - Glowing center highlight! 💚
     const innerVerticalGeometry = new THREE.BoxGeometry(0.075, 0.44, 0.075) // Scaled up
     const innerMaterial = new THREE.MeshBasicMaterial({
-      color: 0x77FF99, // LIGHT EMERALD inner
+      color: 0x00FF00, // BRIGHT GREEN inner (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending
@@ -103,7 +103,7 @@ export class MedPack {
     // 💚 EMERALD WIREFRAME OUTLINE 💚
     const wireframeGeometry = new THREE.SphereGeometry(0.5, 12, 12) // Scaled up
     const wireframeMaterial = new THREE.MeshBasicMaterial({
-      color: 0x33FF55, // EMERALD GREEN wireframe
+      color: 0x00FF00, // BRIGHT GREEN wireframe (matches INVULNERABLE notification)
       wireframe: true,
       transparent: true,
       opacity: 0.9,
@@ -119,7 +119,7 @@ export class MedPack {
     for (let i = 0; i < 10; i++) {
       const particleGeometry = new THREE.SphereGeometry(0.04, 6, 6) // Scaled up
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x44FF66, // BRIGHT EMERALD particles
+        color: 0x00FF00, // BRIGHT GREEN particles (matches INVULNERABLE notification)
         transparent: true,
         opacity: 0.9,
         blending: THREE.AdditiveBlending
@@ -161,7 +161,7 @@ export class MedPack {
       const glowMaterial = this.glowMesh.material as THREE.MeshBasicMaterial
       glowMaterial.opacity = 0.5 + Math.sin(this.pulseTime * 6) * 0.3 // Faster for "fizz"
       this.glowMesh.scale.setScalar(1 + Math.sin(this.pulseTime * 7) * 0.2)
-      glowMaterial.color.setHex(0x22DD44) // Rich emerald green
+      glowMaterial.color.setHex(0x00FF00) // Bright green (matches INVULNERABLE notification)
     }
     
     // Animate outer glow if it exists

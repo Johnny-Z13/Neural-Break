@@ -21,7 +21,7 @@ export class Invulnerable {
     const starShape = this.createStarShape(0.5, 0.25, 5)
     const starGeometry = new THREE.ShapeGeometry(starShape)
     const starMaterial = new THREE.MeshBasicMaterial({
-      color: 0x22FF44, // RICH EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.9,
       blending: THREE.AdditiveBlending,
@@ -33,7 +33,7 @@ export class Invulnerable {
     // === INNER GLOW - Bright emerald-white center ===
     const innerGlowGeometry = new THREE.CircleGeometry(0.2, 16)
     const innerGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xAAFFBB, // LIGHT EMERALD WHITE
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending
@@ -45,7 +45,7 @@ export class Invulnerable {
     // === OUTER RING 1 - Rotating slowly ===
     const ring1Geometry = new THREE.RingGeometry(0.6, 0.7, 32)
     const ring1Material = new THREE.MeshBasicMaterial({
-      color: 0x22DD44, // RICH EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.7,
       side: THREE.DoubleSide,
@@ -58,7 +58,7 @@ export class Invulnerable {
     // === OUTER RING 2 - Counter-rotating ===
     const ring2Geometry = new THREE.RingGeometry(0.75, 0.82, 32)
     const ring2Material = new THREE.MeshBasicMaterial({
-      color: 0x55FF77, // BRIGHT EMERALD
+      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.6,
       side: THREE.DoubleSide,
@@ -72,7 +72,7 @@ export class Invulnerable {
     const particleCount = 12
     const particleGeometry = new THREE.CircleGeometry(0.08, 8)
     const particleMaterial = new THREE.MeshBasicMaterial({
-      color: 0x77FF99, // LIGHT EMERALD particles
+      color: 0x00FF00, // BRIGHT GREEN particles (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending
@@ -92,7 +92,7 @@ export class Invulnerable {
     // === OUTER GLOW - Large soft halo ===
     const outerGlowGeometry = new THREE.CircleGeometry(1.2, 32)
     const outerGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x33EE55, // BRIGHT EMERALD halo
+      color: 0x00FF00, // BRIGHT GREEN halo (matches INVULNERABLE notification)
       transparent: true,
       opacity: 0.25,
       blending: THREE.AdditiveBlending

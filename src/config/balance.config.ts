@@ -322,20 +322,20 @@ export const BALANCE_CONFIG = {
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // LEVEL PROGRESSION (INCREASED DIFFICULTY - MORE SCALING)
+  // LEVEL PROGRESSION - 99 LEVELS WITH RAMPING DIFFICULTY!
   // ═══════════════════════════════════════════════════════════════════
   LEVELS: {
-    TOTAL_LEVELS: 10,              // Number of levels
+    TOTAL_LEVELS: 99,              // 99 LEVELS OF CHAOS!
     
-    // Difficulty Scaling (per level) - INCREASED SCALING!
-    ENEMY_HEALTH_SCALE: 1.08,      // 8% more health per level (was 1.05)
-    ENEMY_SPEED_SCALE: 1.04,       // 4% faster per level (was 1.02)
-    ENEMY_DAMAGE_SCALE: 1.08,      // 8% more damage per level (was 1.05)
-    SPAWN_RATE_SCALE: 0.92,        // 8% faster spawns per level (was 0.95)
+    // Difficulty Scaling (per level) - Gradual ramp for 99 levels
+    ENEMY_HEALTH_SCALE: 1.025,     // 2.5% more health per level (compounds to ~10x at level 99)
+    ENEMY_SPEED_SCALE: 1.012,      // 1.2% faster per level (compounds to ~3x at level 99)
+    ENEMY_DAMAGE_SCALE: 1.02,      // 2% more damage per level (compounds to ~6x at level 99)
+    SPAWN_RATE_SCALE: 0.992,       // 0.8% faster spawns per level
     
     // Level Duration
-    LEVEL_DURATION: 120,           // Seconds per level (2 minutes)
-    BOSS_APPEARS_AT: 100,          // Boss spawns at this time (seconds)
+    LEVEL_DURATION: 90,            // Seconds per level (1.5 minutes)
+    BOSS_APPEARS_AT: 70,           // Boss spawns at this time (seconds)
   },
 
   // ═══════════════════════════════════════════════════════════════════
