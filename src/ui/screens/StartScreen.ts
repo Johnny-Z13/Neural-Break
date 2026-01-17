@@ -253,23 +253,23 @@ export class StartScreen {
           </div>
           
           <!-- HIGH SCORES BUTTON -->
-          <button id="leaderboardButton" class="arcade-button arcade-button-secondary" style="
+          <button id="leaderboardButton" class="arcade-button arcade-button-primary" style="
             background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
             border: var(--border-thick, 4px) solid var(--color-magenta, #FF00FF);
             color: var(--color-magenta, #FF00FF);
             font-family: inherit;
-            font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+            font-size: clamp(0.8rem, 1.8vw, 1.1rem);
             font-weight: bold;
-            padding: var(--space-xs, 0.5rem) var(--space-md, 1rem);
+            padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            text-shadow: 0 0 10px var(--color-magenta, #FF00FF);
+            letter-spacing: 0.12em;
+            text-shadow: 0 0 15px var(--color-magenta, #FF00FF), 2px 2px 0 #660066;
             box-shadow: 
-              0 0 15px var(--color-magenta-glow, rgba(255, 0, 255, 0.4)),
+              0 0 20px var(--color-magenta-glow, rgba(255, 0, 255, 0.4)),
               var(--shadow-pixel, 4px 4px 0) var(--color-magenta-dark, #660066);
             transition: all 0.1s step-end;
-            margin-top: var(--space-sm, 0.5rem);
+            min-width: 140px;
           ">
             ◆ HIGH SCORES ◆
           </button>
@@ -352,23 +352,6 @@ export class StartScreen {
       ">
         <div style="color: var(--color-magenta, #FF00FF); font-size: clamp(0.5rem, 1vw, 0.7rem); margin-bottom: 0.2rem;">🎮 GAMES PLAYED</div>
         <div id="totalPlayCount" style="font-size: clamp(0.8rem, 1.5vw, 1.2rem);">---</div>
-      </div>
-      
-      <!-- HIGH SCORE DISPLAY -->
-      <div class="high-score-display" style="
-        position: fixed;
-        top: var(--space-md, 1rem);
-        right: var(--space-md, 1rem);
-        color: var(--color-yellow, #FFFF00);
-        font-size: clamp(0.6rem, 1.2vw, 0.9rem);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        text-shadow: 2px 2px 0 var(--color-yellow-dark, #886600), 0 0 10px var(--color-yellow, #FFFF00);
-        z-index: 1;
-        text-align: right;
-      ">
-        <div style="color: var(--color-magenta, #FF00FF); font-size: clamp(0.5rem, 1vw, 0.7rem); margin-bottom: 0.2rem;">HIGH SCORE</div>
-        <div id="topScore" style="font-size: clamp(0.8rem, 1.5vw, 1.2rem);">000000</div>
       </div>
     `
     
