@@ -3,7 +3,9 @@
  * All game configuration constants and flags
  */
 
-export const DEBUG_MODE = true // TEMPORARILY ENABLED FOR DEBUGGING
+// Debug mode: Enabled in development, disabled in production builds
+// Vite automatically sets import.meta.env.PROD = true for production builds
+export const DEBUG_MODE = !import.meta.env.PROD
 
 // Re-export all config modules
 export * from './game.config'

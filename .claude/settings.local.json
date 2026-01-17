@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(frontend-design)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(vercel env pull:*)",
+      "Bash(vercel link:*)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm i:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -11,6 +11,7 @@ export class GameScreens {
   private static currentScreen: HTMLElement | null = null
   private static audioManager: AudioManager | null = null
   private static sceneManager: SceneManager | null = null
+  private static hidePlayerCallback: (() => void) | null = null
 
   static setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager
@@ -20,10 +21,19 @@ export class GameScreens {
     this.sceneManager = sceneManager
   }
 
+  static setHidePlayerCallback(callback: () => void): void {
+    this.hidePlayerCallback = callback
+  }
+
   static showStartScreen(onStartGame: () => void, onStartTestMode?: () => void, onStartRogueMode?: () => void): void {
     // Start the starfield for menu screens
     StarfieldManager.getInstance().start()
-    
+
+    // Hide player ship on start screen
+    if (this.hidePlayerCallback) {
+      this.hidePlayerCallback()
+    }
+
     ScreenTransitions.transitionOut(
       this.currentScreen,
       this.sceneManager,
@@ -71,6 +81,11 @@ export class GameScreens {
   }
 
   static async showLeaderboard(onBack: () => void): Promise<void> {
+    // Hide player ship on leaderboard screen
+    if (this.hidePlayerCallback) {
+      this.hidePlayerCallback()
+    }
+
     ScreenTransitions.transitionOut(
       this.currentScreen,
       this.sceneManager,
@@ -83,10 +98,10 @@ export class GameScreens {
             onBack()
           }
         )
-        
+
         document.body.appendChild(leaderboardScreen)
         this.currentScreen = leaderboardScreen
-        
+
         // 🎬 MOTION GRAPHICS - Slide in! 🎬
         ScreenTransitions.animateScreenIn(leaderboardScreen, 'slide')
       },

@@ -102,10 +102,19 @@
         padding: 0;
         box-sizing: border-box;
       }
-      
+
+      html {
+        overflow: hidden;
+        width: 100vw;
+        height: 100vh;
+      }
+
       body {
         background: var(--color-bg);
         overflow: hidden;
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
         font-family: var(--font-family);
         color: var(--color-cyan);
         image-rendering: pixelated;

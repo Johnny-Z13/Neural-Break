@@ -47,6 +47,50 @@ export class LeaderboardScreen {
     `
 
     leaderboardScreen.innerHTML = `
+      <!-- HOLOGRAPHIC GRID BACKGROUND -->
+      <div class="holo-grid" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+        perspective: 500px;
+        overflow: hidden;
+      ">
+        <div class="grid-plane" style="
+          position: absolute;
+          bottom: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background-image:
+            repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(255, 215, 0, 0.08) 49px, rgba(255, 215, 0, 0.08) 50px),
+            repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255, 102, 0, 0.08) 49px, rgba(255, 102, 0, 0.08) 50px);
+          transform: rotateX(60deg);
+          animation: gridScroll 20s linear infinite;
+        "></div>
+      </div>
+
+      <!-- VHS TRACKING NOISE -->
+      <div class="vhs-noise" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg,
+          rgba(255,215,0,0.4) 0%,
+          rgba(255,0,255,0.4) 50%,
+          rgba(255,215,0,0.4) 100%);
+        pointer-events: none;
+        z-index: 9997;
+        animation: vhsTrackingNoise 3s linear infinite;
+        opacity: 0.6;
+        filter: blur(1px);
+      "></div>
+
       <!-- CRT MONITOR OVERLAY -->
       <div class="crt-overlay" style="
         position: fixed;
@@ -56,9 +100,10 @@ export class LeaderboardScreen {
         height: 100%;
         pointer-events: none;
         z-index: 9999;
-        background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.4) 100%);
+        background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.6) 100%);
+        box-shadow: inset 0 0 200px rgba(0,0,0,0.9);
       "></div>
-      
+
       <!-- SCANLINES OVERLAY -->
       <div class="scanlines" style="
         position: fixed;
@@ -75,40 +120,98 @@ export class LeaderboardScreen {
           transparent 1px,
           transparent 2px
         );
+        animation: scanlineScroll 10s linear infinite;
       "></div>
+
+      <!-- ARCADE CABINET CORNER BRACKETS -->
+      <div class="arcade-corners" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9996;
+      ">
+        <div style="position: absolute; top: 10px; left: 10px; width: 40px; height: 40px; border-top: 4px solid #FFD700; border-left: 4px solid #FFD700; box-shadow: 0 0 10px #FFD700;"></div>
+        <div style="position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border-top: 4px solid #FF6600; border-right: 4px solid #FF6600; box-shadow: 0 0 10px #FF6600;"></div>
+        <div style="position: absolute; bottom: 10px; left: 10px; width: 40px; height: 40px; border-bottom: 4px solid #FF6600; border-left: 4px solid #FF6600; box-shadow: 0 0 10px #FF6600;"></div>
+        <div style="position: absolute; bottom: 10px; right: 10px; width: 40px; height: 40px; border-bottom: 4px solid #FFD700; border-right: 4px solid #FFD700; box-shadow: 0 0 10px #FFD700;"></div>
+      </div>
       
       <!-- MAIN CONTENT -->
       <div class="leaderboard-content" style="position: relative; z-index: 1; width: 95%; max-width: 900px;">
         
-        <!-- TITLE -->
+        <!-- LED-STYLE BANNER -->
+        <div style="
+          margin-bottom: var(--space-sm, 0.8rem);
+          font-size: clamp(0.6rem, 1.5vw, 0.9rem);
+          color: #FFD700;
+          text-shadow: 0 0 10px #FFD700, 0 0 20px #FFD700, 2px 2px 0 #886600;
+          letter-spacing: 0.5em;
+          animation: ledPulse 2s ease-in-out infinite;
+          font-weight: bold;
+          text-align: center;
+        ">
+          ◆◆◆ HALL OF FAME ◆◆◆
+        </div>
+
+        <!-- TITLE WITH GLOW -->
         <h1 id="leaderboardTitle" class="leaderboard-title" style="
           font-size: clamp(1.5rem, 4vw, 2.5rem);
-          margin-bottom: var(--space-lg, 1.5rem);
-          color: var(--color-yellow, #FFFF00);
-          text-shadow: 
-            4px 4px 0 var(--color-orange, #FF6600),
-            -2px -2px 0 var(--color-magenta, #FF00FF),
-            0 0 30px var(--color-yellow, #FFFF00);
-          letter-spacing: 0.1em;
+          margin-bottom: var(--space-sm, 0.8rem);
+          color: #FFFF00;
+          text-shadow:
+            0 0 10px #FFFF00,
+            0 0 20px #FFFF00,
+            0 0 40px #FFFF00,
+            0 0 80px #FFFF00,
+            4px 4px 0 #886600;
+          letter-spacing: 0.15em;
           text-transform: uppercase;
-          animation: titleFlicker 0.1s infinite;
+          animation: titleFlicker 0.1s infinite, titleGlow 3s ease-in-out infinite;
+          font-weight: bold;
+          position: relative;
         ">
           ★ ARCADE HIGH SCORES ★
         </h1>
-        
-        <!-- Decorative line -->
+
+        <!-- Subtitle -->
+        <div style="
+          margin-bottom: var(--space-md, 1rem);
+          font-size: clamp(0.5rem, 1.2vw, 0.75rem);
+          color: #FF6600;
+          text-shadow: 0 0 10px #FF6600, 2px 2px 0 #663300;
+          letter-spacing: 0.3em;
+        ">
+          TOP NEURAL HACKERS
+        </div>
+
+        <!-- Decorative lines -->
         <div id="decorativeLine" style="
           width: 100%;
           height: 4px;
-          background: linear-gradient(90deg, 
-            transparent 0%, 
-            var(--color-yellow, #FFFF00) 20%, 
-            var(--color-orange, #FF6600) 40%, 
-            var(--color-yellow, #FFFF00) 60%, 
-            var(--color-orange, #FF6600) 80%, 
+          background: linear-gradient(90deg,
+            transparent 0%,
+            #FFD700 15%,
+            #FFFF00 30%,
+            #FFD700 50%,
+            #FFFF00 70%,
+            #FFD700 85%,
             transparent 100%);
-          margin-bottom: var(--space-lg, 1.5rem);
-          box-shadow: 0 0 15px currentColor;
+          margin-bottom: var(--space-xs, 0.5rem);
+          box-shadow: 0 0 10px #FFD700, 0 0 20px #FFD700;
+          animation: lineGlitch 3s ease-in-out infinite;
+        "></div>
+        <div style="
+          width: 80%;
+          height: 2px;
+          margin: 0 auto var(--space-lg, 1.5rem);
+          background: linear-gradient(90deg,
+            transparent 0%,
+            #FF6600 50%,
+            transparent 100%);
+          box-shadow: 0 0 10px #FF6600;
         "></div>
         
         <!-- SCORES TABLE -->
@@ -196,6 +299,40 @@ export class LeaderboardScreen {
     const style = document.createElement('style')
     style.id = 'leaderboard-styles'
     style.textContent = `
+      /* VHS CYBERPUNK ARCADE ANIMATIONS */
+      @keyframes gridScroll {
+        0% { transform: rotateX(60deg) translateY(0); }
+        100% { transform: rotateX(60deg) translateY(50px); }
+      }
+
+      @keyframes vhsTrackingNoise {
+        0% { transform: translateY(0); opacity: 0.6; }
+        50% { transform: translateY(100vh); opacity: 0.6; }
+        100% { transform: translateY(200vh); opacity: 0.6; }
+      }
+
+      @keyframes scanlineScroll {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(4px); }
+      }
+
+      @keyframes ledPulse {
+        0%, 100% { opacity: 1; filter: brightness(1); }
+        50% { opacity: 0.8; filter: brightness(1.3); }
+      }
+
+      @keyframes titleGlow {
+        0%, 100% { filter: brightness(1); }
+        50% { filter: brightness(1.2) drop-shadow(0 0 20px #FFFF00); }
+      }
+
+      @keyframes lineGlitch {
+        0%, 80%, 100% { transform: scaleX(1); opacity: 1; }
+        85% { transform: scaleX(0.95); opacity: 0.8; }
+        90% { transform: scaleX(1.05); opacity: 1; }
+        95% { transform: scaleX(0.98); opacity: 0.9; }
+      }
+
       @keyframes titleFlicker {
         0%, 90%, 100% { opacity: 1; }
         95% { opacity: 0.85; }

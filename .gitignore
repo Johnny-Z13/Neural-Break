@@ -17,14 +17,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-# macOS
-.DS_Store
-
-# deps + caches
-node_modules/
-.vite/
-
-# build output
-dist/
+# Vercel
 .vercel
+
+# Environment
 .env*.local

@@ -29,7 +29,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 and start playing!
+Open http://localhost:3000 and start playing!
 
 ---
 
@@ -224,7 +224,7 @@ gameState.ts
 1. `npm install` completed
 2. No console errors
 3. Correct Node version (v16+)
-4. Port 5173 not in use
+4. Port 3000 not in use
 
 ### Enemies Not Spawning
 

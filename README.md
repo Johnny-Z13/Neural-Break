@@ -2,7 +2,7 @@
 
 A cyberpunk survival shooter built with Three.js and TypeScript. Battle through 30 minutes of escalating intensity in a neural network environment.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-repo/neural-break)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/neural-break)
 
 ---
 
@@ -266,5 +266,3 @@ ISC License - see LICENSE file
 ---
 
 **Made with ❤️ using Three.js and TypeScript**
-
-**Play Now**: [your-vercel-url.vercel.app](#)

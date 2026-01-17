@@ -115,10 +115,13 @@ export class Game {
     
     // Connect audio manager to UI screens
     GameScreens.setAudioManager(this.audioManager)
-    
+
     // Connect scene manager for transitions
     GameScreens.setSceneManager(this.sceneManager)
-    
+
+    // Connect callback to hide player ship on menu screens
+    GameScreens.setHidePlayerCallback(() => this.hidePlayerShip())
+
     // Initialize game entities
     this.player = new Player()
     this.enemyManager = new EnemyManager()
@@ -131,6 +134,16 @@ export class Game {
     
     // Timer will be initialized per-level
     this.gameTimer = new GameTimer(30) // Placeholder, will be updated per level
+  }
+
+  private hidePlayerShip(): void {
+    if (this.player) {
+      const playerMesh = this.player.getMesh()
+      if (playerMesh) {
+        playerMesh.visible = false
+        if (DEBUG_MODE) console.log('🚀 Player ship hidden')
+      }
+    }
   }
 
   private createEmptyStats(): GameStats {
@@ -237,7 +250,19 @@ export class Game {
     this.gameState = GameStateType.START_SCREEN
     // Stop ambient soundscape on start screen
     this.audioManager.stopAmbientSoundscape()
-    
+
+    // Hide HUD on start screen
+    this.uiManager.setHUDVisibility(false)
+
+    // Hide player ship on start screen
+    if (this.player) {
+      const playerMesh = this.player.getMesh()
+      if (playerMesh) {
+        playerMesh.visible = false
+        console.log('🚀 Player ship hidden on start screen')
+      }
+    }
+
     // 🎮 START ATTRACT MODE - Visual demo behind title screen
     // Stop the 2D starfield canvas so we can see the 3D scene with enemies
     StarfieldManager.getInstance().stop()

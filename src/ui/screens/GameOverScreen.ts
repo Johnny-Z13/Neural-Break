@@ -57,6 +57,65 @@ export class GameOverScreen {
     `
 
     gameOverScreen.innerHTML = `
+      <!-- HOLOGRAPHIC GRID BACKGROUND (RED TINT FOR DANGER) -->
+      <div class="holo-grid" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+        perspective: 500px;
+        overflow: hidden;
+      ">
+        <div class="grid-plane" style="
+          position: absolute;
+          bottom: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background-image:
+            repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(255, 0, 0, 0.10) 49px, rgba(255, 0, 0, 0.10) 50px),
+            repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255, 102, 0, 0.08) 49px, rgba(255, 102, 0, 0.08) 50px);
+          transform: rotateX(60deg);
+          animation: gridScroll 15s linear infinite;
+        "></div>
+      </div>
+
+      <!-- GLITCH OVERLAY FOR DRAMA -->
+      <div class="glitch-overlay" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9995;
+        background:
+          repeating-linear-gradient(90deg, transparent 0px, rgba(255,0,0,0.03) 2px, transparent 4px),
+          repeating-linear-gradient(0deg, transparent 0px, rgba(0,255,255,0.03) 2px, transparent 4px);
+        animation: glitchShift 10s ease-in-out infinite;
+      "></div>
+
+      <!-- VHS TRACKING NOISE (RED FOR DANGER) -->
+      <div class="vhs-noise" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg,
+          rgba(255,0,0,0.5) 0%,
+          rgba(255,102,0,0.4) 50%,
+          rgba(255,0,0,0.5) 100%);
+        pointer-events: none;
+        z-index: 9997;
+        animation: vhsTrackingNoise 2s linear infinite;
+        opacity: 0.8;
+        filter: blur(1px);
+      "></div>
+
       <!-- CRT MONITOR OVERLAY -->
       <div class="crt-overlay" style="
         position: fixed;
@@ -66,9 +125,10 @@ export class GameOverScreen {
         height: 100%;
         pointer-events: none;
         z-index: 9999;
-        background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.4) 100%);
+        background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.6) 100%);
+        box-shadow: inset 0 0 200px rgba(0,0,0,0.9);
       "></div>
-      
+
       <!-- SCANLINES OVERLAY -->
       <div class="scanlines" style="
         position: fixed;
@@ -85,35 +145,139 @@ export class GameOverScreen {
           transparent 1px,
           transparent 2px
         );
+        animation: scanlineScroll 10s linear infinite;
       "></div>
+
+      <!-- ARCADE CABINET CORNER BRACKETS (RED ALERT) -->
+      <div class="arcade-corners" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9996;
+      ">
+        <div style="position: absolute; top: 10px; left: 10px; width: 40px; height: 40px; border-top: 4px solid #FF0000; border-left: 4px solid #FF0000; box-shadow: 0 0 15px #FF0000; animation: dangerPulse 1s ease-in-out infinite;"></div>
+        <div style="position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border-top: 4px solid #FF6600; border-right: 4px solid #FF6600; box-shadow: 0 0 15px #FF6600; animation: dangerPulse 1s ease-in-out infinite 0.5s;"></div>
+        <div style="position: absolute; bottom: 10px; left: 10px; width: 40px; height: 40px; border-bottom: 4px solid #FF6600; border-left: 4px solid #FF6600; box-shadow: 0 0 15px #FF6600; animation: dangerPulse 1s ease-in-out infinite 0.5s;"></div>
+        <div style="position: absolute; bottom: 10px; right: 10px; width: 40px; height: 40px; border-bottom: 4px solid #FF0000; border-right: 4px solid #FF0000; box-shadow: 0 0 15px #FF0000; animation: dangerPulse 1s ease-in-out infinite;"></div>
+      </div>
       
       <!-- MAIN CONTENT -->
       <div class="gameover-content" style="position: relative; z-index: 1; max-width: 900px; width: 100%;">
         
-        <!-- GAME OVER TITLE -->
-        <div class="title-section" style="animation: gameOverPulse 1s step-end infinite;">
-          <h1 style="
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            margin-bottom: var(--space-xs, 0.3rem);
-            color: var(--color-red, #FF0000);
-            text-shadow: 
-              4px 4px 0 #880000,
-              -2px -2px 0 var(--color-orange, #FF6600),
-              0 0 40px var(--color-red, #FF0000);
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
+        <!-- GAME OVER TITLE WITH DRAMATIC EFFECTS -->
+        <div class="title-section" style="position: relative; margin-bottom: var(--space-lg, 1.5rem);">
+          <!-- Warning Banner -->
+          <div style="
+            margin-bottom: var(--space-sm, 0.8rem);
+            font-size: clamp(0.7rem, 1.8vw, 1.1rem);
+            color: #FF0000;
+            text-shadow: 0 0 15px #FF0000, 0 0 30px #FF0000, 2px 2px 0 #880000;
+            letter-spacing: 0.5em;
+            animation: dangerBlink 0.5s step-end infinite;
+            font-weight: bold;
           ">
-            GAME OVER
-          </h1>
+            ⚠ SYSTEM FAILURE ⚠
+          </div>
+
+          <!-- RGB Split Game Over Title -->
+          <div style="position: relative; margin-bottom: var(--space-sm, 0.8rem);">
+            <!-- Red layer -->
+            <h1 style="
+              position: absolute;
+              left: 50%;
+              transform: translateX(-50%);
+              font-size: clamp(2rem, 5vw, 3.5rem);
+              font-weight: bold;
+              letter-spacing: 0.15em;
+              margin: 0;
+              text-transform: uppercase;
+              color: #FF0000;
+              opacity: 0.7;
+              filter: blur(1.5px);
+              animation: gameOverRGBRed 3s ease-in-out infinite;
+            ">
+              GAME OVER
+            </h1>
+            <!-- Blue layer -->
+            <h1 style="
+              position: absolute;
+              left: 50%;
+              transform: translateX(-50%);
+              font-size: clamp(2rem, 5vw, 3.5rem);
+              font-weight: bold;
+              letter-spacing: 0.15em;
+              margin: 0;
+              text-transform: uppercase;
+              color: #0000FF;
+              opacity: 0.7;
+              filter: blur(1.5px);
+              animation: gameOverRGBBlue 3s ease-in-out infinite;
+            ">
+              GAME OVER
+            </h1>
+            <!-- Main title -->
+            <h1 style="
+              position: relative;
+              font-size: clamp(2rem, 5vw, 3.5rem);
+              margin: 0;
+              color: #FFFFFF;
+              text-shadow:
+                0 0 10px #FF0000,
+                0 0 20px #FF0000,
+                0 0 40px #FF0000,
+                0 0 80px #FF0000,
+                6px 6px 0 #880000;
+              letter-spacing: 0.15em;
+              text-transform: uppercase;
+              font-weight: bold;
+              animation: gameOverGlitch 5s ease-in-out infinite, gameOverPulse 1s step-end infinite;
+            ">
+              GAME OVER
+            </h1>
+          </div>
+
+          <!-- Subtitle with glitch -->
           <p style="
             font-size: clamp(0.6rem, 1.5vw, 0.9rem);
-            margin-bottom: var(--space-md, 1rem);
-            color: #FF4444;
-            text-shadow: 0 0 15px #FF4444;
-            letter-spacing: 0.2em;
+            margin-bottom: var(--space-xs, 0.5rem);
+            color: #FF6600;
+            text-shadow: 0 0 15px #FF6600, 2px 2px 0 #883300;
+            letter-spacing: 0.25em;
+            animation: subtitleGlitch 7s ease-in-out infinite;
           ">
             NEURAL LINK SEVERED
           </p>
+
+          <!-- Error Code -->
+          <div style="
+            font-size: clamp(0.5rem, 1.2vw, 0.75rem);
+            color: #FF4444;
+            text-shadow: 0 0 10px #FF4444;
+            letter-spacing: 0.2em;
+            font-family: 'Courier New', monospace;
+          ">
+            ERROR CODE: 0x${Math.floor(Math.random() * 999999).toString(16).toUpperCase().padStart(6, '0')}
+          </div>
+
+          <!-- Decorative danger lines -->
+          <div style="
+            margin: var(--space-sm, 0.8rem) auto;
+            width: 90%;
+            height: 3px;
+            background: linear-gradient(90deg,
+              transparent 0%,
+              #FF0000 15%,
+              #FF6600 30%,
+              #FF0000 50%,
+              #FF6600 70%,
+              #FF0000 85%,
+              transparent 100%);
+            box-shadow: 0 0 10px #FF0000, 0 0 20px #FF0000;
+            animation: dangerLineGlitch 2s ease-in-out infinite;
+          "></div>
         </div>
         
         ${isNewHighScore ? `
@@ -299,6 +463,80 @@ export class GameOverScreen {
     const style = document.createElement('style')
     style.id = 'gameover-styles'
     style.textContent = `
+      /* VHS CYBERPUNK ARCADE ANIMATIONS - GAME OVER */
+      @keyframes gridScroll {
+        0% { transform: rotateX(60deg) translateY(0); }
+        100% { transform: rotateX(60deg) translateY(50px); }
+      }
+
+      @keyframes vhsTrackingNoise {
+        0% { transform: translateY(0); opacity: 0.8; }
+        50% { transform: translateY(100vh); opacity: 0.8; }
+        100% { transform: translateY(200vh); opacity: 0.8; }
+      }
+
+      @keyframes scanlineScroll {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(4px); }
+      }
+
+      @keyframes glitchShift {
+        0%, 100% { transform: translateX(0); opacity: 0.5; }
+        25% { transform: translateX(-2px); opacity: 0.6; }
+        50% { transform: translateX(2px); opacity: 0.4; }
+        75% { transform: translateX(-1px); opacity: 0.55; }
+      }
+
+      @keyframes dangerPulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 15px currentColor; }
+        50% { opacity: 0.6; box-shadow: 0 0 5px currentColor; }
+      }
+
+      @keyframes dangerBlink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0.4; }
+      }
+
+      @keyframes gameOverRGBRed {
+        0%, 100% { transform: translate(calc(-50% - 3px), -2px); }
+        25% { transform: translate(calc(-50% - 4px), -1px); }
+        50% { transform: translate(calc(-50% - 2px), -3px); }
+        75% { transform: translate(calc(-50% - 3px), -2px); }
+      }
+
+      @keyframes gameOverRGBBlue {
+        0%, 100% { transform: translate(calc(-50% + 3px), 2px); }
+        25% { transform: translate(calc(-50% + 2px), 3px); }
+        50% { transform: translate(calc(-50% + 4px), 1px); }
+        75% { transform: translate(calc(-50% + 3px), 2px); }
+      }
+
+      @keyframes gameOverGlitch {
+        0%, 85%, 100% { transform: translate(0, 0); filter: none; }
+        86% { transform: translate(-4px, 2px); filter: hue-rotate(180deg); }
+        87% { transform: translate(4px, -2px); filter: hue-rotate(-180deg); }
+        88% { transform: translate(-2px, 3px); filter: brightness(1.5); }
+        89% { transform: translate(3px, -1px); filter: hue-rotate(90deg); }
+        90% { transform: translate(0, 0); filter: none; }
+      }
+
+      @keyframes subtitleGlitch {
+        0%, 90%, 100% { transform: translateX(0); opacity: 1; }
+        92% { transform: translateX(-3px); opacity: 0.8; }
+        94% { transform: translateX(3px); opacity: 0.9; }
+        96% { transform: translateX(-1px); opacity: 0.85; }
+        98% { transform: translateX(0); opacity: 1; }
+      }
+
+      @keyframes dangerLineGlitch {
+        0%, 80%, 100% { transform: scaleX(1); opacity: 1; }
+        82% { transform: scaleX(0.92); opacity: 0.7; }
+        84% { transform: scaleX(1.08); opacity: 1; }
+        86% { transform: scaleX(0.95); opacity: 0.8; }
+        88% { transform: scaleX(1.03); opacity: 0.9; }
+        90% { transform: scaleX(1); opacity: 1; }
+      }
+
       @keyframes gameOverPulse {
         0%, 50% { opacity: 1; }
         51%, 100% { opacity: 0.85; }

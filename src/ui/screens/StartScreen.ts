@@ -58,7 +58,52 @@ export class StartScreen {
     `
 
     startScreen.innerHTML = `
-      <!-- CRT MONITOR OVERLAY -->
+      <!-- HOLOGRAPHIC GRID BACKGROUND -->
+      <div class="holo-grid" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+        perspective: 500px;
+        overflow: hidden;
+      ">
+        <div class="grid-plane" style="
+          position: absolute;
+          bottom: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background-image:
+            repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(0, 255, 255, 0.08) 49px, rgba(0, 255, 255, 0.08) 50px),
+            repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255, 0, 255, 0.08) 49px, rgba(255, 0, 255, 0.08) 50px);
+          transform: rotateX(60deg);
+          animation: gridScroll 20s linear infinite;
+        "></div>
+      </div>
+
+      <!-- VHS TRACKING NOISE -->
+      <div class="vhs-noise" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg,
+          rgba(255,0,0,0.3) 0%,
+          rgba(0,255,0,0.3) 33%,
+          rgba(0,0,255,0.3) 66%,
+          rgba(255,0,0,0.3) 100%);
+        pointer-events: none;
+        z-index: 9997;
+        animation: vhsTrackingNoise 3s linear infinite;
+        opacity: 0.6;
+        filter: blur(1px);
+      "></div>
+
+      <!-- CRT MONITOR OVERLAY WITH BARREL DISTORTION -->
       <div class="crt-overlay" style="
         position: fixed;
         top: 0;
@@ -67,9 +112,10 @@ export class StartScreen {
         height: 100%;
         pointer-events: none;
         z-index: 9999;
-        background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.4) 100%);
+        background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.6) 100%);
+        box-shadow: inset 0 0 200px rgba(0,0,0,0.9);
       "></div>
-      
+
       <!-- SCANLINES OVERLAY -->
       <div class="scanlines" style="
         position: fixed;
@@ -86,37 +132,109 @@ export class StartScreen {
           transparent 1px,
           transparent 2px
         );
+        animation: scanlineScroll 10s linear infinite;
       "></div>
+
+      <!-- ARCADE CABINET CORNER BRACKETS -->
+      <div class="arcade-corners" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9996;
+      ">
+        <!-- Top Left -->
+        <div style="position: absolute; top: 10px; left: 10px; width: 40px; height: 40px; border-top: 4px solid #00FFFF; border-left: 4px solid #00FFFF; box-shadow: 0 0 10px #00FFFF;"></div>
+        <!-- Top Right -->
+        <div style="position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border-top: 4px solid #FF00FF; border-right: 4px solid #FF00FF; box-shadow: 0 0 10px #FF00FF;"></div>
+        <!-- Bottom Left -->
+        <div style="position: absolute; bottom: 10px; left: 10px; width: 40px; height: 40px; border-bottom: 4px solid #FF00FF; border-left: 4px solid #FF00FF; box-shadow: 0 0 10px #FF00FF;"></div>
+        <!-- Bottom Right -->
+        <div style="position: absolute; bottom: 10px; right: 10px; width: 40px; height: 40px; border-bottom: 4px solid #00FFFF; border-right: 4px solid #00FFFF; box-shadow: 0 0 10px #00FFFF;"></div>
+      </div>
       
       <!-- MAIN CONTENT -->
       <div class="start-content" style="position: relative; z-index: 1; max-width: 950px; width: 100%; display: flex; flex-direction: column; align-items: center;">
         
+        <!-- INSERT COIN BANNER -->
+        <div class="insert-coin" style="
+          margin-bottom: var(--space-md, 1rem);
+          font-size: clamp(0.7rem, 1.8vw, 1.1rem);
+          color: #FFFF00;
+          text-shadow:
+            0 0 10px #FFFF00,
+            0 0 20px #FFFF00,
+            0 0 30px #FFFF00,
+            2px 2px 0 #886600;
+          letter-spacing: 0.3em;
+          animation: coinBlink 1s step-end infinite;
+          font-weight: bold;
+        ">
+          ▼ INSERT COIN ▼
+        </div>
+
         <!-- MAIN TITLE -->
-        <div class="title-container" style="margin-bottom: var(--space-md, 1rem); text-align: center;">
+        <div class="title-container" style="margin-bottom: var(--space-md, 1rem); text-align: center; position: relative;">
+          <!-- Main Title -->
           <h1 class="game-title" style="
+            position: relative;
             font-size: clamp(1.8rem, 5vw, 3.5rem);
             font-weight: bold;
             letter-spacing: 0.2em;
             margin: 0;
             text-transform: uppercase;
-            animation: arcadeColorCycle 3s linear infinite, titleFlicker 0.1s infinite;
+            color: #00FFFF;
+            text-shadow:
+              0 0 10px #00FFFF,
+              0 0 20px #00FFFF,
+              0 0 40px #00FFFF,
+              0 0 80px #00FFFF,
+              4px 4px 0 #006666;
+            animation: titleGlitch 8s ease-in-out infinite, titleFlicker 0.1s infinite;
           ">
             NEURAL BREAK
           </h1>
-          
-          <!-- Decorative lines -->
+
+          <!-- Subtitle -->
           <div style="
-            margin: var(--space-xs, 0.3rem) auto;
+            margin-top: var(--space-xs, 0.5rem);
+            font-size: clamp(0.5rem, 1.2vw, 0.75rem);
+            color: #FF00FF;
+            text-shadow: 0 0 10px #FF00FF, 2px 2px 0 #660066;
+            letter-spacing: 0.3em;
+            animation: subtitlePulse 2s ease-in-out infinite;
+          ">
+            NEURAL SYSTEMS v2.6.9
+          </div>
+
+          <!-- Decorative lines with glitch -->
+          <div style="
+            position: relative;
+            margin: var(--space-sm, 0.6rem) auto;
             width: 80%;
             height: 4px;
-            background: linear-gradient(90deg, 
-              transparent 0%, 
-              var(--color-magenta, #FF00FF) 20%, 
-              var(--color-cyan, #00FFFF) 40%, 
-              var(--color-yellow, #FFFF00) 60%, 
-              var(--color-magenta, #FF00FF) 80%, 
+            background: linear-gradient(90deg,
+              transparent 0%,
+              #00FFFF 15%,
+              #FF00FF 30%,
+              #FFFF00 50%,
+              #FF00FF 70%,
+              #00FFFF 85%,
               transparent 100%);
-            box-shadow: 0 0 20px currentColor;
+            box-shadow: 0 0 10px #00FFFF, 0 0 20px #FF00FF;
+            animation: lineGlitch 3s ease-in-out infinite;
+          "></div>
+          <div style="
+            margin: var(--space-xs, 0.2rem) auto;
+            width: 60%;
+            height: 2px;
+            background: linear-gradient(90deg,
+              transparent 0%,
+              #FFFF00 50%,
+              transparent 100%);
+            box-shadow: 0 0 10px #FFFF00;
           "></div>
         </div>
         
@@ -168,111 +286,113 @@ export class StartScreen {
           </div>
         </div>
 
-        <!-- BUTTONS -->
-        <div class="button-container" style="display: flex; flex-direction: column; gap: var(--space-md, 1.2rem); align-items: center; margin-bottom: var(--space-md, 1rem);">
-          
-          <!-- SELECT MODE HEADER -->
+        <!-- VERTICAL ARCADE MENU -->
+        <div class="arcade-menu" style="
+          padding: clamp(1.5rem, 3vw, 2.5rem) clamp(2rem, 5vw, 4rem);
+          margin: var(--space-lg, 1.5rem) auto;
+          max-width: clamp(400px, 60vw, 600px);
+        ">
+          <!-- MENU TITLE -->
           <div style="
-            color: var(--color-cyan, #00FFFF);
-            font-size: clamp(0.6rem, 1.2vw, 0.8rem);
-            letter-spacing: 0.2em;
-            text-shadow: 0 0 10px var(--color-cyan, #00FFFF);
-            margin-bottom: var(--space-xs, 0.3rem);
             text-align: center;
-            animation: selectModeFlash 1s ease-in-out infinite;
-          ">▼ SELECT MODE ▼</div>
-          
-          <!-- GAME MODE BUTTONS ROW -->
-          <div class="mode-buttons-row" style="display: flex; gap: var(--space-md, 1rem); flex-wrap: wrap; justify-content: center;">
-            
-            <!-- ARCADE MODE BUTTON -->
-            <button id="arcadeButton" class="arcade-button arcade-button-primary" style="
-              background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
-              border: var(--border-thick, 4px) solid var(--color-yellow, #FFFF00);
-              color: var(--color-yellow, #FFFF00);
+            font-size: clamp(0.8rem, 2vw, 1.2rem);
+            color: #FFFF00;
+            letter-spacing: 0.3em;
+            text-shadow: 0 0 20px #FFFF00, 0 0 40px #FFFF00, 3px 3px 0 #886600;
+            margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+            animation: menuTitlePulse 2s ease-in-out infinite;
+            font-weight: bold;
+          ">
+            ▼ SELECT MODE ▼
+          </div>
+
+          <!-- VERTICAL MENU ITEMS -->
+          <div style="display: flex; flex-direction: column; gap: clamp(0.8rem, 2vw, 1.2rem);">
+
+            <!-- ARCADE -->
+            <button id="arcadeButton" class="menu-item" style="
+              background: transparent;
+              border: none;
+              color: #FFFF00;
               font-family: inherit;
-              font-size: clamp(0.8rem, 1.8vw, 1.1rem);
+              font-size: clamp(0.9rem, 2.25vw, 1.5rem);
               font-weight: bold;
-              padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
+              padding: clamp(0.8rem, 2vw, 1.2rem) clamp(1.5rem, 4vw, 3rem);
               cursor: pointer;
               text-transform: uppercase;
-              letter-spacing: 0.12em;
-              text-shadow: 0 0 15px var(--color-yellow, #FFFF00), 2px 2px 0 var(--color-orange, #FF6600);
-              box-shadow: 
-                0 0 20px var(--color-yellow-glow, rgba(255, 255, 0, 0.4)),
-                var(--shadow-pixel, 4px 4px 0) var(--color-yellow-dark, #886600);
+              letter-spacing: 0.2em;
+              text-align: center;
+              text-shadow: 0 0 20px #FFFF00, 4px 4px 0 #886600;
               transition: all 0.1s step-end;
-              min-width: 140px;
+              position: relative;
+              border-left: 6px solid transparent;
             ">
-              ▶ ARCADE ◀
+              ARCADE
             </button>
-            
-            <!-- ROGUE MODE BUTTON -->
-            <button id="rogueButton" class="arcade-button arcade-button-primary" style="
-              background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
-              border: var(--border-thick, 4px) solid #AA00FF;
-              color: #AA00FF;
+
+            <!-- ROGUE -->
+            <button id="rogueButton" class="menu-item" style="
+              background: transparent;
+              border: none;
+              color: #FF00FF;
               font-family: inherit;
-              font-size: clamp(0.8rem, 1.8vw, 1.1rem);
+              font-size: clamp(0.9rem, 2.25vw, 1.5rem);
               font-weight: bold;
-              padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
+              padding: clamp(0.8rem, 2vw, 1.2rem) clamp(1.5rem, 4vw, 3rem);
               cursor: pointer;
               text-transform: uppercase;
-              letter-spacing: 0.12em;
-              text-shadow: 0 0 15px #AA00FF, 2px 2px 0 #660066;
-              box-shadow: 
-                0 0 20px rgba(170, 0, 255, 0.4),
-                var(--shadow-pixel, 4px 4px 0) #660066;
+              letter-spacing: 0.2em;
+              text-align: center;
+              text-shadow: 0 0 20px #FF00FF, 4px 4px 0 #660066;
               transition: all 0.1s step-end;
-              min-width: 140px;
+              position: relative;
+              border-left: 6px solid transparent;
             ">
-              ▶ ROGUE ◀
+              ROGUE
             </button>
-            
-            <!-- TEST MODE BUTTON -->
-            <button id="testButton" class="arcade-button arcade-button-primary" style="
-              background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
-              border: var(--border-thick, 4px) solid var(--color-orange, #FF6600);
-              color: var(--color-orange, #FF6600);
+
+            <!-- TEST -->
+            <button id="testButton" class="menu-item" style="
+              background: transparent;
+              border: none;
+              color: #FF6600;
               font-family: inherit;
-              font-size: clamp(0.8rem, 1.8vw, 1.1rem);
+              font-size: clamp(0.9rem, 2.25vw, 1.5rem);
               font-weight: bold;
-              padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
+              padding: clamp(0.8rem, 2vw, 1.2rem) clamp(1.5rem, 4vw, 3rem);
               cursor: pointer;
               text-transform: uppercase;
-              letter-spacing: 0.12em;
-              text-shadow: 0 0 15px var(--color-orange, #FF6600), 2px 2px 0 #663300;
-              box-shadow: 
-                0 0 20px var(--color-orange-glow, rgba(255, 102, 0, 0.4)),
-                var(--shadow-pixel, 4px 4px 0) var(--color-orange-dark, #663300);
+              letter-spacing: 0.2em;
+              text-align: center;
+              text-shadow: 0 0 20px #FF6600, 4px 4px 0 #663300;
               transition: all 0.1s step-end;
-              min-width: 140px;
+              position: relative;
+              border-left: 6px solid transparent;
             ">
-              ▶ TEST ◀
+              TEST
+            </button>
+
+            <!-- HI SCORES -->
+            <button id="leaderboardButton" class="menu-item" style="
+              background: transparent;
+              border: none;
+              color: #00FFFF;
+              font-family: inherit;
+              font-size: clamp(0.9rem, 2.25vw, 1.5rem);
+              font-weight: bold;
+              padding: clamp(0.8rem, 2vw, 1.2rem) clamp(1.5rem, 4vw, 3rem);
+              cursor: pointer;
+              text-transform: uppercase;
+              letter-spacing: 0.2em;
+              text-align: center;
+              text-shadow: 0 0 20px #00FFFF, 4px 4px 0 #006666;
+              transition: all 0.1s step-end;
+              position: relative;
+              border-left: 6px solid transparent;
+            ">
+              HI SCORES
             </button>
           </div>
-          
-          <!-- HIGH SCORES BUTTON -->
-          <button id="leaderboardButton" class="arcade-button arcade-button-primary" style="
-            background: var(--color-bg-panel, rgba(0, 0, 0, 0.85));
-            border: var(--border-thick, 4px) solid var(--color-magenta, #FF00FF);
-            color: var(--color-magenta, #FF00FF);
-            font-family: inherit;
-            font-size: clamp(0.8rem, 1.8vw, 1.1rem);
-            font-weight: bold;
-            padding: var(--space-sm, 0.8rem) var(--space-lg, 1.5rem);
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            text-shadow: 0 0 15px var(--color-magenta, #FF00FF), 2px 2px 0 #660066;
-            box-shadow: 
-              0 0 20px var(--color-magenta-glow, rgba(255, 0, 255, 0.4)),
-              var(--shadow-pixel, 4px 4px 0) var(--color-magenta-dark, #660066);
-            transition: all 0.1s step-end;
-            min-width: 140px;
-          ">
-            ◆ HIGH SCORES ◆
-          </button>
         </div>
       </div>
       
@@ -361,6 +481,75 @@ export class StartScreen {
     const style = document.createElement('style')
     style.id = 'start-screen-styles'
     style.textContent = `
+      /* ═══════════════════════════════════════════════════════════════════
+         VHS CYBERPUNK ARCADE ANIMATIONS
+         ═══════════════════════════════════════════════════════════════════ */
+
+      @keyframes gridScroll {
+        0% { transform: rotateX(60deg) translateY(0); }
+        100% { transform: rotateX(60deg) translateY(50px); }
+      }
+
+      @keyframes vhsTrackingNoise {
+        0% { transform: translateY(0); opacity: 0.6; }
+        25% { opacity: 0.8; }
+        50% { transform: translateY(100vh); opacity: 0.6; }
+        75% { opacity: 0.4; }
+        100% { transform: translateY(200vh); opacity: 0.6; }
+      }
+
+      @keyframes scanlineScroll {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(4px); }
+      }
+
+      @keyframes coinBlink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0.3; }
+      }
+
+      @keyframes rgbShiftRed {
+        0%, 100% { transform: translate(calc(-50% - 1px), 0px); }
+        25% { transform: translate(calc(-50% - 1.5px), -0.5px); }
+        50% { transform: translate(calc(-50% - 0.5px), 0.5px); }
+        75% { transform: translate(calc(-50% - 1px), 0px); }
+      }
+
+      @keyframes rgbShiftGreen {
+        0%, 100% { transform: translate(calc(-50% + 0.5px), 0.5px); }
+        25% { transform: translate(calc(-50% + 0px), -0.5px); }
+        50% { transform: translate(calc(-50% + 1px), 0px); }
+        75% { transform: translate(calc(-50% + 0.5px), 0.5px); }
+      }
+
+      @keyframes rgbShiftBlue {
+        0%, 100% { transform: translate(calc(-50% + 0px), -0.5px); }
+        25% { transform: translate(calc(-50% + 1px), 0.5px); }
+        50% { transform: translate(calc(-50% + 0.5px), -0.5px); }
+        75% { transform: translate(calc(-50% + 0px), 0px); }
+      }
+
+      @keyframes titleGlitch {
+        0%, 90%, 100% { transform: translate(0, 0); filter: none; }
+        91% { transform: translate(-2px, 0); filter: hue-rotate(90deg); }
+        92% { transform: translate(2px, 1px); filter: hue-rotate(-90deg); }
+        93% { transform: translate(0, -1px); filter: none; }
+        94% { transform: translate(1px, 0); filter: hue-rotate(45deg); }
+        95% { transform: translate(0, 0); filter: none; }
+      }
+
+      @keyframes lineGlitch {
+        0%, 80%, 100% { transform: scaleX(1); opacity: 1; }
+        85% { transform: scaleX(0.95); opacity: 0.8; }
+        90% { transform: scaleX(1.05); opacity: 1; }
+        95% { transform: scaleX(0.98); opacity: 0.9; }
+      }
+
+      @keyframes subtitlePulse {
+        0%, 100% { opacity: 1; filter: brightness(1); }
+        50% { opacity: 0.8; filter: brightness(1.2); }
+      }
+
       @keyframes titleFlicker {
         0%, 90%, 100% { opacity: 1; }
         95% { opacity: 0.85; }
@@ -402,9 +591,29 @@ export class StartScreen {
         50% { opacity: 0.3; }
       }
 
+      @keyframes menuTitlePulse {
+        0%, 100% { opacity: 1; filter: brightness(1); }
+        50% { opacity: 0.85; filter: brightness(1.3); }
+      }
+
       @keyframes subtitlePulse {
         0%, 100% { opacity: 0.8; transform: scale(1); }
         50% { opacity: 1; transform: scale(1.02); }
+      }
+
+      /* Vertical Menu Item Styles */
+      .menu-item.selected {
+        background: rgba(0, 255, 255, 0.15) !important;
+        border-left: 6px solid currentColor !important;
+        transform: translateX(10px) scale(1.05);
+        filter: brightness(1.5) drop-shadow(0 0 20px currentColor);
+      }
+
+      .menu-item:hover {
+        background: rgba(0, 255, 255, 0.1);
+        border-left: 6px solid currentColor;
+        transform: translateX(8px) scale(1.03);
+        filter: brightness(1.3);
       }
       
       @keyframes blink {
