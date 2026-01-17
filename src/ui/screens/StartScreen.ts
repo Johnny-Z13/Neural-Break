@@ -834,10 +834,23 @@ export class StartScreen {
             playCountEl.textContent = stats.playCount.toLocaleString()
             console.log('📊 Play count loaded:', stats.playCount)
           }
+        } else {
+          // Fallback for local dev: Show localStorage count
+          const playCountEl = startScreen.querySelector('#totalPlayCount')
+          if (playCountEl) {
+            playCountEl.textContent = 'LOCAL'
+            playCountEl.style.fontSize = 'clamp(0.6rem, 1.2vw, 0.9rem)'
+            console.log('💾 API not available, showing LOCAL mode indicator')
+          }
         }
       } catch (error) {
         console.warn('⚠️ Could not fetch play count:', error)
-        // Keep showing "---" if fetch fails
+        // Fallback for local dev
+        const playCountEl = startScreen.querySelector('#totalPlayCount')
+        if (playCountEl) {
+          playCountEl.textContent = 'LOCAL'
+          playCountEl.style.fontSize = 'clamp(0.6rem, 1.2vw, 0.9rem)'
+        }
       }
     }
 
