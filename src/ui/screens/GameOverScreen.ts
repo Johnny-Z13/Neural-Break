@@ -345,6 +345,22 @@ export class GameOverScreen {
         100% { opacity: 0; transform: translateX(-50%) scale(0.8); }
       }
       
+      @keyframes highlightPulse {
+        0%, 100% { 
+          box-shadow: 
+            0 0 28px var(--color-magenta-glow, rgba(255, 0, 255, 0.35)),
+            4px 4px 0 var(--color-magenta-dark, #660066),
+            inset 0 0 20px rgba(255, 0, 255, 0.08);
+        }
+        50% { 
+          box-shadow: 
+            0 0 50px var(--color-yellow, #FFFF00),
+            4px 4px 0 var(--color-yellow-dark, #886600),
+            inset 0 0 40px rgba(255, 255, 0, 0.2);
+          border-color: var(--color-yellow, #FFFF00);
+        }
+      }
+      
       /* Responsive adjustments */
       @media (max-width: 600px) {
         .stats-grid {
@@ -425,7 +441,7 @@ export class GameOverScreen {
             `
             gameOverScreen.appendChild(successMsg)
             
-            // Auto-advance to leaderboard after 2 seconds
+            // Auto-scroll to high scores section after 2 seconds
             setTimeout(() => {
               if (nameInput.parentElement) {
                 nameInput.parentElement.style.opacity = '0'
@@ -436,18 +452,17 @@ export class GameOverScreen {
               }
               successMsg.remove()
               
-              // Navigate to leaderboard screen with the appropriate mode
-              GameOverScreen.cleanup()
-              LeaderboardScreen.show(
-                audioManager,
-                () => {
-                  // Back button returns to game over screen
-                  LeaderboardScreen.cleanup()
-                  document.body.appendChild(gameOverScreen)
-                  GameOverScreen.setupKeyboardNavigation(gameOverScreen, audioManager)
-                },
-                GameOverScreen.currentGameMode // Start on the correct mode tab
-              )
+              // Scroll to high scores section smoothly
+              const highScoresSection = gameOverScreen.querySelector('#gameOverHighScores') as HTMLElement
+              if (highScoresSection) {
+                highScoresSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                
+                // Add a highlight pulse effect
+                highScoresSection.style.animation = 'highlightPulse 1s ease-in-out 3'
+                setTimeout(() => {
+                  highScoresSection.style.animation = ''
+                }, 3000)
+              }
             }, 2000)
           } else {
             saveButton.textContent = 'FAIL'

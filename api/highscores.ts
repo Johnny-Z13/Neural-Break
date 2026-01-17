@@ -2,18 +2,16 @@
  * Vercel Serverless Function - High Score API
  * Stores high scores in Vercel KV (Redis-based key-value store)
  * 
- * ⚠️ IMPORTANT: For persistence, you must:
- * 1. Run: vercel kv create neural-break-scores
- * 2. Run: npm install @vercel/kv
- * 3. Link your project: vercel link
- * 4. Pull env vars: vercel env pull
+ * ✅ Setup Complete: @vercel/kv installed, environment variables configured
  * 
  * Endpoints:
- * - GET /api/highscores?mode=original|rogue - Get high scores for a mode
+ * - GET /api/highscores?mode=original|rogue|test - Get high scores for a mode
+ * - GET /api/highscores?stats=true - Get play count statistics
  * - POST /api/highscores - Save a new high score
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { kv } from '@vercel/kv'
 
 // Type definitions
 interface HighScoreEntry {
@@ -27,12 +25,23 @@ interface HighScoreEntry {
   timestamp?: number // For sorting ties
 }
 
+interface StatsResponse {
+  playCount: number
+  playCountOriginal: number
+  playCountRogue: number
+  playCountTest: number
+}
+
 const MAX_SCORES_PER_MODE = 10
 const MAX_NAME_LENGTH = 20
 const KV_KEY = 'neural_break_highscores'
+const PLAY_COUNT_KEY = 'neural_break_play_count_total'
+const PLAY_COUNT_ORIGINAL_KEY = 'neural_break_play_count_original'
+const PLAY_COUNT_ROGUE_KEY = 'neural_break_play_count_rogue'
+const PLAY_COUNT_TEST_KEY = 'neural_break_play_count_test'
 
 // ═══════════════════════════════════════════════════════════════════
-// STORAGE IMPLEMENTATION
+// STORAGE IMPLEMENTATION - Using @vercel/kv SDK
 // ═══════════════════════════════════════════════════════════════════
 
 /**
@@ -45,41 +54,15 @@ function isKVAvailable(): boolean {
 /**
  * Get scores from Vercel KV
  */
-async function getScoresFromKV(): Promise<HighScoreEntry[]> {
+async function getAllScores(): Promise<HighScoreEntry[]> {
   if (!isKVAvailable()) {
+    console.warn('⚠️ Vercel KV not configured')
     return []
   }
   
   try {
-    const response = await fetch(
-      `${process.env.KV_REST_API_URL}/get/${KV_KEY}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
-        },
-      }
-    )
-    
-    if (!response.ok) {
-      console.log('KV GET response not OK:', response.status)
-      return []
-    }
-    
-    const data = await response.json()
-    
-    // Vercel KV returns { result: <value> }
-    if (data.result) {
-      // If result is a string, parse it
-      if (typeof data.result === 'string') {
-        return JSON.parse(data.result)
-      }
-      // If result is already an array, return it
-      if (Array.isArray(data.result)) {
-        return data.result
-      }
-    }
-    
-    return []
+    const scores = await kv.get<HighScoreEntry[]>(KV_KEY)
+    return scores || []
   } catch (error) {
     console.error('Error getting scores from KV:', error)
     return []
@@ -89,30 +72,14 @@ async function getScoresFromKV(): Promise<HighScoreEntry[]> {
 /**
  * Save scores to Vercel KV
  */
-async function saveScoresToKV(scores: HighScoreEntry[]): Promise<boolean> {
+async function saveAllScores(scores: HighScoreEntry[]): Promise<boolean> {
   if (!isKVAvailable()) {
     console.warn('⚠️ Vercel KV not available - scores will not persist!')
     return false
   }
   
   try {
-    const response = await fetch(
-      `${process.env.KV_REST_API_URL}/set/${KV_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(scores),
-      }
-    )
-    
-    if (!response.ok) {
-      console.error('KV SET response not OK:', response.status)
-      return false
-    }
-    
+    await kv.set(KV_KEY, scores)
     console.log('✅ Scores saved to Vercel KV')
     return true
   } catch (error) {
@@ -121,37 +88,80 @@ async function saveScoresToKV(scores: HighScoreEntry[]): Promise<boolean> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// FALLBACK: In-memory storage (for development/testing only)
-// ⚠️ WARNING: This resets on every deployment and cold start!
-// ═══════════════════════════════════════════════════════════════════
-let inMemoryScores: HighScoreEntry[] = []
-
 /**
- * Get all scores (tries KV first, falls back to memory)
+ * Increment play count for a game mode
  */
-async function getAllScores(): Promise<HighScoreEntry[]> {
-  if (isKVAvailable()) {
-    const kvScores = await getScoresFromKV()
-    if (kvScores.length > 0 || inMemoryScores.length === 0) {
-      return kvScores
-    }
+async function incrementPlayCount(gameMode: string): Promise<number> {
+  if (!isKVAvailable()) {
+    return 0
   }
-  return inMemoryScores
+  
+  try {
+    // Increment total count
+    const totalCount = await kv.incr(PLAY_COUNT_KEY)
+    
+    // Increment mode-specific count
+    let modeKey: string
+    switch (gameMode) {
+      case 'original':
+        modeKey = PLAY_COUNT_ORIGINAL_KEY
+        break
+      case 'rogue':
+        modeKey = PLAY_COUNT_ROGUE_KEY
+        break
+      case 'test':
+        modeKey = PLAY_COUNT_TEST_KEY
+        break
+      default:
+        modeKey = PLAY_COUNT_ORIGINAL_KEY
+    }
+    
+    await kv.incr(modeKey)
+    
+    console.log(`📊 Play count incremented: ${gameMode} mode, total: ${totalCount}`)
+    return totalCount
+  } catch (error) {
+    console.error('Error incrementing play count:', error)
+    return 0
+  }
 }
 
 /**
- * Save all scores (saves to KV if available, always updates memory)
+ * Get play count statistics
  */
-async function saveAllScores(scores: HighScoreEntry[]): Promise<boolean> {
-  inMemoryScores = scores
-  
-  if (isKVAvailable()) {
-    return await saveScoresToKV(scores)
+async function getPlayCountStats(): Promise<StatsResponse> {
+  if (!isKVAvailable()) {
+    return {
+      playCount: 0,
+      playCountOriginal: 0,
+      playCountRogue: 0,
+      playCountTest: 0
+    }
   }
   
-  console.warn('⚠️ Vercel KV not configured - using in-memory storage (will reset!)')
-  return true
+  try {
+    const [total, original, rogue, test] = await Promise.all([
+      kv.get<number>(PLAY_COUNT_KEY),
+      kv.get<number>(PLAY_COUNT_ORIGINAL_KEY),
+      kv.get<number>(PLAY_COUNT_ROGUE_KEY),
+      kv.get<number>(PLAY_COUNT_TEST_KEY)
+    ])
+    
+    return {
+      playCount: total || 0,
+      playCountOriginal: original || 0,
+      playCountRogue: rogue || 0,
+      playCountTest: test || 0
+    }
+  } catch (error) {
+    console.error('Error getting play count stats:', error)
+    return {
+      playCount: 0,
+      playCountOriginal: 0,
+      playCountRogue: 0,
+      playCountTest: 0
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -235,10 +245,18 @@ export default async function handler(
   console.log(`📊 High Score API - KV Available: ${isKVAvailable()}`)
   
   try {
-    // GET - Retrieve high scores
+    // GET - Retrieve high scores or stats
     if (req.method === 'GET') {
-      const { mode } = req.query
+      const { mode, stats } = req.query
       
+      // Return play count statistics
+      if (stats === 'true') {
+        const playStats = await getPlayCountStats()
+        console.log('📊 Returning play count stats:', playStats)
+        return res.status(200).json(playStats)
+      }
+      
+      // Return high scores
       let scores = await getAllScores()
       
       // Filter by mode if specified
@@ -283,9 +301,12 @@ export default async function handler(
         const lowestScore = modeScores[0].score
         
         if (sanitized.score <= lowestScore) {
+          // Still increment play count even if not a high score
+          const playCount = await incrementPlayCount(sanitized.gameMode)
           return res.status(200).json({ 
             success: false, 
-            error: 'Score not high enough for leaderboard' 
+            error: 'Score not high enough for leaderboard',
+            playCount
           })
         }
       }
@@ -317,10 +338,14 @@ export default async function handler(
       // Save to storage
       const saved = await saveAllScores(trimmedScores)
       
+      // Increment play count
+      const playCount = await incrementPlayCount(sanitized.gameMode)
+      
       return res.status(200).json({ 
         success: saved,
         entry: sanitized,
-        persistent: isKVAvailable()
+        persistent: isKVAvailable(),
+        playCount
       })
     }
     

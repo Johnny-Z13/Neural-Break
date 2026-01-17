@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@tweenjs/tween.js": "^23.1.1",
+    "@vercel/analytics": "^1.6.1",
+    "@vercel/kv": "^3.0.0",
     "three": "^0.179.1",
     "vite": "^7.1.3"
   }

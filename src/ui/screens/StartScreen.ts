@@ -337,6 +337,23 @@ export class StartScreen {
         © 2026 NEURAL SYSTEMS
       </div>
       
+      <!-- PLAY COUNT DISPLAY -->
+      <div class="play-count-display" style="
+        position: fixed;
+        top: var(--space-md, 1rem);
+        left: var(--space-md, 1rem);
+        color: var(--color-cyan, #00FFFF);
+        font-size: clamp(0.6rem, 1.2vw, 0.9rem);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        text-shadow: 2px 2px 0 var(--color-cyan-dark, #006666), 0 0 10px var(--color-cyan, #00FFFF);
+        z-index: 1;
+        text-align: left;
+      ">
+        <div style="color: var(--color-magenta, #FF00FF); font-size: clamp(0.5rem, 1vw, 0.7rem); margin-bottom: 0.2rem;">🎮 GAMES PLAYED</div>
+        <div id="totalPlayCount" style="font-size: clamp(0.8rem, 1.5vw, 1.2rem);">---</div>
+      </div>
+      
       <!-- HIGH SCORE DISPLAY -->
       <div class="high-score-display" style="
         position: fixed;
@@ -805,6 +822,27 @@ export class StartScreen {
 
     // Initialize button selection
     StartScreen.updateButtonSelection(buttons, audioManager, true)
+
+    // 📊 FETCH AND DISPLAY PLAY COUNT 📊
+    const fetchPlayCount = async () => {
+      try {
+        const response = await fetch('/api/highscores?stats=true')
+        if (response.ok) {
+          const stats = await response.json()
+          const playCountEl = startScreen.querySelector('#totalPlayCount')
+          if (playCountEl && stats.playCount !== undefined) {
+            playCountEl.textContent = stats.playCount.toLocaleString()
+            console.log('📊 Play count loaded:', stats.playCount)
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not fetch play count:', error)
+        // Keep showing "---" if fetch fails
+      }
+    }
+
+    // Fetch play count on load
+    fetchPlayCount()
 
     // 🎵 RESUME AUDIO CONTEXT ON FIRST INTERACTION 🎵
     // Add one-time listeners to ensure audio works on first interaction
