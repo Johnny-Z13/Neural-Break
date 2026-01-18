@@ -3,6 +3,7 @@ import { Enemy, DataMite, ScanDrone, ChaosWorm, VoidSphere, CrystalShardSwarm, B
 import { Player } from '../entities/Player'
 import { SceneManager } from '../graphics/SceneManager'
 import { EffectsSystem } from '../graphics/EffectsSystem'
+import { PostProcessingManager } from '../graphics/PostProcessingManager'
 import { LevelManager } from './LevelManager'
 import { AudioManager } from '../audio/AudioManager'
 import { EnemyProjectile } from '../weapons/EnemyProjectile'
@@ -45,6 +46,9 @@ export class EnemyManager {
   // 🔫 ORPHANED PROJECTILES - Projectiles from dead enemies that continue their path! 🔫
   private orphanedProjectiles: EnemyProjectile[] = []
 
+  // 💥 POST-PROCESSING - For shock wave effects on epic kills! 💥
+  private postProcessing: PostProcessingManager | null = null
+
   initialize(sceneManager: SceneManager, player: Player): void {
     this.sceneManager = sceneManager
     this.player = player
@@ -60,6 +64,10 @@ export class EnemyManager {
 
   setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager
+  }
+
+  setPostProcessing(postProcessing: PostProcessingManager): void {
+    this.postProcessing = postProcessing
   }
 
   /**
@@ -658,12 +666,21 @@ export class EnemyManager {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]
       if (!enemy.isAlive()) {
+        // 💥 SHOCK WAVE - Epic visual effect for Boss, VoidSphere, and ChaosWorm kills! 💥
+        if (this.postProcessing && (enemy instanceof Boss || enemy instanceof VoidSphere || enemy instanceof ChaosWorm)) {
+          this.postProcessing.triggerShockWave(enemy.getPosition())
+          if (DEBUG_MODE) {
+            const enemyType = enemy instanceof Boss ? 'Boss' : enemy instanceof VoidSphere ? 'VoidSphere' : 'ChaosWorm'
+            console.log('💥 Shock wave triggered for', enemyType, 'death!')
+          }
+        }
+
         // 💥 CHAIN REACTION - Apply death damage to nearby enemies! 💥
         this.applyDeathDamageToNearby(enemy)
-        
+
         // 🔫 TRANSFER PROJECTILES TO ORPHANED POOL - They continue their path! 🔫
         this.transferProjectilesToOrphaned(enemy)
-        
+
         // 🧹 CLEANUP: Call destroy (now won't destroy projectiles since they're transferred)
         enemy.destroy()
         this.sceneManager.removeFromScene(enemy.getMesh())

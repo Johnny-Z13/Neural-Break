@@ -25,6 +25,8 @@ import { GameModeManager } from './GameModeManager'
 import { AttractMode } from './AttractMode'
 import { StarfieldManager } from '../graphics/StarfieldManager'
 import { DEBUG_MODE } from '../config'
+import { PostProcessControlPanel } from '../ui/PostProcessControlPanel'
+import { PostProcessSettings } from '../config/PostProcessSettings'
 
 export class Game {
   private sceneManager: SceneManager
@@ -41,6 +43,7 @@ export class Game {
   private gameTimer: GameTimer
   private levelManager: LevelManager
   private audioManager: AudioManager
+  private postProcessControlPanel: PostProcessControlPanel | null = null
   private attractMode: AttractMode | null = null
   private isRunning: boolean = false
   private lastTime: number = 0
@@ -163,7 +166,8 @@ export class Game {
       damageTaken: 0,
       totalXP: 0,
       highestCombo: 0,
-      highestMultiplier: 1
+      highestMultiplier: 1,
+      gameCompleted: false
     }
   }
 
@@ -344,15 +348,18 @@ export class Game {
   
   private initializeTestMode(): void {
     if (DEBUG_MODE) console.log('🧪 Starting test mode...')
-    
+
     // Reset game state - CRITICAL: Must be PLAYING for updates to work!
     this.gameState = GameStateType.PLAYING
     this.isTestMode = true // Enable unlimited health
     if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (TEST MODE):', this.gameState)
-    
+
     // Show HUD when game starts
     this.uiManager.setHUDVisibility(true)
-    
+
+    // Show post-processing control panel if debug controls are enabled
+    this.updatePostProcessControlPanel()
+
     this.gameStats = this.createEmptyStats()
     this.combo = 0
     this.comboTimer = 0
@@ -383,10 +390,11 @@ export class Game {
     this.player.setTestMode(true)
     if (DEBUG_MODE) console.log('✅ Test mode enabled on player')
     
-    // Set shield notification callbacks
+    // Set shield notification callbacks (with count change handler for HUD dots)
     this.player.setShieldCallbacks(
       () => this.uiManager.showShieldActivated(),
-      () => this.uiManager.showShieldDeactivated()
+      () => this.uiManager.showShieldDeactivated(),
+      (count: number) => this.uiManager.updateShieldDisplay(count)
     )
     if (DEBUG_MODE) console.log('✅ Shield callbacks connected')
     
@@ -421,7 +429,13 @@ export class Game {
     
     // Set player effects system
     this.player.setEffectsSystem(this.sceneManager.getEffectsSystem())
-    
+
+    // 🎨 Set player post-processing for glitch effects! 🎨
+    const postProcessing = this.sceneManager.getPostProcessing()
+    if (postProcessing) {
+      this.player.setPostProcessing(postProcessing)
+    }
+
     // Set player zoom compensation callback
     this.player.setZoomCompensationCallback(() => this.sceneManager.getZoomCompensationScale())
     
@@ -452,29 +466,32 @@ export class Game {
       }
       lastOverheatState = isOverheated
     })
-    
+
     // Initialize weapon type display
     this.uiManager.updateWeaponType(this.weaponSystem.getCurrentWeaponType())
-    
+
     // Reset enemy manager
     this.enemyManager = new EnemyManager()
     this.enemyManager.initialize(this.sceneManager, this.player)
     this.enemyManager.setLevelManager(this.levelManager)
     this.enemyManager.setEffectsSystem(effectsSystem)
     this.enemyManager.setAudioManager(this.audioManager)
-    
+    if (postProcessing) {
+      this.enemyManager.setPostProcessing(postProcessing)
+    }
+
     // Reset power-up manager
     this.powerUpManager = new PowerUpManager()
     this.powerUpManager.initialize(this.sceneManager, this.player)
     this.powerUpManager.setLevelManager(this.levelManager)
     this.powerUpManager.setEffectsSystem(effectsSystem)
-    
+
     // Reset med pack manager
     this.medPackManager = new MedPackManager()
     this.medPackManager.initialize(this.sceneManager, this.player)
     this.medPackManager.setLevelManager(this.levelManager)
     this.medPackManager.setEffectsSystem(effectsSystem)
-    
+
     // Reset speed-up manager
     this.speedUpManager = new SpeedUpManager()
     this.speedUpManager.initialize(this.sceneManager, this.player)
@@ -588,7 +605,10 @@ export class Game {
     
     // Show HUD when game starts
     this.uiManager.setHUDVisibility(true)
-    
+
+    // Show post-processing control panel if debug controls are enabled
+    this.updatePostProcessControlPanel()
+
     this.gameStats = this.createEmptyStats()
     this.combo = 0
     this.comboTimer = 0
@@ -626,10 +646,11 @@ export class Game {
     if (DEBUG_MODE) console.log('✅ Test mode disabled on player (rogue game)')
     if (DEBUG_MODE) console.log('✅ Rogue mode enabled on player')
     
-    // Set shield notification callbacks
+    // Set shield notification callbacks (with count change handler for HUD dots)
     this.player.setShieldCallbacks(
       () => this.uiManager.showShieldActivated(),
-      () => this.uiManager.showShieldDeactivated()
+      () => this.uiManager.showShieldDeactivated(),
+      (count: number) => this.uiManager.updateShieldDisplay(count)
     )
     if (DEBUG_MODE) console.log('✅ Shield callbacks connected')
     
@@ -686,7 +707,13 @@ export class Game {
     const effectsSystem = this.sceneManager.getEffectsSystem()
     this.weaponSystem.setEffectsSystem(effectsSystem)
     this.player.setEffectsSystem(effectsSystem)
-    
+
+    // 🎨 Set player post-processing for glitch effects! 🎨
+    const postProcessingRogue = this.sceneManager.getPostProcessing()
+    if (postProcessingRogue) {
+      this.player.setPostProcessing(postProcessingRogue)
+    }
+
     // 🎬 CONNECT ZOOM COMPENSATION
     this.player.setZoomCompensationCallback(() => this.sceneManager.getZoomCompensationScale())
     
@@ -718,7 +745,10 @@ export class Game {
     this.enemyManager.setLevelManager(this.levelManager)
     this.enemyManager.setEffectsSystem(effectsSystem)
     this.enemyManager.setAudioManager(this.audioManager)
-    
+    if (postProcessingRogue) {
+      this.enemyManager.setPostProcessing(postProcessingRogue)
+    }
+
     // Set enemy spawn mode based on game mode
     const spawnMode = this.gameModeManager.getEnemySpawnMode()
     if (spawnMode === 'vertical') {
@@ -818,10 +848,13 @@ export class Game {
     this.gameState = GameStateType.PLAYING
     this.isTestMode = false // Ensure test mode is disabled
     if (DEBUG_MODE) console.log('✅ Game state set to PLAYING (NORMAL MODE):', this.gameState)
-    
+
     // Show HUD when game starts
     this.uiManager.setHUDVisibility(true)
-    
+
+    // Show post-processing control panel if debug controls are enabled
+    this.updatePostProcessControlPanel()
+
     this.gameStats = this.createEmptyStats()
     this.combo = 0
     this.comboTimer = 0
@@ -855,10 +888,11 @@ export class Game {
     this.player.setTestMode(false)
     if (DEBUG_MODE) console.log('✅ Test mode disabled on player (normal game)')
     
-    // Set shield notification callbacks
+    // Set shield notification callbacks (with count change handler for HUD dots)
     this.player.setShieldCallbacks(
       () => this.uiManager.showShieldActivated(),
-      () => this.uiManager.showShieldDeactivated()
+      () => this.uiManager.showShieldDeactivated(),
+      (count: number) => this.uiManager.updateShieldDisplay(count)
     )
     if (DEBUG_MODE) console.log('✅ Shield callbacks connected')
     
@@ -917,7 +951,13 @@ export class Game {
     const effectsSystem = this.sceneManager.getEffectsSystem()
     this.weaponSystem.setEffectsSystem(effectsSystem)
     this.player.setEffectsSystem(effectsSystem) // Connect effects system to player for jet VFX
-    
+
+    // 🎨 Set player post-processing for glitch effects! 🎨
+    const postProcessingTest = this.sceneManager.getPostProcessing()
+    if (postProcessingTest) {
+      this.player.setPostProcessing(postProcessingTest)
+    }
+
     // 🎬 CONNECT ZOOM COMPENSATION - Keep ship visually consistent during dynamic camera zoom! 🎬
     this.player.setZoomCompensationCallback(() => this.sceneManager.getZoomCompensationScale())
     
@@ -941,17 +981,20 @@ export class Game {
       }
       lastOverheatState = isOverheated
     })
-    
+
     // Initialize weapon type display
     this.uiManager.updateWeaponType(this.weaponSystem.getCurrentWeaponType())
-    
+
     // Reset enemy manager
     this.enemyManager = new EnemyManager()
     this.enemyManager.initialize(this.sceneManager, this.player)
     this.enemyManager.setLevelManager(this.levelManager)
     this.enemyManager.setEffectsSystem(effectsSystem)
     this.enemyManager.setAudioManager(this.audioManager)
-    
+    if (postProcessingTest) {
+      this.enemyManager.setPostProcessing(postProcessingTest)
+    }
+
     // Reset power-up manager
     this.powerUpManager = new PowerUpManager()
     this.powerUpManager.initialize(this.sceneManager, this.player)
@@ -1140,13 +1183,30 @@ export class Game {
     
     // Increment layers completed counter
     this.rogueLayersCompleted++
-    
+
+    // 🏆 CHECK FOR ROGUE MODE VICTORY (99 layers completed!)
+    if (this.rogueLayersCompleted >= 99) {
+      console.log('🎉 🎉 🎉 ALL 99 ROGUE LAYERS COMPLETE! 🎉 🎉 🎉')
+      console.log('🏆 CONGRATULATIONS! YOU HAVE BEATEN NEURAL BREAK! 🏆')
+      this.gameStats.gameCompleted = true
+      this.rogueLayerCompleting = false
+
+      // Clear all enemies
+      this.clearAllEnemies()
+
+      // Brief delay for effect, then game over
+      setTimeout(() => {
+        this.gameOver()
+      }, 2000)
+      return
+    }
+
     // 🚀 HIDE PLAYER - They've entered the wormhole, don't show until next layer
     if (this.player) {
       this.player.getMesh().visible = false
       if (DEBUG_MODE) console.log('👻 Player hidden after entering wormhole')
     }
-    
+
     // Trigger staggered enemy destruction, THEN show choice screen
     if (DEBUG_MODE) {
       console.log('═════════════════════════════════════')
@@ -1173,13 +1233,42 @@ export class Game {
     }, 2000) // 2 seconds for staggered deaths to play out
   }
 
+  /**
+   * Update post-processing control panel visibility based on settings
+   */
+  private updatePostProcessControlPanel(): void {
+    const debugEnabled = PostProcessSettings.isDebugControlsEnabled()
+    const postProcessing = this.sceneManager.getPostProcessing()
+
+    if (debugEnabled && postProcessing) {
+      // Create and show control panel if not already created
+      if (!this.postProcessControlPanel) {
+        this.postProcessControlPanel = new PostProcessControlPanel(postProcessing)
+      }
+      this.postProcessControlPanel.show()
+      if (DEBUG_MODE) console.log('🎨 Post-processing control panel shown')
+    } else {
+      // Hide control panel if it exists
+      if (this.postProcessControlPanel) {
+        this.postProcessControlPanel.hide()
+        if (DEBUG_MODE) console.log('🎨 Post-processing control panel hidden')
+      }
+    }
+  }
+
   private cleanupGameObjects(): void {
     if (DEBUG_MODE) console.log('🧹 Starting cleanup...')
+
+    // Hide post-processing control panel
+    if (this.postProcessControlPanel) {
+      this.postProcessControlPanel.hide()
+      if (DEBUG_MODE) console.log('✅ Post-processing control panel hidden')
+    }
 
     // Stop the current game loop
     this.stop()
     if (DEBUG_MODE) console.log('✅ Game loop stopped')
-    
+
     // 🎮 STOP ATTRACT MODE if running
     if (this.attractMode && this.attractMode.isRunning()) {
       this.attractMode.stop()
@@ -1686,6 +1775,11 @@ export class Game {
         return
       }
       this.sceneManager.render()
+
+      // Update FPS counter if control panel is visible
+      if (this.postProcessControlPanel) {
+        this.postProcessControlPanel.updateFPS()
+      }
     } catch (error) {
       console.error('❌ Render error in game loop:', error)
       console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace')
@@ -1761,14 +1855,21 @@ export class Game {
         this.sceneManager.addScreenShake(0.6, 0.3) // Big shake for laser
         // 🎮 GAMEPAD VIBRATION - INTENSE laser hit!
         this.inputManager.vibrateExplosion()
-        
+
+        // 🔻 UFO LASER DRAINS WEAPON POWER! 🔻
+        const powerDrained = this.player.reducePowerUpLevel(2)
+        if (powerDrained > 0) {
+          // Show power-down notification
+          this.uiManager.showPowerDownNotification(powerDrained)
+        }
+
         // 💀 RESET MULTIPLIER ON DAMAGE! 💀
         if (this.scoreMultiplier >= 3) {
           this.uiManager.showMultiplierLost()
         }
         this.scoreMultiplier = 1
         this.combo = 0
-        
+
         // ⚡ RESET FIZZER STREAK ⚡
         this.enemyManager.resetFizzerStreak()
       }
@@ -2475,7 +2576,9 @@ export class Game {
           
           // Check if game is complete
           if (this.levelManager.isGameComplete()) {
-            console.log('🎉 ALL LEVELS COMPLETE!')
+            console.log('🎉 🎉 🎉 ALL 99 LEVELS COMPLETE! 🎉 🎉 🎉')
+            console.log('🏆 CONGRATULATIONS! YOU HAVE BEATEN NEURAL BREAK! 🏆')
+            this.gameStats.gameCompleted = true
             this.isLevelTransitioning = false
             this.gameOver()
             return

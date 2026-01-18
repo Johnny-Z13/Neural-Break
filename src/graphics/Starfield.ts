@@ -8,7 +8,7 @@ export class Starfield {
   private stars: Star[] = []
   private demoEnemies: DemoEnemy[] = []
   private effects: BackgroundEffect[] = []
-  private numStars = 150
+  private numStars = 400 // Increased for denser, more realistic starfield
   private numEnemies = 8
   private centerX = 0
   private centerY = 0
@@ -66,14 +66,18 @@ export class Starfield {
   private createStar(): Star {
     const angle = Math.random() * Math.PI * 2
     const distance = Math.random() * 0.1
-    
+    const z = Math.random() * 1000 + 500
+
     return {
       x: Math.cos(angle) * distance,
       y: Math.sin(angle) * distance,
-      z: Math.random() * 1000 + 500,
+      z,
       prevX: 0,
       prevY: 0,
-      color: this.getStarColor(Math.random())
+      color: this.getStarColor(Math.random()),
+      twinklePhase: Math.random() * Math.PI * 2,
+      twinkleSpeed: 0.5 + Math.random() * 2.5, // Varied twinkle speeds
+      baseSize: 1 + Math.random() * 2 // Stars have varied base sizes
     }
   }
 
@@ -104,19 +108,26 @@ export class Starfield {
   }
 
   private getStarColor(seed: number): string {
-    if (seed < 0.6) return '#FFFFFF'
-    if (seed < 0.75) return '#00FFFF'
-    if (seed < 0.85) return '#FF00FF'
-    if (seed < 0.92) return '#FFFF00'
-    if (seed < 0.96) return '#00FF00'
-    return '#FF6600'
+    // More realistic star color distribution based on stellar classification
+    // Most stars are white/blue-white, with some yellow, orange, and rare colored ones
+    if (seed < 0.50) return '#FFFFFF'      // White - most common
+    if (seed < 0.70) return '#E0E8FF'      // Blue-white (hot stars)
+    if (seed < 0.82) return '#FFF4E0'      // Yellow-white (sun-like)
+    if (seed < 0.88) return '#FFE0C0'      // Orange (cooler stars)
+    if (seed < 0.92) return '#00FFFF'      // Cyan (rare, for visual interest)
+    if (seed < 0.95) return '#C0C0FF'      // Light blue
+    if (seed < 0.97) return '#FFC0C0'      // Light red (red giants)
+    return '#FFFF00'                        // Yellow (rare accent)
   }
 
   private updateStar(star: Star): void {
     star.prevX = star.x
     star.prevY = star.y
     star.z -= this.speed * 10
-    
+
+    // Update twinkle phase
+    star.twinklePhase += star.twinkleSpeed * 0.016 // Assuming ~60fps
+
     if (star.z <= 1) {
       const angle = Math.random() * Math.PI * 2
       const distance = Math.random() * 0.3
@@ -126,6 +137,9 @@ export class Starfield {
       star.prevX = star.x
       star.prevY = star.y
       star.color = this.getStarColor(Math.random())
+      star.twinklePhase = Math.random() * Math.PI * 2
+      star.twinkleSpeed = 0.5 + Math.random() * 2.5
+      star.baseSize = 1 + Math.random() * 2
     }
   }
 
@@ -246,37 +260,59 @@ export class Starfield {
     const scale = 500 / star.z
     const x = this.centerX + star.x * scale * this.canvas.width
     const y = this.centerY + star.y * scale * this.canvas.height
-    
+
     const prevScale = 500 / (star.z + this.speed * 10)
     const prevX = this.centerX + star.prevX * prevScale * this.canvas.width
     const prevY = this.centerY + star.prevY * prevScale * this.canvas.height
-    
+
     if (x < 0 || x > this.canvas.width || y < 0 || y > this.canvas.height) return
 
-    const size = Math.max(1, Math.min(4, (1000 - star.z) / 200))
-    const brightness = Math.min(1, (1000 - star.z) / 600)
-    
+    // Depth-based size and brightness with varied base sizes
+    const depthFactor = (1000 - star.z) / 1000
+    const size = Math.max(0.5, Math.min(5, star.baseSize * depthFactor * 2.5))
+
+    // Twinkling effect - more pronounced for distant stars
+    const twinkle = 0.7 + Math.sin(star.twinklePhase) * 0.3 * (1 - depthFactor * 0.5)
+    const brightness = Math.min(1, depthFactor * twinkle)
+
     this.ctx.save()
     this.ctx.globalAlpha = brightness
-    
+
+    // Motion trails for close, fast-moving stars
     if (star.z < 800) {
       this.ctx.strokeStyle = star.color
-      this.ctx.lineWidth = Math.max(1, size * 0.5)
+      this.ctx.lineWidth = Math.max(0.5, size * 0.4)
+      this.ctx.globalAlpha = brightness * 0.6
       this.ctx.beginPath()
       this.ctx.moveTo(prevX, prevY)
       this.ctx.lineTo(x, y)
       this.ctx.stroke()
     }
-    
+
+    // Draw star with glow for brighter stars
+    this.ctx.globalAlpha = brightness
+    if (size > 2) {
+      // Add subtle glow for larger/closer stars
+      const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 1.5)
+      gradient.addColorStop(0, star.color)
+      gradient.addColorStop(0.4, star.color)
+      gradient.addColorStop(1, 'transparent')
+      this.ctx.fillStyle = gradient
+      this.ctx.beginPath()
+      this.ctx.arc(x, y, size * 1.5, 0, Math.PI * 2)
+      this.ctx.fill()
+    }
+
+    // Core star point
     this.ctx.fillStyle = star.color
-    const pixelSize = Math.ceil(size)
+    const pixelSize = Math.max(1, Math.ceil(size))
     this.ctx.fillRect(
       Math.floor(x - pixelSize / 2),
       Math.floor(y - pixelSize / 2),
       pixelSize,
       pixelSize
     )
-    
+
     this.ctx.restore()
   }
 
@@ -889,6 +925,9 @@ interface Star {
   prevX: number
   prevY: number
   color: string
+  twinklePhase: number      // For twinkling effect
+  twinkleSpeed: number      // Speed of twinkle
+  baseSize: number          // Base star size (varies for depth)
 }
 
 type EnemyType = 'datamite' | 'scandrone' | 'chaosworm' | 'voidsphere' | 'crystal' | 'fizzer' | 'ufo'

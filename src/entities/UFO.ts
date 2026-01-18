@@ -30,11 +30,14 @@ export class UFO extends Enemy {
   private laserChargeDuration: number = 1.5 // Charge up before firing
   private isCharging: boolean = false
   private isFiring: boolean = false
-  private laserDuration: number = 2.4 // 3x longer! (was 0.8)
+  private laserExtendDuration: number = 0.3 // Time for beam to extend to edge
+  private laserHoldDuration: number = 0.8 // Time beam stays at full length
+  private laserRetractDuration: number = 0.2 // Time for beam to retract
   private laserTimer: number = 0
   private laserCooldown: number = 4.0 // Time between laser attacks
   private laserCooldownTimer: number = 2.0 // Start partially charged
   private laserBeam: THREE.Mesh | null = null
+  private laserBeamGlow: THREE.Mesh | null = null // Outer glow layer
   private laserTarget: THREE.Vector3 = new THREE.Vector3()
   private laserPulseTime: number = 0 // For pulsing effect
   
@@ -44,6 +47,12 @@ export class UFO extends Enemy {
   private trailIndex: number = 0
   private maxTrailParticles: number = 40
   private domeLights: THREE.Mesh[] = []
+
+  // ⚡ LASER ELECTRIC PARTICLES ⚡
+  private laserParticles: THREE.Points | null = null
+  private laserParticlePositions: Float32Array = new Float32Array(0)
+  private laserParticleVelocities: Float32Array = new Float32Array(0)
+  private maxLaserParticles: number = 60 // Sizzly effect!
   
   // 💀 DEATH ANIMATION STATE 💀
   private isDying: boolean = false
@@ -84,6 +93,9 @@ export class UFO extends Enemy {
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
+
+    // 🛸 MAKE UFO 10% LARGER 🛸
+    this.mesh.scale.setScalar(1.1)
 
     // 🛸 MAIN SAUCER BODY 🛸
     const saucerGeometry = new THREE.CylinderGeometry(1.0, 1.2, 0.3, 24)
@@ -167,8 +179,9 @@ export class UFO extends Enemy {
     glow.position.z = -0.2
     this.mesh.add(glow)
 
-    // 🔴 LASER WEAPON (initially hidden) - TWICE AS FAT! 🔴
-    const laserGeometry = new THREE.CylinderGeometry(0.10, 0.16, 20, 8) // 2x wider (was 0.05, 0.08)
+    // 🔴 LASER WEAPON (initially hidden) - EXTENDS TO SCREEN EDGE! 🔴
+    // Core beam (bright red)
+    const laserGeometry = new THREE.CylinderGeometry(0.12, 0.12, 1, 8) // Unit length, will be scaled
     const laserMaterial = new THREE.MeshBasicMaterial({
       color: 0xFF0000,
       transparent: true,
@@ -178,7 +191,23 @@ export class UFO extends Enemy {
     this.laserBeam = new THREE.Mesh(laserGeometry, laserMaterial)
     this.laserBeam.visible = false
     this.laserBeam.position.set(0, 0, 0) // Center of UFO
+    // Rotate cylinder to lie flat in XY plane (cylinder points along Y axis by default)
+    this.laserBeam.rotation.x = Math.PI / 2
     this.mesh.add(this.laserBeam)
+
+    // Outer glow layer (softer, wider)
+    const laserGlowGeometry = new THREE.CylinderGeometry(0.25, 0.25, 1, 8)
+    const laserGlowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFF3333,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    })
+    this.laserBeamGlow = new THREE.Mesh(laserGlowGeometry, laserGlowMaterial)
+    this.laserBeamGlow.visible = false
+    this.laserBeamGlow.position.set(0, 0, 0)
+    this.laserBeamGlow.rotation.x = Math.PI / 2
+    this.mesh.add(this.laserBeamGlow)
 
     // 🔥 JET TRAILS (2 engines) 🔥
     for (let j = 0; j < 2; j++) {
@@ -213,6 +242,39 @@ export class UFO extends Enemy {
       this.trailPositions.push(positions)
       this.mesh.add(trail)
     }
+
+    // ⚡ LASER ELECTRIC PARTICLES - SIZZLY BLUE ENERGY! ⚡
+    this.laserParticlePositions = new Float32Array(this.maxLaserParticles * 3)
+    this.laserParticleVelocities = new Float32Array(this.maxLaserParticles * 3)
+    const laserColors = new Float32Array(this.maxLaserParticles * 3)
+
+    for (let i = 0; i < this.maxLaserParticles; i++) {
+      const i3 = i * 3
+      this.laserParticlePositions[i3] = 0
+      this.laserParticlePositions[i3 + 1] = 0
+      this.laserParticlePositions[i3 + 2] = 0
+      // Electric blue colors with white/cyan variation
+      laserColors[i3] = 0.2 + Math.random() * 0.3     // R: 20-50%
+      laserColors[i3 + 1] = 0.5 + Math.random() * 0.5 // G: 50-100% (cyan tint)
+      laserColors[i3 + 2] = 1.0                       // B: 100% (bright blue)
+    }
+
+    const laserParticleGeometry = new THREE.BufferGeometry()
+    laserParticleGeometry.setAttribute('position', new THREE.BufferAttribute(this.laserParticlePositions, 3))
+    laserParticleGeometry.setAttribute('color', new THREE.BufferAttribute(laserColors, 3))
+
+    const laserParticleMaterial = new THREE.PointsMaterial({
+      size: 0.15, // Smaller for electric sizzle
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: false
+    })
+
+    this.laserParticles = new THREE.Points(laserParticleGeometry, laserParticleMaterial)
+    this.laserParticles.visible = false // Hidden until laser is active
+    this.mesh.add(this.laserParticles)
 
     // Initialize first path
     this.generateNewPath()
@@ -626,12 +688,16 @@ export class UFO extends Enemy {
     if (this.isFiring) {
       this.laserTimer += deltaTime
       this.laserPulseTime += deltaTime // Update pulse timer
-      
-      if (this.laserTimer >= this.laserDuration) {
+
+      const totalDuration = this.laserExtendDuration + this.laserHoldDuration + this.laserRetractDuration
+      if (this.laserTimer >= totalDuration) {
         this.isFiring = false
         this.laserCooldownTimer = 0
         if (this.laserBeam) {
           this.laserBeam.visible = false
+        }
+        if (this.laserBeamGlow) {
+          this.laserBeamGlow.visible = false
         }
       }
     }
@@ -668,6 +734,81 @@ export class UFO extends Enemy {
 
   isLaserActive(): boolean {
     return this.isFiring
+  }
+
+  /**
+   * Calculate the distance from UFO position to screen edge in the given direction
+   */
+  private calculateBeamLengthToEdge(direction: THREE.Vector3, screenBounds: number): number {
+    // Ray trace from UFO position to screen edge
+    // Calculate intersection with screen bounds rectangle
+    const t_x = direction.x !== 0 ? (Math.sign(direction.x) * screenBounds - this.position.x) / direction.x : Infinity
+    const t_y = direction.y !== 0 ? (Math.sign(direction.y) * screenBounds - this.position.y) / direction.y : Infinity
+
+    // Take the minimum positive t (first intersection)
+    const t = Math.min(Math.abs(t_x), Math.abs(t_y))
+
+    return t > 0 ? t : 50 // Fallback to 50 units if calculation fails
+  }
+
+  /**
+   * ⚡ UPDATE LASER ELECTRIC PARTICLES - SIZZLY BLUE ENERGY! ⚡
+   */
+  private updateLaserParticles(direction: THREE.Vector3, beamLength: number, deltaTime: number, isCharging: boolean): void {
+    if (!this.laserParticles) return
+
+    this.laserParticles.visible = true
+
+    // Update each particle
+    for (let i = 0; i < this.maxLaserParticles; i++) {
+      const i3 = i * 3
+
+      // Get current position
+      let px = this.laserParticlePositions[i3]
+      let py = this.laserParticlePositions[i3 + 1]
+      let pz = this.laserParticlePositions[i3 + 2]
+
+      // If particle is dead (distance > beam length) or just starting, respawn along beam
+      const distFromCenter = Math.sqrt(px * px + py * py)
+      if (distFromCenter < 0.1 || distFromCenter > beamLength) {
+        // Spawn along the beam
+        const t = Math.random() // Random position along beam length
+        const beamPos = t * beamLength
+
+        px = direction.x * beamPos
+        py = direction.y * beamPos
+        pz = 0.05 + (Math.random() - 0.5) * 0.1 // Slightly above/below beam
+
+        // Random perpendicular offset for width
+        const perpX = -direction.y
+        const perpY = direction.x
+        const perpOffset = (Math.random() - 0.5) * 0.3 * (isCharging ? 0.3 : 1.0) // Narrower when charging
+        px += perpX * perpOffset
+        py += perpY * perpOffset
+
+        // Set velocity for sizzle movement
+        this.laserParticleVelocities[i3] = (Math.random() - 0.5) * 2.0     // X velocity
+        this.laserParticleVelocities[i3 + 1] = (Math.random() - 0.5) * 2.0 // Y velocity
+        this.laserParticleVelocities[i3 + 2] = (Math.random() - 0.5) * 0.5 // Z velocity
+      } else {
+        // Update particle with sizzly movement
+        px += this.laserParticleVelocities[i3] * deltaTime
+        py += this.laserParticleVelocities[i3 + 1] * deltaTime
+        pz += this.laserParticleVelocities[i3 + 2] * deltaTime
+
+        // Add electric jitter
+        px += (Math.random() - 0.5) * 0.05
+        py += (Math.random() - 0.5) * 0.05
+      }
+
+      // Write back positions
+      this.laserParticlePositions[i3] = px
+      this.laserParticlePositions[i3 + 1] = py
+      this.laserParticlePositions[i3 + 2] = pz
+    }
+
+    // Update buffer
+    this.laserParticles.geometry.attributes.position.needsUpdate = true
   }
 
   protected updateVisuals(deltaTime: number): void {
@@ -709,51 +850,124 @@ export class UFO extends Enemy {
       bottomGlow.scale.setScalar(1 + Math.sin(time * 6) * 0.1)
     }
     
-    // 🔴 LASER BEAM VISUAL - PULSING & CENTERED! 🔴
-    if (this.laserBeam) {
+    // 🔴 LASER BEAM VISUAL - EXTENDS TO SCREEN EDGE WITH ANIMATION! 🔴
+    // NOTE: Beam is a child of the UFO mesh, so we need to work in LOCAL space
+    // and compensate for the UFO's rotation (tilt based on velocity)
+    if (this.laserBeam && this.laserBeamGlow) {
       const laserMaterial = this.laserBeam.material as THREE.MeshBasicMaterial
-      
-      if (this.isCharging) {
-        // Show charging effect
-        this.laserBeam.visible = true
-        laserMaterial.opacity = (this.laserChargeTime / this.laserChargeDuration) * 0.5
-        laserMaterial.color.setHSL(0, 1, 0.3 + (this.laserChargeTime / this.laserChargeDuration) * 0.4)
-        
-        // Point at target from CENTER of UFO - beam starts at (0,0,0)
-        this.laserBeam.position.set(0, 0, 0) // Always centered
-        const direction = this.laserTarget.clone().sub(this.position)
-        const targetWorld = this.position.clone().add(direction)
-        this.laserBeam.lookAt(targetWorld)
-        this.laserBeam.rotateX(Math.PI / 2)
-        
-        const chargeScale = this.laserChargeTime / this.laserChargeDuration
-        this.laserBeam.scale.set(chargeScale * 0.5, 0.5, chargeScale * 0.5)
-      } else if (this.isFiring) {
-        // Full laser with PULSING effect!
-        this.laserBeam.visible = true
-        
-        // Base flicker + pulsing wave
-        const flicker = 0.7 + Math.sin(time * 50) * 0.3
-        const pulse = 0.85 + Math.sin(this.laserPulseTime * 8) * 0.15 // Slower pulse wave
-        laserMaterial.opacity = flicker * pulse
-        
-        // Pulsing color intensity
-        const colorIntensity = 0.8 + Math.sin(this.laserPulseTime * 8) * 0.2
-        laserMaterial.color.setRGB(1, 0.2 * colorIntensity, 0.2 * colorIntensity)
-        
-        // Point at target from CENTER of UFO - beam starts at (0,0,0)
-        this.laserBeam.position.set(0, 0, 0) // Always centered
-        const direction = this.laserTarget.clone().sub(this.position)
-        const targetWorld = this.position.clone().add(direction)
-        this.laserBeam.lookAt(targetWorld)
-        this.laserBeam.rotateX(Math.PI / 2)
-        
-        // Pulsing width!
-        const widthPulse = 1.0 + Math.sin(this.laserPulseTime * 8) * 0.2 // Width pulses 80-120%
-        this.laserBeam.scale.set(widthPulse, 1, widthPulse)
+      const glowMaterial = this.laserBeamGlow.material as THREE.MeshBasicMaterial
+
+      if (this.isCharging || this.isFiring) {
+        // Calculate direction to target in WORLD space
+        const worldDirection = this.laserTarget.clone().sub(this.position).normalize()
+
+        // Convert direction to LOCAL space by counter-rotating by mesh rotation
+        // Create inverse rotation matrix from mesh rotation
+        const localDirection = worldDirection.clone()
+        localDirection.applyAxisAngle(new THREE.Vector3(1, 0, 0), -this.mesh.rotation.x)
+        localDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.mesh.rotation.y)
+        localDirection.applyAxisAngle(new THREE.Vector3(0, 0, 1), -this.mesh.rotation.z)
+
+        // Calculate distance to screen edge in this direction (uses world direction)
+        const screenBounds = 32
+        const maxBeamLength = this.calculateBeamLengthToEdge(worldDirection, screenBounds)
+
+        // Calculate angle for beam rotation (in local space)
+        const angle = Math.atan2(localDirection.y, localDirection.x)
+
+        if (this.isCharging) {
+          // Show charging effect - thin beam preview
+          this.laserBeam.visible = true
+          this.laserBeamGlow.visible = false
+          laserMaterial.opacity = (this.laserChargeTime / this.laserChargeDuration) * 0.4
+          laserMaterial.color.setHSL(0, 1, 0.3 + (this.laserChargeTime / this.laserChargeDuration) * 0.4)
+
+          this.laserBeam.rotation.z = angle - Math.PI / 2
+
+          const chargeScale = this.laserChargeTime / this.laserChargeDuration
+          const currentBeamLength = maxBeamLength * chargeScale
+          const offsetDistance = currentBeamLength / 2
+
+          // Position in LOCAL space - beam starts at UFO center (0,0)
+          this.laserBeam.position.set(
+            localDirection.x * offsetDistance,
+            localDirection.y * offsetDistance,
+            0.05
+          )
+
+          this.laserBeam.scale.set(chargeScale * 0.5, currentBeamLength, chargeScale * 0.5)
+
+          // ⚡ ELECTRIC PARTICLES ⚡
+          this.updateLaserParticles(localDirection, currentBeamLength, deltaTime, true)
+        } else {
+          // FIRING - ANIMATED LASER with three phases: EXTEND -> HOLD -> RETRACT
+          this.laserBeam.visible = true
+          this.laserBeamGlow.visible = true
+
+          this.laserBeam.rotation.z = angle - Math.PI / 2
+          this.laserBeamGlow.rotation.z = angle - Math.PI / 2
+
+          // Determine current phase and length scale
+          let lengthScale = 1.0
+          let coreOpacity = 0.9
+          let glowOpacity = 0.4
+
+          if (this.laserTimer < this.laserExtendDuration) {
+            const extendProgress = this.laserTimer / this.laserExtendDuration
+            lengthScale = extendProgress
+            coreOpacity = 0.9 * extendProgress
+            glowOpacity = 0.4 * extendProgress
+          } else if (this.laserTimer < this.laserExtendDuration + this.laserHoldDuration) {
+            lengthScale = 1.0
+            const holdProgress = (this.laserTimer - this.laserExtendDuration) / this.laserHoldDuration
+            const pulse = 0.9 + Math.sin(holdProgress * Math.PI * 8) * 0.1
+            coreOpacity = pulse
+            glowOpacity = 0.4 * pulse
+          } else {
+            const retractStart = this.laserExtendDuration + this.laserHoldDuration
+            const retractProgress = (this.laserTimer - retractStart) / this.laserRetractDuration
+            lengthScale = 1.0 - retractProgress
+            coreOpacity = 0.9 * (1.0 - retractProgress)
+            glowOpacity = 0.4 * (1.0 - retractProgress)
+          }
+
+          const currentBeamLength = maxBeamLength * lengthScale
+          const offsetDistance = currentBeamLength / 2
+
+          // Position in LOCAL space
+          this.laserBeam.position.set(
+            localDirection.x * offsetDistance,
+            localDirection.y * offsetDistance,
+            0.05
+          )
+          this.laserBeamGlow.position.set(
+            localDirection.x * offsetDistance,
+            localDirection.y * offsetDistance,
+            0.05
+          )
+
+          this.laserBeam.scale.set(1.0, currentBeamLength, 1.0)
+          this.laserBeamGlow.scale.set(1.0, currentBeamLength, 1.0)
+
+          laserMaterial.opacity = coreOpacity
+          laserMaterial.color.setRGB(1, 0.1, 0.1)
+          glowMaterial.opacity = glowOpacity
+          glowMaterial.color.setRGB(1, 0.3, 0.3)
+
+          // ⚡ ELECTRIC PARTICLES ⚡
+          if (lengthScale > 0.1) {
+            this.updateLaserParticles(localDirection, currentBeamLength, deltaTime, false)
+          }
+        }
       } else {
+        // Laser off
         this.laserBeam.visible = false
+        this.laserBeamGlow.visible = false
         laserMaterial.opacity = 0
+        glowMaterial.opacity = 0
+        if (this.laserParticles) {
+          this.laserParticles.visible = false
+        }
       }
     }
     

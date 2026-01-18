@@ -166,9 +166,61 @@ export class GameOverScreen {
       
       <!-- MAIN CONTENT -->
       <div class="gameover-content" style="position: relative; z-index: 1; max-width: 900px; width: 100%;">
-        
-        <!-- GAME OVER TITLE WITH DRAMATIC EFFECTS -->
+
+        <!-- TITLE WITH DRAMATIC EFFECTS (VICTORY or GAME OVER) -->
         <div class="title-section" style="position: relative; margin-bottom: var(--space-lg, 1.5rem);">
+          ${stats.gameCompleted ? `
+          <!-- Victory Banner -->
+          <div style="
+            margin-bottom: var(--space-sm, 0.8rem);
+            font-size: clamp(0.7rem, 1.8vw, 1.1rem);
+            color: #FFD700;
+            text-shadow: 0 0 15px #FFD700, 0 0 30px #FFD700, 2px 2px 0 #885500;
+            letter-spacing: 0.5em;
+            animation: victoryBlink 0.5s step-end infinite;
+            font-weight: bold;
+          ">
+            🏆 NEURAL BREAK COMPLETE 🏆
+          </div>
+
+          <!-- Victory Title (Clean, No RGB Split) -->
+          <div style="position: relative; margin-bottom: var(--space-sm, 0.8rem);">
+            <h1 style="
+              position: relative;
+              font-size: clamp(2.5rem, 6vw, 4.5rem);
+              margin: 0;
+              color: #FFD700;
+              text-shadow:
+                0 0 15px #FFD700,
+                0 0 30px #FFD700,
+                0 0 60px #FFD700,
+                4px 4px 0 rgba(0, 0, 0, 0.8);
+              letter-spacing: 0.2em;
+              text-transform: uppercase;
+              font-weight: bold;
+              animation: gameOverGlitch 5s ease-in-out infinite, gameOverPulse 1s step-end infinite;
+            ">
+              VICTORY!
+            </h1>
+          </div>
+
+          <!-- Congratulations Message -->
+          <div style="
+            font-size: clamp(0.65rem, 1.6vw, 1.0rem);
+            margin-top: var(--space-md, 1rem);
+            margin-bottom: var(--space-md, 1rem);
+            color: #00FFFF;
+            text-shadow: 0 0 15px #00FFFF, 2px 2px 0 #005555;
+            letter-spacing: 0.2em;
+            line-height: 1.6;
+          ">
+            ═══════════════════════════════════<br/>
+            CONGRATULATIONS!<br/>
+            YOU HAVE BEATEN ALL 99 LEVELS<br/>
+            OF NEURAL BREAK!<br/>
+            ═══════════════════════════════════
+          </div>
+          ` : `
           <!-- Warning Banner -->
           <div style="
             margin-bottom: var(--space-sm, 0.8rem);
@@ -182,55 +234,19 @@ export class GameOverScreen {
             ⚠ SYSTEM FAILURE ⚠
           </div>
 
-          <!-- RGB Split Game Over Title -->
+          <!-- Game Over Title (Clean, No RGB Split) -->
           <div style="position: relative; margin-bottom: var(--space-sm, 0.8rem);">
-            <!-- Red layer -->
-            <h1 style="
-              position: absolute;
-              left: 50%;
-              transform: translateX(-50%);
-              font-size: clamp(2rem, 5vw, 3.5rem);
-              font-weight: bold;
-              letter-spacing: 0.15em;
-              margin: 0;
-              text-transform: uppercase;
-              color: #FF0000;
-              opacity: 0.7;
-              filter: blur(1.5px);
-              animation: gameOverRGBRed 3s ease-in-out infinite;
-            ">
-              GAME OVER
-            </h1>
-            <!-- Blue layer -->
-            <h1 style="
-              position: absolute;
-              left: 50%;
-              transform: translateX(-50%);
-              font-size: clamp(2rem, 5vw, 3.5rem);
-              font-weight: bold;
-              letter-spacing: 0.15em;
-              margin: 0;
-              text-transform: uppercase;
-              color: #0000FF;
-              opacity: 0.7;
-              filter: blur(1.5px);
-              animation: gameOverRGBBlue 3s ease-in-out infinite;
-            ">
-              GAME OVER
-            </h1>
-            <!-- Main title -->
             <h1 style="
               position: relative;
-              font-size: clamp(2rem, 5vw, 3.5rem);
+              font-size: clamp(2.5rem, 6vw, 4.5rem);
               margin: 0;
-              color: #FFFFFF;
+              color: #FF0000;
               text-shadow:
-                0 0 10px #FF0000,
-                0 0 20px #FF0000,
-                0 0 40px #FF0000,
-                0 0 80px #FF0000,
-                6px 6px 0 #880000;
-              letter-spacing: 0.15em;
+                0 0 15px #FF0000,
+                0 0 30px #FF0000,
+                0 0 60px #FF0000,
+                4px 4px 0 rgba(0, 0, 0, 0.8);
+              letter-spacing: 0.2em;
               text-transform: uppercase;
               font-weight: bold;
               animation: gameOverGlitch 5s ease-in-out infinite, gameOverPulse 1s step-end infinite;
@@ -238,6 +254,7 @@ export class GameOverScreen {
               GAME OVER
             </h1>
           </div>
+          `}
 
           <!-- Subtitle with glitch -->
           <p style="
@@ -497,6 +514,11 @@ export class GameOverScreen {
         50%, 100% { opacity: 0.4; }
       }
 
+      @keyframes victoryBlink {
+        0%, 49% { opacity: 1; text-shadow: 0 0 15px #FFD700, 0 0 30px #FFD700, 2px 2px 0 #885500; }
+        50%, 100% { opacity: 0.7; text-shadow: 0 0 25px #FFD700, 0 0 50px #FFD700, 3px 3px 0 #885500; }
+      }
+
       @keyframes gameOverRGBRed {
         0%, 100% { transform: translate(calc(-50% - 3px), -2px); }
         25% { transform: translate(calc(-50% - 4px), -1px); }
@@ -612,6 +634,9 @@ export class GameOverScreen {
       }
     `
     document.head.appendChild(style)
+
+    // Add game over screen to DOM BEFORE trying to populate high scores
+    document.body.appendChild(gameOverScreen)
 
     // Display high scores for current game mode
     await GameOverScreen.displayHighScores('gameOverHighScoresList', gameMode)

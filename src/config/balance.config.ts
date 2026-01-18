@@ -202,17 +202,17 @@ export const BALANCE_CONFIG = {
   },
 
   // ═══════════════════════════════════════════════════════════════════
-  // ENEMY: CRYSTAL SHARD SWARM (Orbital attacker) - EASY MODE
+  // ENEMY: CRYSTAL SHARD SWARM (Orbital attacker) - TOUGHER
   // ═══════════════════════════════════════════════════════════════════
   CRYSTAL_SWARM: {
-    HEALTH: 200,                    // High health
-    SPEED: 1.4,                    // Fast (was 1.8) - slower!
+    HEALTH: 250,                    // Higher health (was 200)
+    SPEED: 1.8,                    // Faster movement (was 1.4)
     DAMAGE: 25,                    // High collision damage (was 40) - less damage!
     XP_VALUE: 45,                  // Big reward
     RADIUS: 4.5,                   // Large orbital radius
     SHARD_COUNT: 6,                // Number of orbiting shards
     ORBIT_SPEED: 1.5,              // Rotation speed
-    
+
     // Shooting Behavior (Burst from shards)
     FIRE_RATE: 3.5,                // Time between bursts (was 2.5) - less frequent!
     BURST_COUNT: 2,                // Shots per burst (was 3) - fewer shots!

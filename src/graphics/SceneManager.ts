@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { EffectsSystem } from './EffectsSystem'
 import { AudioVisualReactiveSystem } from './AudioVisualReactiveSystem'
 import { EnergyBarrier } from './EnergyBarrier'
+import { PostProcessingManager } from './PostProcessingManager'
 import { DEBUG_MODE } from '../config'
 
 // 💫 SHOOTING STAR INTERFACE 💫
@@ -73,6 +74,9 @@ export class SceneManager {
   // 🎨🎵 AUDIO-VISUAL REACTIVE SYSTEM! 🎵🎨
   private audioVisualSystem: AudioVisualReactiveSystem
 
+  // 🎨 POST-PROCESSING SYSTEM! 🎨
+  private postProcessing: PostProcessingManager | null = null
+
   constructor() {
     // Get canvas element - ensure DOM is ready
     this.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement
@@ -93,7 +97,11 @@ export class SceneManager {
     console.log('✅ Scene created')
 
     // Create orthographic camera for top-down view
-    const aspect = window.innerWidth / window.innerHeight
+    // Get size from game container if available, otherwise use window
+    const initContainer = document.getElementById('gameContainer')
+    const initWidth = initContainer ? initContainer.clientWidth : window.innerWidth
+    const initHeight = initContainer ? initContainer.clientHeight : window.innerHeight
+    const aspect = (initWidth || window.innerWidth) / (initHeight || window.innerHeight)
     this.baseFrustumSize = 30 // More zoomed out default
     this.currentFrustumSize = this.baseFrustumSize
     this.targetFrustumSize = this.baseFrustumSize
@@ -110,14 +118,21 @@ export class SceneManager {
     console.log('✅ Camera created:', this.camera.position)
 
     // Create renderer with CRAZY SETTINGS! 🔥
+    // 🎨 POST-PROCESSING OPTIMIZED: No antialias (handled by post-processing)
     try {
-      this.renderer = new THREE.WebGLRenderer({ 
+      this.renderer = new THREE.WebGLRenderer({
         canvas: this.canvas,
-        antialias: true,
+        antialias: false, // Disabled for post-processing performance
         alpha: false,
-        powerPreference: "high-performance"
+        powerPreference: "high-performance",
+        stencil: false,  // Not needed for our effects
+        depth: true      // Needed for proper rendering
       })
-      this.renderer.setSize(window.innerWidth, window.innerHeight)
+      // Get size from game container if available, otherwise use window
+      const gameContainer = document.getElementById('gameContainer')
+      const width = gameContainer ? gameContainer.clientWidth : window.innerWidth
+      const height = gameContainer ? gameContainer.clientHeight : window.innerHeight
+      this.renderer.setSize(width || window.innerWidth, height || window.innerHeight)
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       this.renderer.setClearColor(0x04040e, 1) // Deep purple-blue background (darkened 12%)
       this.renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -158,13 +173,18 @@ export class SceneManager {
     // 🎨🎵 Initialize AUDIO-VISUAL REACTIVE SYSTEM! 🎵🎨
     this.audioVisualSystem = new AudioVisualReactiveSystem(this.scene, this.effectsSystem)
     console.log('✅ AudioVisualSystem initialized')
-    
+
     // Register all lights for reactivity
     this.scene.traverse((object) => {
       if (object instanceof THREE.Light) {
         this.audioVisualSystem.registerLight(object)
       }
     })
+
+    // 🎨 Initialize POST-PROCESSING! 🎨
+    this.postProcessing = new PostProcessingManager(this.scene, this.camera, this.renderer)
+    this.postProcessing.initialize() // Actually create the effect passes
+    console.log('✅ PostProcessingManager initialized')
 
     // Handle window resize
     window.addEventListener('resize', () => this.onWindowResize())
@@ -614,7 +634,12 @@ export class SceneManager {
     
     // 🎨🎵 UPDATE AUDIO-VISUAL REACTIVE SYSTEM! 🎵🎨
     this.audioVisualSystem.update(deltaTime)
-    
+
+    // 🎨 UPDATE POST-PROCESSING! 🎨
+    if (this.postProcessing) {
+      this.postProcessing.update(deltaTime)
+    }
+
     // Apply screen shake from effects system
     const effectsShake = this.effectsSystem.getScreenShakeAmount()
     if (effectsShake > 0) {
@@ -1047,7 +1072,7 @@ export class SceneManager {
       console.error('❌ Cannot render: camera is null')
       return
     }
-    
+
     // Debug: Log scene info periodically (every 2 seconds)
     if (Math.random() < 0.001) { // More frequent for debugging
       console.log('🎬 Scene render debug:', {
@@ -1061,18 +1086,18 @@ export class SceneManager {
         cameraNear: this.camera.near,
         cameraFar: this.camera.far
       })
-      
+
       // Count visible objects
       const visibleObjects = this.scene.children.filter(obj => obj.visible)
       console.log('👁️ Visible objects:', visibleObjects.length, 'out of', this.scene.children.length)
-      
+
       // List entity types with positions
       const entityTypes = new Map<string, number>()
       const entityDetails: any[] = []
       this.scene.children.forEach(obj => {
         const type = obj.constructor.name
         entityTypes.set(type, (entityTypes.get(type) || 0) + 1)
-        
+
         // Log details for Mesh objects (entities)
         if (obj instanceof THREE.Mesh) {
           entityDetails.push({
@@ -1089,9 +1114,15 @@ export class SceneManager {
         console.log('🎯 Entity details:', entityDetails)
       }
     }
-    
+
     try {
-      this.renderer.render(this.scene, this.camera)
+      // 🎨 USE POST-PROCESSING RENDERER! 🎨
+      if (this.postProcessing) {
+        this.postProcessing.render(0.016) // ~60fps deltaTime
+      } else {
+        // Fallback to standard renderer if post-processing not initialized
+        this.renderer.render(this.scene, this.camera)
+      }
     } catch (error) {
       console.error('❌ Render error:', error)
       console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace')
@@ -1109,6 +1140,11 @@ export class SceneManager {
   // 🎆 GET EFFECTS SYSTEM FOR EXTERNAL ACCESS 🎆
   getEffectsSystem(): EffectsSystem {
     return this.effectsSystem
+  }
+
+  // 🎨 GET POST-PROCESSING MANAGER FOR EXTERNAL ACCESS 🎨
+  getPostProcessing(): PostProcessingManager | null {
+    return this.postProcessing
   }
 
   // 🚀 GET ZOOM COMPENSATION SCALE - Keeps player ship visually consistent during dynamic zoom! 🚀
@@ -1221,7 +1257,10 @@ export class SceneManager {
     
     // Only update projection matrix if zoom actually changed (avoids GPU overhead)
     if (Math.abs(this.currentFrustumSize - previousZoom) > 0.001) {
-      const aspect = window.innerWidth / window.innerHeight
+      const gameContainer = document.getElementById('gameContainer')
+      const width = gameContainer ? gameContainer.clientWidth : window.innerWidth
+      const height = gameContainer ? gameContainer.clientHeight : window.innerHeight
+      const aspect = (width || window.innerWidth) / (height || window.innerHeight)
       this.camera.left = this.currentFrustumSize * aspect / -2
       this.camera.right = this.currentFrustumSize * aspect / 2
       this.camera.top = this.currentFrustumSize / 2
@@ -1261,7 +1300,10 @@ export class SceneManager {
         // Zoom in/out during transition
         const zoomAmount = Math.sin(t * Math.PI) * 0.3
         const tempFrustum = this.currentFrustumSize * (1 - zoomAmount)
-        const aspect = window.innerWidth / window.innerHeight
+        const gameContainer = document.getElementById('gameContainer')
+        const width = gameContainer ? gameContainer.clientWidth : window.innerWidth
+        const height = gameContainer ? gameContainer.clientHeight : window.innerHeight
+        const aspect = (width || window.innerWidth) / (height || window.innerHeight)
         this.camera.left = tempFrustum * aspect / -2
         this.camera.right = tempFrustum * aspect / 2
         this.camera.top = tempFrustum / 2
@@ -1294,14 +1336,27 @@ export class SceneManager {
   }
 
   private onWindowResize(): void {
-    const aspect = window.innerWidth / window.innerHeight
+    // Get size from game container if available, otherwise use window
+    const gameContainer = document.getElementById('gameContainer')
+    const width = gameContainer ? gameContainer.clientWidth : window.innerWidth
+    const height = gameContainer ? gameContainer.clientHeight : window.innerHeight
     
+    // Prevent zero-size issues
+    if (width === 0 || height === 0) return
+    
+    const aspect = width / height
+
     this.camera.left = this.currentFrustumSize * aspect / -2
     this.camera.right = this.currentFrustumSize * aspect / 2
     this.camera.top = this.currentFrustumSize / 2
     this.camera.bottom = this.currentFrustumSize / -2
     this.camera.updateProjectionMatrix()
-    
-    this.renderer.setSize(window.innerWidth, window.innerHeight)
+
+    this.renderer.setSize(width, height)
+
+    // 🎨 Update post-processing size! 🎨
+    if (this.postProcessing) {
+      this.postProcessing.setSize(width, height)
+    }
   }
 }

@@ -8,7 +8,15 @@
       "Bash(vercel link:*)",
       "Bash(find:*)",
       "Bash(npm run build:*)",
-      "Bash(npm i:*)"
+      "Bash(npm i:*)",
+      "Skill(frontend-design:frontend-design)",
+      "WebSearch",
+      "Bash(timeout /t 5)",
+      "Bash(npx tsc:*)",
+      "Bash(start http://localhost:3001)",
+      "Bash(cd:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(start http://localhost:3003)"
     ],
     "deny": [],
     "ask": []

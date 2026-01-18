@@ -97,8 +97,12 @@ export class Boss extends Enemy {
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
+
+    // 🔻 SCALE DOWN BY 20% - Make boss smaller! 🔻
+    this.mesh.scale.setScalar(0.8)
+
     this.mesh.add(this.coreMesh)
-    
+
     // 🛡️ COMMAND BRIDGE - Top section! 🛡️
     const bridgeGeometry = new THREE.BoxGeometry(2.8, 2.1, 1.4) // 40% bigger (was 2.0, 1.5, 1.0)
     const bridgeMaterial = new THREE.MeshLambertMaterial({

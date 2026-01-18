@@ -26,20 +26,28 @@ export class UIManager {
   private xpElement: HTMLElement
   private xpNextElement: HTMLElement
   private scoreElement: HTMLElement
+  private scoreLevelValue: HTMLElement  // New: Level display under score
   private comboElement: HTMLElement
   private comboCountElement: HTMLElement
   private powerUpLevelElement: HTMLElement
+  private powerUpRow: HTMLElement       // New: Power row for animations
   private weaponTypeElement: HTMLElement
   private weaponTypeValueElement: HTMLElement
+  private weaponPanel: HTMLElement      // New: Grouped weapon panel
   private heatHUDElement: HTMLElement
   private heatBarFill: HTMLElement
   private heatBarContainer: HTMLElement
+  private heatBarText: HTMLElement      // New: Heat percentage text
+  private shieldDots: HTMLElement[] = [] // Shield dot elements
   private healthPulseAnimation: number | null = null
-  
+  private lastPowerUpLevel: number = 0  // Track for animation triggers
+  private currentShieldCount: number = 1 // Start with 1 shield
+
   // 📬 NOTIFICATION QUEUE MANAGEMENT 📬
   private notificationQueue: QueuedNotification[] = []
   private currentNotification: QueuedNotification | null = null
   private notificationContainer: HTMLElement | null = null
+  private notificationsSuppressed: boolean = false
 
   initialize(): void {
     // Get UI elements
@@ -53,18 +61,30 @@ export class UIManager {
     this.xpElement = document.getElementById('xp')!
     this.xpNextElement = document.getElementById('xpNext')!
     this.scoreElement = document.getElementById('currentScore')!
+    this.scoreLevelValue = document.getElementById('scoreLevelValue')!  // New
     this.comboElement = document.getElementById('combo')!
     this.comboCountElement = document.getElementById('comboCount')!
     this.powerUpLevelElement = document.getElementById('powerUpLevel')!
+    this.powerUpRow = document.getElementById('powerUp')!               // New
     this.weaponTypeElement = document.getElementById('weaponType')!
     this.weaponTypeValueElement = document.getElementById('weaponTypeValue')!
+    this.weaponPanel = document.getElementById('weaponPanel')!          // New
     this.heatHUDElement = document.getElementById('heatHUD')!
     this.heatBarFill = document.getElementById('heatBarFill')!
     this.heatBarContainer = document.getElementById('heatBarContainer')!
+    this.heatBarText = document.getElementById('heatBarText')!          // New
 
-    if (!this.healthBarFill || !this.healthBarText || !this.healthBarContainer || 
-        !this.timerElement || !this.gameLevelElement || !this.levelElement || 
-        !this.xpElement || !this.xpNextElement || !this.scoreElement || 
+    // Initialize shield dots
+    const shieldDotsContainer = document.getElementById('shieldDotsContainer')
+    if (shieldDotsContainer) {
+      this.shieldDots = Array.from(shieldDotsContainer.querySelectorAll('.shield-dot'))
+      // Start with 1 shield active
+      this.updateShieldDisplay(1)
+    }
+
+    if (!this.healthBarFill || !this.healthBarText || !this.healthBarContainer ||
+        !this.timerElement || !this.gameLevelElement || !this.levelElement ||
+        !this.xpElement || !this.xpNextElement || !this.scoreElement ||
         !this.comboElement || !this.comboCountElement || !this.powerUpLevelElement ||
         !this.weaponTypeElement || !this.weaponTypeValueElement ||
         !this.heatHUDElement || !this.heatBarFill || !this.heatBarContainer) {
@@ -239,21 +259,20 @@ export class UIManager {
     const powerUpLevel = player.getPowerUpLevel()
     const validPowerUpLevel = Math.max(0, Math.min(10, powerUpLevel))
     this.powerUpLevelElement.textContent = `${validPowerUpLevel}`
-    
-    // Power-up level visual feedback
-    const powerUpBar = this.powerUpLevelElement.parentElement!.parentElement!
-    if (powerUpLevel >= 10) {
-      powerUpBar.style.borderColor = '#FFD700'
-      powerUpBar.style.color = '#FFD700'
-      powerUpBar.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.5), 3px 3px 0 #886600'
-    } else if (powerUpLevel >= 5) {
-      powerUpBar.style.borderColor = '#00FF00'
-      powerUpBar.style.color = '#00FF00'
-      powerUpBar.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3), 3px 3px 0 #006600'
-    } else {
-      powerUpBar.style.borderColor = '#00FFFF'
-      powerUpBar.style.color = '#00FFFF'
-      powerUpBar.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.3), 3px 3px 0 #006666'
+
+    // Power-up level visual feedback via CSS classes
+    if (this.powerUpRow) {
+      this.powerUpRow.classList.remove('power-mid', 'power-high')
+      if (powerUpLevel >= 10) {
+        this.powerUpRow.classList.add('power-high')
+      } else if (powerUpLevel >= 5) {
+        this.powerUpRow.classList.add('power-mid')
+      }
+    }
+
+    // Update score level indicator
+    if (this.scoreLevelValue && levelManager) {
+      this.scoreLevelValue.textContent = `${levelManager.getCurrentLevel()}`
     }
 
     // XP bar glow effect when close to level up
@@ -345,16 +364,69 @@ export class UIManager {
   showPowerUpCollected(level: number): void {
     const validLevel = Math.max(0, Math.min(10, level))
     const text = validLevel >= 10 ? '⚡ POWER-UP MAXED! ⚡' : `⚡ POWER-UP ${validLevel}/10 ⚡`
-    
+
     const notification = this.createNotification(text, 'notification-powerup')
-    
+
     // Gold color for maxed
     if (validLevel >= 10) {
       notification.style.color = '#FFD700'
       notification.style.textShadow = '0 0 30px rgba(255, 215, 0, 0.8), 3px 3px 0 #886600'
     }
-    
+
     this.queueNotification(notification, 1500, 6) // Medium-high priority - pickups
+
+    // 🎯 TRIGGER HUD POWER-UP ANIMATION 🎯
+    this.animatePowerUpHUD(validLevel)
+  }
+
+  // ⚡ POWER-UP HUD ANIMATION - Scale bump + ghost text ⚡
+  private animatePowerUpHUD(level: number): void {
+    if (!this.powerUpLevelElement || !this.powerUpRow) return
+
+    // Create ghost text that scales up and fades out
+    const ghost = document.createElement('div')
+    ghost.textContent = `${level}`
+    ghost.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1);
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+      font-weight: bold;
+      color: ${level >= 10 ? '#FFD700' : level >= 5 ? '#00FF00' : '#00FFFF'};
+      text-shadow:
+        0 0 20px ${level >= 10 ? 'rgba(255, 215, 0, 0.9)' : level >= 5 ? 'rgba(0, 255, 0, 0.9)' : 'rgba(0, 255, 255, 0.9)'},
+        0 0 40px ${level >= 10 ? 'rgba(255, 215, 0, 0.6)' : level >= 5 ? 'rgba(0, 255, 0, 0.6)' : 'rgba(0, 255, 255, 0.6)'};
+      pointer-events: none;
+      z-index: 3000;
+      opacity: 1;
+      animation: powerUpGhost 0.6s ease-out forwards;
+    `
+
+    // Position ghost relative to the power level element
+    const rect = this.powerUpLevelElement.getBoundingClientRect()
+    ghost.style.left = `${rect.left + rect.width / 2}px`
+    ghost.style.top = `${rect.top + rect.height / 2}px`
+    ghost.style.position = 'fixed'
+    ghost.style.transform = 'translate(-50%, -50%) scale(1)'
+
+    document.body.appendChild(ghost)
+
+    // Scale bump on the actual power level number
+    this.powerUpLevelElement.style.transition = 'transform 0.15s ease-out'
+    this.powerUpLevelElement.style.transform = 'scale(1.4)'
+
+    setTimeout(() => {
+      this.powerUpLevelElement.style.transform = 'scale(1)'
+    }, 150)
+
+    // Remove ghost after animation
+    setTimeout(() => {
+      if (document.body.contains(ghost)) {
+        document.body.removeChild(ghost)
+      }
+    }, 600)
   }
   
   showSpeedUpCollected(level: number): void {
@@ -388,23 +460,30 @@ export class UIManager {
   updateHeat(heat: number, isOverheated: boolean): void {
     if (!this.heatBarFill || !this.heatHUDElement) return
 
-    // Update fill width
+    // Update fill width and text
     this.heatBarFill.style.width = `${heat}%`
+    if (this.heatBarText) {
+      this.heatBarText.textContent = `${Math.round(heat)}%`
+    }
 
-    // Update colors based on heat level
+    // Remove all state classes first
+    this.heatHUDElement.classList.remove('heat-warning', 'heat-danger', 'overheated')
+    if (this.weaponPanel) {
+      this.weaponPanel.classList.remove('panel-overheated')
+    }
+
+    // Apply appropriate state class based on heat level
     if (isOverheated) {
       this.heatHUDElement.classList.add('overheated')
-    } else {
-      this.heatHUDElement.classList.remove('overheated')
-      
-      if (heat > 75) {
-        this.heatBarFill.style.background = '#FF6600' // Orange
-      } else if (heat > 40) {
-        this.heatBarFill.style.background = '#FFFF00' // Yellow
-      } else {
-        this.heatBarFill.style.background = '#00FF00' // Green
+      if (this.weaponPanel) {
+        this.weaponPanel.classList.add('panel-overheated')
       }
+    } else if (heat > 75) {
+      this.heatHUDElement.classList.add('heat-danger')
+    } else if (heat > 40) {
+      this.heatHUDElement.classList.add('heat-warning')
     }
+    // Below 40% uses default green gradient from CSS
   }
 
   showOverheatedNotification(): void {
@@ -537,6 +616,17 @@ export class UIManager {
     this.queueNotification(notification, 1000, 6) // Medium-high priority - important warning
   }
 
+  // 🔻 POWER DOWN NOTIFICATION - UFO laser drains weapon power! 🔻
+  showPowerDownNotification(amount: number): void {
+    const notification = this.createNotification(
+      `POWER DOWN -${amount}!`,
+      'notification-power-down'
+    )
+    notification.style.color = '#FF4444' // Red color for power drain
+    notification.style.textShadow = '0 0 10px rgba(255, 68, 68, 0.8)'
+    this.queueNotification(notification, 1200, 7) // High priority - critical warning
+  }
+
   // 🚫 ALREADY AT MAX NOTIFICATION 🚫
   showAlreadyAtMax(type: 'weapons' | 'speed'): void {
     const text = type === 'weapons' ? 'ALREADY AT MAX WEAPONS!' : 'ALREADY AT MAX SPEED!'
@@ -564,8 +654,85 @@ export class UIManager {
     notification.style.color = '#FF0000' // Red
     notification.style.textShadow = '0 0 30px rgba(255, 0, 0, 0.8), 3px 3px 0 #660000'
     notification.style.fontSize = 'clamp(0.96rem, 2.4vw, 1.44rem)' // Reduced 20%
-    
+
     this.queueNotification(notification, 2000, 7) // High priority - defensive state change
+  }
+
+  // 🛡️ SHIELD HUD DISPLAY METHODS 🛡️
+
+  /**
+   * Update shield dot display (max 3, start with 1)
+   */
+  updateShieldDisplay(count: number): void {
+    const validCount = Math.max(0, Math.min(3, count))
+    this.currentShieldCount = validCount
+
+    this.shieldDots.forEach((dot, index) => {
+      dot.classList.remove('active', 'activating', 'losing')
+      if (index < validCount) {
+        dot.classList.add('active')
+      }
+    })
+  }
+
+  /**
+   * Add a shield (with animation)
+   */
+  addShield(): void {
+    if (this.currentShieldCount >= 3) return // Already at max
+
+    const newCount = this.currentShieldCount + 1
+    const newDot = this.shieldDots[newCount - 1]
+
+    if (newDot) {
+      newDot.classList.add('activating')
+      setTimeout(() => {
+        newDot.classList.remove('activating')
+        newDot.classList.add('active')
+      }, 400)
+    }
+
+    this.currentShieldCount = newCount
+  }
+
+  /**
+   * Remove a shield (with animation)
+   */
+  removeShield(): void {
+    if (this.currentShieldCount <= 0) return // No shields left
+
+    const lostDot = this.shieldDots[this.currentShieldCount - 1]
+
+    if (lostDot) {
+      lostDot.classList.remove('active')
+      lostDot.classList.add('losing')
+      setTimeout(() => {
+        lostDot.classList.remove('losing')
+      }, 500)
+    }
+
+    this.currentShieldCount = Math.max(0, this.currentShieldCount - 1)
+  }
+
+  /**
+   * Get current shield count
+   */
+  getShieldCount(): number {
+    return this.currentShieldCount
+  }
+
+  /**
+   * Check if player has shields
+   */
+  hasShields(): boolean {
+    return this.currentShieldCount > 0
+  }
+
+  /**
+   * Reset shields to starting state (1 shield)
+   */
+  resetShields(): void {
+    this.updateShieldDisplay(1)
   }
   
   // 🌟 INVULNERABLE ACTIVATED NOTIFICATION 🌟
@@ -618,6 +785,11 @@ export class UIManager {
 
   // 📬 QUEUE NOTIFICATION (replaces showAndRemove) 📬
   private queueNotification(element: HTMLElement, duration: number, priority: number = 5): void {
+    // Skip queueing if notifications are suppressed
+    if (this.notificationsSuppressed) {
+      return
+    }
+
     this.notificationQueue.push({
       element,
       duration,
@@ -625,10 +797,33 @@ export class UIManager {
       timestamp: Date.now()
     })
   }
-  
+
   // Legacy method for backward compatibility (redirects to queue)
   private showAndRemove(element: HTMLElement, duration: number): void {
     this.queueNotification(element, duration, 5) // Default priority
+  }
+
+  /**
+   * 🔇 Suppress all notifications (for level transitions)
+   */
+  suppressNotifications(): void {
+    this.notificationsSuppressed = true
+    // Clear any queued notifications
+    this.notificationQueue = []
+    // Remove current notification if any
+    if (this.currentNotification && this.notificationContainer) {
+      if (this.notificationContainer.contains(this.currentNotification.element)) {
+        this.notificationContainer.removeChild(this.currentNotification.element)
+      }
+      this.currentNotification = null
+    }
+  }
+
+  /**
+   * 🔊 Enable notifications (after level transition)
+   */
+  enableNotifications(): void {
+    this.notificationsSuppressed = false
   }
 
   // 🔴 HEALTH PULSE ANIMATION 🔴

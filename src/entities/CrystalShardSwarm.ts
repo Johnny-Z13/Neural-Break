@@ -249,19 +249,19 @@ export class CrystalShardSwarm extends Enemy {
     })
   }
   
-  // 🎬 SPAWN CONFIGURATION - Crystal sharding out! 🎬
+  // 🎬 SPAWN CONFIGURATION - Crystal sharding out! (dialed back 60%) 🎬
   protected getSpawnConfig(): SpawnConfig {
     return {
       duration: 1.0, // 1 second spawn animation
       invulnerable: true, // Invulnerable during spawn
       particles: {
-        count: 20,
+        count: 8, // Reduced from 20 (60% less)
         colors: [0x00FFFF, 0xFF00FF, 0xFFFF00, 0x00FF00], // Rainbow prismatic colors
-        speed: 4,
+        speed: 2.5, // Reduced from 4
         burstAtStart: true
       },
       screenFlash: {
-        intensity: 0.15,
+        intensity: 0.06, // Reduced from 0.15 (60% less)
         color: 0x00FFFF
       }
     }
@@ -641,32 +641,33 @@ export class CrystalShardSwarm extends Enemy {
   update(deltaTime: number, player: Player): void {
     // Use parent's lifecycle state machine
     super.update(deltaTime, player)
-    
+
+    // 🔫 CRITICAL: Always update projectiles, even during death animation! 🔫
+    // This prevents bullets from pausing when the crystal swarm is destroyed
+    this.updateProjectiles(deltaTime)
+
     // Custom death animation system (legacy - kept for dramatic effect)
     if (this.isDying) {
       this.updateDeathAnimation(deltaTime)
       return
     }
-    
+
     // Only do custom updates when alive
     if (this.state !== EnemyState.ALIVE) return
     if (!this.alive) return
-    
+
     // Store last position for trail calculation
     this.lastPosition.copy(this.position)
-    
+
     this.updateAI(deltaTime, player)
-    
+
     // Update position
     this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
     this.mesh.position.set(this.position.x, this.position.y, 0)
-    
-    // Update projectiles
-    this.updateProjectiles(deltaTime)
-    
+
     // Create trail effects
     this.updateTrails(deltaTime)
-    
+
     // Update visual effects
     this.updateVisuals(deltaTime)
   }

@@ -28,6 +28,7 @@ export interface GameStats {
   totalXP: number
   highestCombo: number
   highestMultiplier: number // Track highest multiplier achieved
+  gameCompleted: boolean    // True if player beat all 99 levels
 }
 
 export interface HighScoreEntry {

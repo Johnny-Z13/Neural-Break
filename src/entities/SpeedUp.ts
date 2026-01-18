@@ -32,23 +32,23 @@ export class SpeedUp {
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
     
-    // 💚 RICH EMERALD GLOWING BASE 💚
+    // 💚 DEEP EMERALD GLOWING BASE (matches PowerUp) 💚
     const glowGeometry = new THREE.CircleGeometry(0.56, 32)
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // BRIGHT GREEN glow (matches INVULNERABLE notification)
+      color: 0x00AA44, // DEEP EMERALD GREEN - matches PowerUp!
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.9,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     })
     const glow = new THREE.Mesh(glowGeometry, glowMaterial)
     glow.position.z = -0.01
     this.mesh.add(glow)
-    
-    // 💫 OUTER GLOW RING - BRIGHT EMERALD 💫
+
+    // 💫 OUTER GLOW RING - FOREST GREEN (matches PowerUp) 💫
     const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32)
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
+      color: 0x009933, // FOREST GREEN - matches PowerUp!
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -56,13 +56,13 @@ export class SpeedUp {
     })
     const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial)
     this.mesh.add(outerRing)
-    
-    // 🟢 INNER RING - DEEP EMERALD 🟢
+
+    // 🟢 INNER RING - JADE GREEN (matches PowerUp) 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32)
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
+      color: 0x00DD55, // JADE GREEN - matches PowerUp!
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.95,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     })
@@ -75,13 +75,15 @@ export class SpeedUp {
     // ⚡ SPEED LINES - EMERALD GREEN! ⚡
     this.createSpeedLines()
     
-    // 💫 ENERGY PARTICLES - 15 particles for intense "fizz"! 💫
+    // 💫 ENERGY PARTICLES - Deep emerald/jade tones (matches PowerUp)! 💫
     for (let i = 0; i < 15; i++) {
-      const particleGeometry = new THREE.CircleGeometry(0.045, 6)
+      const particleGeometry = new THREE.CircleGeometry(0.06, 8) // Slightly larger, more segments
+      // Alternate between deep emerald and jade green
+      const particleColor = i % 2 === 0 ? 0x00AA44 : 0x00DD55
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00FF00, // BRIGHT GREEN particles (matches INVULNERABLE notification)
+        color: particleColor, // DEEP EMERALD or JADE GREEN alternating
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.85,
         blending: THREE.AdditiveBlending
       })
       const particle = new THREE.Mesh(particleGeometry, particleMaterial)
@@ -144,7 +146,7 @@ export class SpeedUp {
 
   private createSpeedLines(): void {
     // Create motion blur lines to emphasize speed
-    const lineColor = 0x00FF00 // BRIGHT GREEN speed lines (matches INVULNERABLE notification)
+    const lineColor = 0x00DD55 // JADE GREEN speed lines (matches PowerUp)
     const lineMaterial = new THREE.MeshBasicMaterial({
       color: lineColor,
       transparent: true,
@@ -261,14 +263,14 @@ export class SpeedUp {
         (Math.random() - 0.5) * 0.4
       )
       
-      // Green sparkles for speed-up
+      // Deep emerald to jade green sparkles (matches PowerUp)
       const sparkleColor = new THREE.Color().setHSL(
-        0.33 + Math.sin(this.pulseTime * 3) * 0.05, // Green hue range
-        1.0,
-        0.7
+        0.38 + Math.sin(this.pulseTime * 3) * 0.02, // Emerald/jade hue range
+        0.85, // High saturation
+        0.45 + Math.random() * 0.15 // Darker, varied brightness for depth
       )
-      
-      this.effectsSystem.createSparkle(this.position, sparkleVelocity, sparkleColor, 0.4)
+
+      this.effectsSystem.createSparkle(this.position, sparkleVelocity, sparkleColor, 0.6)
       
       this.trailTimer = 0
     }
@@ -307,13 +309,15 @@ export class SpeedUp {
 
   collect(): void {
     this.alive = false
-    
-    // Create collection effect - YELLOW EXPLOSION!
+
+    // Create collection effect - DEEP EMERALD EXPLOSION (matches PowerUp)!
     if (this.effectsSystem) {
-      // Green explosion effect
-      this.effectsSystem.createExplosion(this.position, 1.5, new THREE.Color().setHSL(0.33, 1.0, 0.6))
-      
-      // Electric burst with yellow tint
+      // Deep emerald explosion effect with multiple bursts
+      this.effectsSystem.createExplosion(this.position, 1.8, new THREE.Color(0x00AA44)) // Deep emerald
+      this.effectsSystem.createExplosion(this.position, 1.2, new THREE.Color(0x00DD55)) // Jade green
+      this.effectsSystem.createExplosion(this.position, 0.8, new THREE.Color(0x009933)) // Forest green
+
+      // Electric burst with deep emerald tint
       this.effectsSystem.createElectricDeath(this.position, 'SpeedUp')
     }
   }

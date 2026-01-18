@@ -17,14 +17,7 @@
 
 import * as THREE from 'three'
 import { Enemy, EnemyState } from '../entities/Enemy'
-import { DataMite } from '../entities/DataMite'
-import { ScanDrone } from '../entities/ScanDrone'
-import { ChaosWorm } from '../entities/ChaosWorm'
-import { VoidSphere } from '../entities/VoidSphere'
-import { CrystalShardSwarm } from '../entities/CrystalShardSwarm'
 import { Fizzer } from '../entities/Fizzer'
-import { UFO } from '../entities/UFO'
-import { Boss } from '../entities/Boss'
 
 interface AttractEnemy {
   enemy: Enemy
@@ -37,41 +30,26 @@ interface AttractEnemy {
 export class AttractMode {
   private enemies: AttractEnemy[] = []
   private scene: THREE.Scene
-  private spawnTimer: number = 0
-  private spawnInterval: number = 1.5 // Spawn every 1.5 seconds
-  private maxEnemies: number = 12 // Maximum enemies on screen
   private isActive: boolean = false
   private readonly boundaryRadius: number = 35 // Larger than gameplay area
-  
-  // Enemy type pool for variety
-  private readonly enemyTypes = [
-    'datamite',
-    'scandrone',
-    'chaosworm',
-    'voidsphere',
-    'crystal',
-    'fizzer',
-    'ufo',
-    'boss'
-  ]
+  private readonly maxFizzers: number = 3 // Only 3 fizzers zipping about
 
   constructor(scene: THREE.Scene) {
     this.scene = scene
   }
 
   /**
-   * Start attract mode
+   * Start attract mode - spawns 3 fizzers immediately
    */
   start(): void {
     if (this.isActive) return
-    
+
     this.isActive = true
-    this.spawnTimer = 0
-    console.log('🎮 Attract Mode: Started')
-    
-    // Spawn initial enemies for immediate visual impact
-    for (let i = 0; i < 4; i++) {
-      this.spawnRandomEnemy()
+    console.log('🎮 Attract Mode: Started (3 Fizzers)')
+
+    // Spawn 3 fizzers immediately
+    for (let i = 0; i < this.maxFizzers; i++) {
+      this.spawnFizzer()
     }
   }
 
@@ -96,141 +74,118 @@ export class AttractMode {
   }
 
   /**
-   * Update attract mode - spawn and move enemies
+   * Update attract mode - move fizzers around
    */
   update(deltaTime: number): void {
     if (!this.isActive) return
 
-    // Spawn new enemies periodically
-    this.spawnTimer += deltaTime
-    if (this.spawnTimer >= this.spawnInterval && this.enemies.length < this.maxEnemies) {
-      this.spawnRandomEnemy()
-      this.spawnTimer = 0
-      // Vary spawn interval for organic feel
-      this.spawnInterval = 1.0 + Math.random() * 2.0
-    }
-
-    // Update all enemies
+    // Update all fizzers
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const attractEnemy = this.enemies[i]
-      
+
       // Update enemy animation (but catch any errors from missing game systems)
       try {
         attractEnemy.enemy.update(deltaTime)
-      } catch (error) {
+      } catch {
         // Silently handle errors from enemies trying to access missing game systems
-        // This is expected in attract mode where we don't have full game infrastructure
       }
-      
-      // Update autonomous movement
+
+      // Update autonomous movement - fizzers zip around fast!
       this.updateEnemyMovement(attractEnemy, deltaTime)
-      
-      // Remove enemies that go too far off screen
+
+      // Wrap around screen edges instead of removing
       const pos = attractEnemy.enemy.position
-      const distFromCenter = Math.sqrt(pos.x * pos.x + pos.y * pos.y)
-      
-      if (distFromCenter > this.boundaryRadius + 10) {
-        if (attractEnemy.enemy.mesh) {
-          this.scene.remove(attractEnemy.enemy.mesh)
-        }
-        attractEnemy.enemy.destroy()
-        this.enemies.splice(i, 1)
+      const wrapRadius = this.boundaryRadius * 0.8
+
+      if (pos.x > wrapRadius) pos.x = -wrapRadius
+      if (pos.x < -wrapRadius) pos.x = wrapRadius
+      if (pos.y > wrapRadius) pos.y = -wrapRadius
+      if (pos.y < -wrapRadius) pos.y = wrapRadius
+
+      // Update mesh position after wrap
+      if (attractEnemy.enemy.mesh) {
+        attractEnemy.enemy.mesh.position.x = pos.x
+        attractEnemy.enemy.mesh.position.y = pos.y
       }
+    }
+
+    // Respawn if we somehow lost a fizzer
+    while (this.enemies.length < this.maxFizzers) {
+      this.spawnFizzer()
     }
   }
 
   /**
-   * Spawn a random enemy type
+   * Spawn a fizzer at a random position
    */
-  private spawnRandomEnemy(): void {
-    const type = this.enemyTypes[Math.floor(Math.random() * this.enemyTypes.length)]
-    
-    // Spawn at random position around the edge
+  private spawnFizzer(): void {
+    // Spawn at random position within bounds
     const angle = Math.random() * Math.PI * 2
-    const spawnRadius = this.boundaryRadius
+    const spawnRadius = Math.random() * this.boundaryRadius * 0.6
     const x = Math.cos(angle) * spawnRadius
     const y = Math.sin(angle) * spawnRadius
-    
-    // Create enemy based on type
+
     let enemy: Enemy | null = null
-    
+
     try {
-      switch (type) {
-        case 'datamite':
-          enemy = new DataMite(x, y, this.scene)
-          break
-        case 'scandrone':
-          enemy = new ScanDrone(x, y, this.scene)
-          break
-        case 'chaosworm':
-          enemy = new ChaosWorm(x, y, this.scene)
-          break
-        case 'voidsphere':
-          enemy = new VoidSphere(x, y, this.scene)
-          break
-        case 'crystal':
-          enemy = new CrystalShardSwarm(x, y, this.scene)
-          break
-        case 'fizzer':
-          enemy = new Fizzer(x, y, this.scene)
-          break
-        case 'ufo':
-          enemy = new UFO(x, y, this.scene)
-          break
-        case 'boss':
-          enemy = new Boss(x, y, this.scene)
-          break
-      }
+      enemy = new Fizzer(x, y)
     } catch (error) {
-      console.warn('⚠️ Attract Mode: Failed to create enemy:', type, error)
+      console.warn('⚠️ Attract Mode: Failed to create Fizzer:', error)
       return
     }
-    
+
     if (!enemy) return
-    
+
+    // Initialize enemy to create its mesh
+    enemy.initialize()
+
     // Skip spawn animation - set enemy to ALIVE state immediately
-    // This prevents errors from trying to access game systems that don't exist in attract mode
     // @ts-ignore - accessing protected property for attract mode
     enemy.state = EnemyState.ALIVE
-    
+
     if (enemy.mesh) {
       enemy.mesh.scale.set(1, 1, 1)
       if (enemy.mesh.material && 'opacity' in enemy.mesh.material) {
         (enemy.mesh.material as any).opacity = 1
       }
+      // Add enemy mesh to scene so it's visible!
+      this.scene.add(enemy.mesh)
     }
-    
-    // Set initial target position (towards center with some randomness)
-    const targetAngle = angle + Math.PI + (Math.random() - 0.5) * Math.PI * 0.5
+
+    // Set random initial target
+    const targetAngle = Math.random() * Math.PI * 2
     const targetDist = Math.random() * this.boundaryRadius * 0.6
     const targetX = Math.cos(targetAngle) * targetDist
     const targetY = Math.sin(targetAngle) * targetDist
-    
-    // Create attract enemy wrapper
+
+    // Create attract enemy wrapper with fast retargeting for zippy movement
     const attractEnemy: AttractEnemy = {
       enemy,
-      velocity: new THREE.Vector2(0, 0),
+      velocity: new THREE.Vector2(
+        (Math.random() - 0.5) * 10, // Start with some velocity
+        (Math.random() - 0.5) * 10
+      ),
       targetPosition: new THREE.Vector2(targetX, targetY),
       retargetTimer: 0,
-      retargetInterval: 3 + Math.random() * 4 // 3-7 seconds between retargets
+      retargetInterval: 1.0 + Math.random() * 1.5 // Fast retargeting: 1-2.5 seconds
     }
-    
+
     this.enemies.push(attractEnemy)
   }
 
   /**
-   * Update enemy movement with smooth wandering behavior
+   * Update fizzer movement - fast and zippy!
    */
   private updateEnemyMovement(attractEnemy: AttractEnemy, deltaTime: number): void {
     const enemy = attractEnemy.enemy
     const pos = enemy.position
-    
-    // Retarget periodically
+
+    // Retarget frequently for erratic movement
     attractEnemy.retargetTimer += deltaTime
     if (attractEnemy.retargetTimer >= attractEnemy.retargetInterval) {
       attractEnemy.retargetTimer = 0
-      attractEnemy.retargetInterval = 3 + Math.random() * 4
-      
+      attractEnemy.retargetInterval = 0.8 + Math.random() * 1.2 // Very fast retargeting
+
       // Pick new random target within bounds
       const angle = Math.random() * Math.PI * 2
       const dist = Math.random() * this.boundaryRadius * 0.7
@@ -239,31 +194,28 @@ export class AttractMode {
         Math.sin(angle) * dist
       )
     }
-    
-    // Move towards target with smooth acceleration
+
+    // Move towards target with snappy acceleration
     const dx = attractEnemy.targetPosition.x - pos.x
     const dy = attractEnemy.targetPosition.y - pos.y
     const distToTarget = Math.sqrt(dx * dx + dy * dy)
-    
+
     if (distToTarget > 1) {
       // Normalize direction
       const dirX = dx / distToTarget
       const dirY = dy / distToTarget
-      
-      // Different speeds for different enemy types
-      let baseSpeed = 5.0
-      if (enemy instanceof Fizzer) baseSpeed = 8.0
-      if (enemy instanceof Boss) baseSpeed = 3.0
-      if (enemy instanceof ChaosWorm) baseSpeed = 6.0
-      
-      // Smooth acceleration towards target
-      const acceleration = 10.0
+
+      // Fast fizzer speed!
+      const baseSpeed = 12.0
+      const acceleration = 25.0
+
+      // Snappy acceleration towards target
       attractEnemy.velocity.x += dirX * acceleration * deltaTime
       attractEnemy.velocity.y += dirY * acceleration * deltaTime
-      
+
       // Limit velocity
       const speed = Math.sqrt(
-        attractEnemy.velocity.x * attractEnemy.velocity.x + 
+        attractEnemy.velocity.x * attractEnemy.velocity.x +
         attractEnemy.velocity.y * attractEnemy.velocity.y
       )
       if (speed > baseSpeed) {
@@ -271,14 +223,14 @@ export class AttractMode {
         attractEnemy.velocity.y = (attractEnemy.velocity.y / speed) * baseSpeed
       }
     } else {
-      // Slow down when near target
-      attractEnemy.velocity.multiplyScalar(0.95)
+      // Quick direction change when reaching target
+      attractEnemy.retargetTimer = attractEnemy.retargetInterval // Force retarget
     }
-    
+
     // Apply velocity
     enemy.position.x += attractEnemy.velocity.x * deltaTime
     enemy.position.y += attractEnemy.velocity.y * deltaTime
-    
+
     // Update mesh position
     if (enemy.mesh) {
       enemy.mesh.position.x = enemy.position.x

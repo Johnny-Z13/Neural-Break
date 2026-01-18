@@ -78,12 +78,12 @@ Neural Break is a cyberpunk survival game built with Three.js and TypeScript. Th
 - **Game**: Central coordinator managing all systems and game state
 - **SceneManager**: Three.js scene, camera, and rendering pipeline
 - **Player**: Player entity with movement, health, and progression
+- **LevelManager**: 99-level objective-based progression system
 - **EnemyManager**: Spawning, updating, and managing all enemy entities
 - **WeaponSystem**: Projectile-based combat system with upgrades
 - **InputManager**: Keyboard input handling (WASD movement, Space firing, Shift dash)
 - **UIManager**: HUD elements and game interface
 - **AudioManager**: Sound effects and audio feedback
-- **GameTimer**: 30-minute countdown timer with elapsed time tracking
 
 ### Entity System
 - **Player**: Neural coherence (health), XP progression, level system
@@ -254,12 +254,19 @@ npx playwright codegen        # Generate test code
 ```
 
 ### Game Design Context
-Based on comprehensive PRD in `Documents/neural_escape_prd.md` - a 30-minute cyberpunk survival experience with:
+Based on comprehensive PRD in `Documents/neural_escape_prd.md` - an epic 99-level cyberpunk survival experience:
+- **99 levels** in Arcade mode with objective-based progression
+- **99 layers** in Rogue mode with wormhole advancement
 - Escalating difficulty from tutorial to brutal finale
-- Multiple enemy types with unique behaviors
-- Weapon upgrade system
-- Speedrun-optimized gameplay
+- **Surprise levels every 5 levels** with unique themed challenges
+- **Victory screen** when beating all 99 levels
+- Multiple enemy types with unique behaviors (8 types)
+- Weapon upgrade system and power-ups
 - Professional visual effects with Three.js shaders
 - Retro arcade presentation with modern web technologies
 
-When implementing new features, refer to the PRD for detailed specifications on enemy behaviors, weapon systems, and visual effects requirements.
+**Victory Condition:**
+Players who complete all 99 levels receive a special victory screen with the message:
+"CONGRATULATIONS! YOU HAVE BEATEN NEURAL BREAK!"
+
+When implementing new features, refer to the PRD and `LEVEL_SYSTEM.md` for detailed specifications on level progression, enemy behaviors, and visual effects requirements.

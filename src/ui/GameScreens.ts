@@ -5,6 +5,7 @@ import { StarfieldManager } from '../graphics/StarfieldManager'
 import { StartScreen } from './screens/StartScreen'
 import { LeaderboardScreen } from './screens/LeaderboardScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
+import { OptionsScreen } from './screens/OptionsScreen'
 import { ScreenTransitions } from './screens/ScreenTransitions'
 
 export class GameScreens {
@@ -69,7 +70,12 @@ export class GameScreens {
         setTimeout(() => {
           onStartRogueMode()
         }, 50)
-      } : undefined
+      } : undefined,
+      () => {
+        // OPTIONS - cleanup and show options screen
+        StartScreen.cleanup()
+        this.showOptionsScreen(() => this.showStartScreen(onStartGame, onStartTestMode, onStartRogueMode))
+      }
     )
     
     // Add the screen to DOM
@@ -104,6 +110,35 @@ export class GameScreens {
 
         // 🎬 MOTION GRAPHICS - Slide in! 🎬
         ScreenTransitions.animateScreenIn(leaderboardScreen, 'slide')
+      },
+      'slide'
+    )
+  }
+
+  static showOptionsScreen(onBack: () => void): void {
+    // Hide player ship on options screen
+    if (this.hidePlayerCallback) {
+      this.hidePlayerCallback()
+    }
+
+    ScreenTransitions.transitionOut(
+      this.currentScreen,
+      this.sceneManager,
+      () => {
+        this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)
+        const optionsScreen = OptionsScreen.create(
+          this.audioManager,
+          () => {
+            this.currentScreen = ScreenTransitions.hideCurrentScreen(this.currentScreen)
+            onBack()
+          }
+        )
+
+        document.body.appendChild(optionsScreen)
+        this.currentScreen = optionsScreen
+
+        // 🎬 MOTION GRAPHICS - Slide in! 🎬
+        ScreenTransitions.animateScreenIn(optionsScreen, 'slide')
       },
       'slide'
     )

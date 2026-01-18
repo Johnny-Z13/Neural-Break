@@ -1,5 +1,6 @@
 import { AudioManager } from '../../audio/AudioManager'
 import { StarfieldManager } from '../../graphics/StarfieldManager'
+import { OptionsScreen } from './OptionsScreen'
 
 /**
  * NEURAL BREAK - Start Screen
@@ -21,14 +22,16 @@ export class StartScreen {
     onStartGame: () => void,
     onShowLeaderboard: () => void,
     onStartTestMode?: () => void,
-    onStartRogueMode?: () => void
+    onStartRogueMode?: () => void,
+    onShowOptions?: () => void
   ): HTMLElement {
     console.log('🎮 StartScreen.create() called with:', {
       audioManager: !!audioManager,
       onStartGame: !!onStartGame,
       onShowLeaderboard: !!onShowLeaderboard,
       onStartTestMode: !!onStartTestMode,
-      onStartRogueMode: !!onStartRogueMode
+      onStartRogueMode: !!onStartRogueMode,
+      onShowOptions: !!onShowOptions
     })
     
     // Start the shared starfield background
@@ -392,6 +395,27 @@ export class StartScreen {
             ">
               HI SCORES
             </button>
+
+            <!-- OPTIONS -->
+            <button id="optionsButton" class="menu-item" style="
+              background: transparent;
+              border: none;
+              color: #00FF88;
+              font-family: inherit;
+              font-size: clamp(0.9rem, 2.25vw, 1.5rem);
+              font-weight: bold;
+              padding: clamp(0.8rem, 2vw, 1.2rem) clamp(1.5rem, 4vw, 3rem);
+              cursor: pointer;
+              text-transform: uppercase;
+              letter-spacing: 0.2em;
+              text-align: center;
+              text-shadow: 0 0 20px #00FF88, 4px 4px 0 #006644;
+              transition: all 0.1s step-end;
+              position: relative;
+              border-left: 6px solid transparent;
+            ">
+              OPTIONS
+            </button>
           </div>
         </div>
       </div>
@@ -457,21 +481,105 @@ export class StartScreen {
         © 2026 NEURAL SYSTEMS
       </div>
       
-      <!-- PLAY COUNT DISPLAY -->
+      <!-- PLAY COUNT DISPLAY - ARCADE COUNTER STYLE -->
       <div class="play-count-display" style="
         position: fixed;
         top: var(--space-md, 1rem);
         left: var(--space-md, 1rem);
-        color: var(--color-cyan, #00FFFF);
-        font-size: clamp(0.6rem, 1.2vw, 0.9rem);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        text-shadow: 2px 2px 0 var(--color-cyan-dark, #006666), 0 0 10px var(--color-cyan, #00FFFF);
         z-index: 1;
-        text-align: left;
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 0, 40, 0.95) 100%);
+        border: 2px solid #FF00FF;
+        border-radius: 12px;
+        padding: clamp(0.8rem, 2vw, 1.2rem) clamp(1.2rem, 3vw, 2rem);
+        box-shadow:
+          0 0 20px rgba(255, 0, 255, 0.5),
+          0 0 40px rgba(0, 255, 255, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.1),
+          inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        transform-style: preserve-3d;
+        animation: play-count-pulse 2s ease-in-out infinite;
       ">
-        <div style="color: var(--color-magenta, #FF00FF); font-size: clamp(0.5rem, 1vw, 0.7rem); margin-bottom: 0.2rem;">🎮 GAMES PLAYED</div>
-        <div id="totalPlayCount" style="font-size: clamp(0.8rem, 1.5vw, 1.2rem);">---</div>
+        <style>
+          @keyframes play-count-pulse {
+            0%, 100% {
+              box-shadow:
+                0 0 20px rgba(255, 0, 255, 0.5),
+                0 0 40px rgba(0, 255, 255, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+            }
+            50% {
+              box-shadow:
+                0 0 30px rgba(255, 0, 255, 0.8),
+                0 0 60px rgba(0, 255, 255, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+            }
+          }
+          @keyframes counter-flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+          }
+          @keyframes digit-glow {
+            0%, 100% {
+              text-shadow:
+                0 0 10px #00FFFF,
+                0 0 20px #00FFFF,
+                0 0 30px #00FFFF,
+                0 0 5px rgba(0, 255, 255, 0.5);
+            }
+            50% {
+              text-shadow:
+                0 0 15px #00FFFF,
+                0 0 30px #00FFFF,
+                0 0 45px #00FFFF,
+                0 0 8px rgba(0, 255, 255, 0.8);
+            }
+          }
+        </style>
+        <div style="
+          color: #FF00FF;
+          font-size: clamp(0.65rem, 1.4vw, 0.85rem);
+          font-weight: 700;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          margin-bottom: clamp(0.3rem, 0.8vw, 0.5rem);
+          text-shadow:
+            0 0 10px rgba(255, 0, 255, 0.8),
+            2px 2px 0 rgba(0, 0, 0, 0.8);
+          opacity: 0.9;
+        ">🎮 GAMES PLAYED</div>
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: clamp(0.4rem, 1vw, 0.6rem);
+        ">
+          <div style="
+            width: clamp(0.4rem, 1vw, 0.5rem);
+            height: clamp(0.4rem, 1vw, 0.5rem);
+            background: #00FF00;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00FF00, 0 0 20px rgba(0, 255, 0, 0.5);
+            animation: counter-flicker 1.5s ease-in-out infinite;
+          "></div>
+          <div id="totalPlayCount" style="
+            font-size: clamp(1.6rem, 4vw, 2.4rem);
+            font-weight: 900;
+            color: #00FFFF;
+            letter-spacing: 0.08em;
+            font-variant-numeric: tabular-nums;
+            text-shadow:
+              0 0 10px #00FFFF,
+              0 0 20px #00FFFF,
+              0 0 30px #00FFFF,
+              0 0 5px rgba(0, 255, 255, 0.5),
+              3px 3px 0 rgba(0, 0, 0, 0.8);
+            animation: digit-glow 2s ease-in-out infinite;
+            min-width: clamp(3rem, 8vw, 5rem);
+            text-align: center;
+          ">---</div>
+        </div>
       </div>
     `
     
@@ -775,6 +883,23 @@ export class StartScreen {
           0 0 0 var(--color-magenta-dark, #660066) !important;
       }
       
+      /* OPTIONS BUTTON - Green/Cyan theme */
+      #optionsButton:hover,
+      #optionsButton.selected {
+        background: #003322 !important;
+        box-shadow: 
+          0 0 30px rgba(0, 255, 136, 0.6),
+          4px 4px 0 #00FF88 !important;
+        transform: translate(-2px, -2px);
+      }
+      
+      #optionsButton:active {
+        transform: translate(2px, 2px);
+        box-shadow: 
+          0 0 15px rgba(0, 255, 136, 0.4),
+          0 0 0 #006644 !important;
+      }
+      
       .enemy-card {
         transition: all 0.15s ease;
         cursor: default;
@@ -836,20 +961,22 @@ export class StartScreen {
     `
     document.head.appendChild(style)
 
-    // Get button references - Order: ARCADE, ROGUE, TEST, HIGH SCORES
+    // Get button references - Order: ARCADE, ROGUE, TEST, HIGH SCORES, OPTIONS
     const arcadeButton = startScreen.querySelector('#arcadeButton') as HTMLButtonElement
     const rogueButton = startScreen.querySelector('#rogueButton') as HTMLButtonElement
     const testButton = startScreen.querySelector('#testButton') as HTMLButtonElement
     const leaderboardButton = startScreen.querySelector('#leaderboardButton') as HTMLButtonElement
+    const optionsButton = startScreen.querySelector('#optionsButton') as HTMLButtonElement
     
     console.log('🎮 StartScreen buttons found:', {
       arcadeButton: !!arcadeButton,
       rogueButton: !!rogueButton,
       testButton: !!testButton,
-      leaderboardButton: !!leaderboardButton
+      leaderboardButton: !!leaderboardButton,
+      optionsButton: !!optionsButton
     })
     
-    const buttons = [arcadeButton, rogueButton, testButton, leaderboardButton]
+    const buttons = [arcadeButton, rogueButton, testButton, leaderboardButton, optionsButton]
 
     // Mouse event listeners
     arcadeButton.addEventListener('mouseenter', () => {
@@ -900,6 +1027,15 @@ export class StartScreen {
       onShowLeaderboard()
     })
 
+    optionsButton.addEventListener('mouseenter', () => {
+      StartScreen.selectedButtonIndex = 4
+      StartScreen.updateButtonSelection(buttons, audioManager)
+    })
+    optionsButton.addEventListener('click', () => {
+      if (audioManager) audioManager.playButtonPressSound()
+      if (onShowOptions) onShowOptions()
+    })
+
     // 🎮 KEYBOARD NAVIGATION
     StartScreen.keyboardListener = (e: KeyboardEvent) => {
       const key = e.code.toLowerCase()
@@ -914,7 +1050,7 @@ export class StartScreen {
         StartScreen.selectedButtonIndex = Math.min(buttons.length - 1, StartScreen.selectedButtonIndex + 1)
         StartScreen.updateButtonSelection(buttons, audioManager)
       } 
-      // Select button - Order: ARCADE(0), ROGUE(1), TEST(2), HIGH SCORES(3)
+      // Select button - Order: ARCADE(0), ROGUE(1), TEST(2), HIGH SCORES(3), OPTIONS(4)
       else if (key === 'space' || key === 'enter') {
         e.preventDefault()
         if (audioManager) audioManager.playButtonPressSound()
@@ -943,6 +1079,9 @@ export class StartScreen {
         } else if (StartScreen.selectedButtonIndex === 3) {
           // HIGH SCORES
           onShowLeaderboard()
+        } else if (StartScreen.selectedButtonIndex === 4) {
+          // OPTIONS
+          if (onShowOptions) onShowOptions()
         }
       }
     }
@@ -975,7 +1114,7 @@ export class StartScreen {
       }
       
       // A button (Xbox) / X button (PlayStation) to select
-      // Order: ARCADE(0), ROGUE(1), TEST(2), HIGH SCORES(3)
+      // Order: ARCADE(0), ROGUE(1), TEST(2), HIGH SCORES(3), OPTIONS(4)
       const aButton = gamepad.buttons[0]?.pressed
       if (aButton) {
         if (now - StartScreen.lastGamepadInput < StartScreen.inputCooldown) return
@@ -1006,6 +1145,9 @@ export class StartScreen {
         } else if (StartScreen.selectedButtonIndex === 3) {
           // HIGH SCORES
           onShowLeaderboard()
+        } else if (StartScreen.selectedButtonIndex === 4) {
+          // OPTIONS
+          if (onShowOptions) onShowOptions()
         }
         
         StartScreen.lastGamepadInput = now
@@ -1020,11 +1162,16 @@ export class StartScreen {
       try {
         const response = await fetch('/api/highscores?stats=true')
         if (response.ok) {
-          const stats = await response.json()
-          const playCountEl = startScreen.querySelector('#totalPlayCount')
-          if (playCountEl && stats.playCount !== undefined) {
-            playCountEl.textContent = stats.playCount.toLocaleString()
-            console.log('📊 Play count loaded:', stats.playCount)
+          try {
+            const stats = await response.json()
+            const playCountEl = startScreen.querySelector('#totalPlayCount')
+            if (playCountEl && stats.playCount !== undefined) {
+              playCountEl.textContent = stats.playCount.toLocaleString()
+              console.log('📊 Play count loaded:', stats.playCount)
+            }
+          } catch (jsonError) {
+            // JSON parse error - API not available in local dev
+            throw new Error('API endpoint not available')
           }
         } else {
           // Fallback for local dev: Show localStorage count
@@ -1036,7 +1183,8 @@ export class StartScreen {
           }
         }
       } catch (error) {
-        console.warn('⚠️ Could not fetch play count:', error)
+        // Silently handle in local dev - API only works in production
+        console.log('💾 Running in local development mode')
         // Fallback for local dev
         const playCountEl = startScreen.querySelector('#totalPlayCount')
         if (playCountEl) {

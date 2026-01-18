@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { InputManager } from '../core/InputManager'
 import { AudioManager } from '../audio/AudioManager'
 import { EffectsSystem } from '../graphics/EffectsSystem'
+import { PostProcessingManager } from '../graphics/PostProcessingManager'
 import { BALANCE_CONFIG } from '../config'
 
 export class Player {
@@ -20,7 +21,8 @@ export class Player {
   private xpToNext: number = 15
   private powerUpLevel: number = 0 // Power-up level (0-MAX_POWER_UP_LEVEL)
   private speedUpLevel: number = 0 // Speed-up level (0-MAX_SPEED_LEVEL)
-  private hasShield: boolean = false // 🛡️ SHIELD STATE - Off by default, on when collected
+  private shieldCount: number = 1 // 🛡️ SHIELD COUNT - Start with 1, max 3
+  private static readonly MAX_SHIELDS = 3 // Maximum shield capacity
   private shieldMesh: THREE.Mesh | null = null // 🛡️ FORCE FIELD VISUAL
   private isDashing: boolean = false
   private isInvulnerable: boolean = false // Invulnerability during dash
@@ -34,6 +36,7 @@ export class Player {
   
   private audioManager: AudioManager | null = null
   private effectsSystem: EffectsSystem | null = null
+  private postProcessing: PostProcessingManager | null = null
   private lastDashDirection: THREE.Vector3 = new THREE.Vector3(0, -1, 0) // Default backward
   private jetTrailTimer: number = 0
   private jetTrailInterval: number = 0.01 // Jet particles every 10ms
@@ -57,6 +60,7 @@ export class Player {
   // 🛡️ SHIELD NOTIFICATION CALLBACKS 🛡️
   private onShieldActivatedCallback: (() => void) | null = null
   private onShieldDeactivatedCallback: (() => void) | null = null
+  private onShieldCountChangedCallback: ((count: number) => void) | null = null
   
   // 🌟 INVULNERABLE NOTIFICATION CALLBACKS 🌟
   private onInvulnerableActivatedCallback: (() => void) | null = null
@@ -781,7 +785,7 @@ export class Player {
     }
     
     // 🛡️ ANIMATE SHIELD FORCE FIELD 🛡️
-    if (this.hasShield && this.shieldMesh) {
+    if (this.shieldCount > 0 && this.shieldMesh) {
       const time = Date.now() * 0.001
       const shieldMaterial = this.shieldMesh.material as THREE.MeshBasicMaterial
       
@@ -1116,40 +1120,53 @@ export class Player {
       return // No damage taken!
     }
     
-    // 🛡️ SHIELD ABSORBS FIRST HIT! 🛡️
-    if (this.hasShield) {
-      // Shield absorbs the hit and disappears
-      this.hasShield = false
-      this.deactivateShield()
-      
-      // 🔔 NOTIFY SHIELD DEACTIVATION 🔔
-      if (this.onShieldDeactivatedCallback) {
-        this.onShieldDeactivatedCallback()
+    // 🛡️ SHIELD ABSORBS HIT! 🛡️
+    if (this.shieldCount > 0) {
+      // Shield absorbs the hit - lose one shield
+      this.shieldCount--
+
+      // Update shield visual based on remaining shields
+      if (this.shieldCount <= 0) {
+        this.deactivateShield()
+        // 🔔 NOTIFY SHIELD DEACTIVATION (all shields gone) 🔔
+        if (this.onShieldDeactivatedCallback) {
+          this.onShieldDeactivatedCallback()
+        }
       }
-      
+
+      // 🔔 NOTIFY SHIELD COUNT CHANGE 🔔
+      if (this.onShieldCountChangedCallback) {
+        this.onShieldCountChangedCallback(this.shieldCount)
+      }
+
       // Visual feedback - shield shatter effect (GREEN for shield break)
       if (this.effectsSystem) {
         this.effectsSystem.createExplosion(
           this.position,
           1.5,
-          new THREE.Color().setHSL(0.33, 1.0, 0.6) // Green explosion
+          new THREE.Color().setHSL(0.5, 1.0, 0.6) // Cyan explosion for shield hit
         )
       }
-      
+
       // 🔴 STILL FLASH RED EVEN WITH SHIELD! 🔴
       this.flashRed()
-      
+
       // Audio feedback
       if (this.audioManager) {
         this.audioManager.playHitSound()
       }
-      
+
       return // Shield absorbed the damage!
     }
     
     // Normal damage when no shield
     this.health = Math.max(0, this.health - damage)
-    
+
+    // ⚡ TRIGGER GLITCH POST-PROCESSING EFFECT - Brief flash on damage! ⚡
+    if (this.postProcessing) {
+      this.postProcessing.triggerGlitch(0.8, 0.5) // Increased intensity and duration for visibility
+    }
+
     // 🔴 FLASH RED! 🔴
     this.flashRed()
   }
@@ -1190,9 +1207,8 @@ export class Player {
     }, 200)
   }
   
-  // 🛡️ ACTIVATE SHIELD - Show force field! 🛡️
+  // 🛡️ ACTIVATE SHIELD VISUAL - Show force field! 🛡️
   private activateShield(): void {
-    this.hasShield = true
     if (this.shieldMesh) {
       this.shieldMesh.visible = true
       const material = this.shieldMesh.material as THREE.MeshBasicMaterial
@@ -1208,16 +1224,10 @@ export class Player {
         innerMaterial.opacity = 0.4
       }
     }
-    
-    // 🔔 NOTIFY SHIELD ACTIVATION 🔔
-    if (this.onShieldActivatedCallback) {
-      this.onShieldActivatedCallback()
-    }
   }
-  
-  // 🛡️ DEACTIVATE SHIELD - Hide force field! 🛡️
+
+  // 🛡️ DEACTIVATE SHIELD VISUAL - Hide force field! 🛡️
   private deactivateShield(): void {
-    this.hasShield = false
     if (this.shieldMesh) {
       this.shieldMesh.visible = false
       const material = this.shieldMesh.material as THREE.MeshBasicMaterial
@@ -1233,31 +1243,52 @@ export class Player {
       }
     }
   }
-  
-  // 🛡️ COLLECT SHIELD PICKUP 🛡️
+
+  // 🛡️ COLLECT SHIELD PICKUP - Add a shield (max 3) 🛡️
   collectShield(): boolean {
-    // Always return true so the pickup is removed from the world
-    // but only activate if we don't already have one
-    if (!this.hasShield) {
-      this.activateShield()
-      
-      // Visual feedback - GREEN flash
-      const material = this.mesh.material as THREE.MeshLambertMaterial
-      material.emissive.setHex(0x00FF00) // Green shield glow
-      material.color.setHex(0x88FF88)   // Hull tints green
-      
-      setTimeout(() => {
-        material.emissive.setHex(0x334455) // Back to metallic glow
-        material.color.setHex(0xB8C4D0)   // Back to silver
-      }, 300)
+    // Check if already at max shields
+    if (this.shieldCount >= Player.MAX_SHIELDS) {
+      return false // Can't collect more shields
     }
-    
+
+    // Add a shield
+    this.shieldCount++
+
+    // Activate visual if this is the first shield
+    if (this.shieldCount === 1) {
+      this.activateShield()
+      // 🔔 NOTIFY SHIELD ACTIVATION 🔔
+      if (this.onShieldActivatedCallback) {
+        this.onShieldActivatedCallback()
+      }
+    }
+
+    // 🔔 NOTIFY SHIELD COUNT CHANGE 🔔
+    if (this.onShieldCountChangedCallback) {
+      this.onShieldCountChangedCallback(this.shieldCount)
+    }
+
+    // Visual feedback - CYAN flash for shield pickup
+    const material = this.mesh.material as THREE.MeshLambertMaterial
+    material.emissive.setHex(0x00FFFF) // Cyan shield glow
+    material.color.setHex(0x88FFFF)   // Hull tints cyan
+
+    setTimeout(() => {
+      material.emissive.setHex(0x334455) // Back to metallic glow
+      material.color.setHex(0xB8C4D0)   // Back to silver
+    }, 300)
+
     return true // Successfully collected (pickup will be removed)
   }
-  
-  // 🛡️ CHECK IF PLAYER HAS SHIELD 🛡️
+
+  // 🛡️ CHECK IF PLAYER HAS ANY SHIELDS 🛡️
   hasActiveShield(): boolean {
-    return this.hasShield
+    return this.shieldCount > 0
+  }
+
+  // 🛡️ GET CURRENT SHIELD COUNT 🛡️
+  getShieldCount(): number {
+    return this.shieldCount
   }
 
   // 💚 HEAL METHOD - Restore health from med packs! 💚
@@ -1428,13 +1459,37 @@ export class Player {
   getPowerUpLevel(): number {
     return this.powerUpLevel
   }
-  
+
   isAtMaxPowerUp(): boolean {
     return this.powerUpLevel >= 10
   }
 
   resetPowerUpLevel(): void {
     this.powerUpLevel = 0
+  }
+
+  /**
+   * 🔻 REDUCE POWER-UP LEVEL - UFO laser drains weapon power! 🔻
+   * Returns the amount actually reduced (may be less if player has low power)
+   */
+  reducePowerUpLevel(amount: number): number {
+    const oldLevel = this.powerUpLevel
+    this.powerUpLevel = Math.max(0, this.powerUpLevel - amount)
+    const actualReduction = oldLevel - this.powerUpLevel
+
+    // Visual effect for power drain - RED flash (power lost!)
+    if (actualReduction > 0) {
+      const material = this.mesh.material as THREE.MeshLambertMaterial
+      material.emissive.setHex(0xFF0000) // Red flash for power drain
+      material.color.setHex(0xFF8888)   // Hull tints red
+
+      setTimeout(() => {
+        material.emissive.setHex(0x334455) // Back to metallic glow
+        material.color.setHex(0xB8C4D0)   // Back to silver
+      }, 300)
+    }
+
+    return actualReduction
   }
   
   // ⚡ SPEED-UP SYSTEM - 5% faster per pickup, max 20 levels (100% max boost) ⚡
@@ -1490,10 +1545,15 @@ export class Player {
     this.updateSpeed()
   }
   
-  // 🛡️ RESET SHIELD 🛡️
+  // 🛡️ RESET SHIELDS TO STARTING STATE (1 shield) 🛡️
   resetShield(): void {
-    this.hasShield = false
-    this.deactivateShield()
+    this.shieldCount = 1 // Start with 1 shield
+    this.activateShield() // Show the shield visual
+
+    // Notify of shield reset
+    if (this.onShieldCountChangedCallback) {
+      this.onShieldCountChangedCallback(this.shieldCount)
+    }
   }
 
   isInvulnerableNow(): boolean {
@@ -1502,6 +1562,10 @@ export class Player {
 
   setEffectsSystem(effectsSystem: EffectsSystem): void {
     this.effectsSystem = effectsSystem
+  }
+
+  setPostProcessing(postProcessing: PostProcessingManager): void {
+    this.postProcessing = postProcessing
   }
   
   // 🧪 TEST MODE SETTER - Enable/disable unlimited health 🧪
@@ -1519,9 +1583,16 @@ export class Player {
   }
   
   // 🛡️ SET SHIELD NOTIFICATION CALLBACKS 🛡️
-  setShieldCallbacks(onActivated: () => void, onDeactivated: () => void): void {
+  setShieldCallbacks(
+    onActivated: () => void,
+    onDeactivated: () => void,
+    onCountChanged?: (count: number) => void
+  ): void {
     this.onShieldActivatedCallback = onActivated
     this.onShieldDeactivatedCallback = onDeactivated
+    if (onCountChanged) {
+      this.onShieldCountChangedCallback = onCountChanged
+    }
   }
   
   // 🌟 INVULNERABLE PICKUP METHODS 🌟

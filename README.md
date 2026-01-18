@@ -32,19 +32,28 @@ vercel
 ## ✨ Features
 
 ### 🎮 Game Modes
-- **Original Mode**: Classic 30-minute survival arcade
-- **Rogue Mode**: Procedural progression with special abilities
+- **Arcade Mode**: 99-level objective-based progression
+  - Dynamic difficulty scaling
+  - Surprise themed levels every 5 levels
+  - Victory screen when beating level 99!
+- **Rogue Mode**: 99-layer vertical ascent roguelite
+  - Wormhole advancement system
+  - Power-up choices between layers
+  - Layer-specific themed challenges
 
 ### 🏆 Global Leaderboards
 - Separate top 10 for each game mode
 - Online persistence (Vercel deployment)
 - Real-time competition
+- Victory badges for 99-level completions
 
 ### 🎯 Combat & Progression
+- **99 levels of escalating difficulty**
 - 8 unique enemy types (DataMite, ScanDrone, ChaosWorm, VoidSphere, Crystal Swarm, Fizzer, UFO, Boss)
+- **10 surprise level types** with unique challenges
 - Weapon upgrades and power-ups
 - Arcade-style multiplier system
-- Objective-based level progression
+- Objective-based level progression with clear goals
 
 ### 🕹️ Full Controller Support
 - Xbox and PlayStation controllers

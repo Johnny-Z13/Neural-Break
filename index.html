@@ -104,17 +104,20 @@
       }
 
       html {
-        overflow: hidden;
-        width: 100vw;
-        height: 100vh;
+        overflow: hidden !important;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
       }
 
       body {
+        overflow: hidden !important;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
         background: var(--color-bg);
-        overflow: hidden;
-        width: 100vw;
-        height: 100vh;
-        position: fixed;
         font-family: var(--font-family);
         color: var(--color-cyan);
         image-rendering: pixelated;
@@ -126,16 +129,19 @@
          GAME CONTAINER
          ═══════════════════════════════════════════════════════════════════ */
       #gameContainer {
-        position: relative;
-        width: 100vw;
-        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
       }
       
       #gameCanvas {
         display: block;
-        width: 100vw;
-        height: 100vh;
-        position: fixed;
+        width: 100%;
+        height: 100%;
+        position: absolute;
         top: 0;
         left: 0;
         z-index: 1;
@@ -153,36 +159,44 @@
       }
       
       /* ═══════════════════════════════════════════════════════════════════
-         HUD ELEMENTS - Unified Panel Style
+         HUD ELEMENTS - Minimal Arcade Style (No Boxes!)
          ═══════════════════════════════════════════════════════════════════ */
       .hud-element {
         position: absolute;
-        background: var(--color-bg-panel);
-        border: var(--border-medium) solid var(--color-cyan);
-        padding: var(--space-sm) var(--space-md);
+        background: transparent;
+        border: none;
+        padding: var(--space-xs);
         font-size: var(--font-sm);
-        text-shadow: var(--shadow-glow-sm) var(--color-cyan-glow);
-        box-shadow: 
-          var(--shadow-glow-md) var(--color-cyan-glow),
-          var(--shadow-pixel) var(--color-cyan-dark);
+        text-shadow:
+          0 0 10px currentColor,
+          2px 2px 0 rgba(0, 0, 0, 0.9);
         image-rendering: pixelated;
-        transition: all var(--anim-normal) ease;
+        transition: opacity var(--anim-fast) ease;
+        font-weight: bold;
       }
-      
+
+      .hud-element .hud-label {
+        font-size: var(--font-xs);
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        display: block;
+        margin-bottom: 2px;
+      }
+
       /* ─────────────────────────────────────────────────────────────────
          HEALTH BAR - Top Left
          ───────────────────────────────────────────────────────────────── */
       #healthBar {
         top: var(--space-md);
         left: var(--space-md);
-        min-width: 150px;
       }
-      
+
       #healthBar .hud-label {
-        font-size: var(--font-md);
-        margin-bottom: var(--space-xs);
-        text-shadow: 0 0 5px currentColor;
-        color: var(--color-red);
+        color: var(--color-green);
+        text-shadow:
+          0 0 10px var(--color-green),
+          2px 2px 0 rgba(0, 0, 0, 0.9);
       }
       
       #healthBarContainer {
@@ -213,156 +227,497 @@
         text-shadow: 0 0 5px #000000, 0 0 2px #000000;
         pointer-events: none;
       }
-      
+
       /* ─────────────────────────────────────────────────────────────────
-         SCORE - Top Center
+         SHIELDS - Below Health Bar (Dot Display)
+         ───────────────────────────────────────────────────────────────── */
+      #shieldsHUD {
+        top: calc(var(--space-md) + 52px);
+        left: var(--space-md);
+      }
+
+      #shieldsHUD .hud-label {
+        color: var(--color-cyan);
+        font-size: clamp(0.4rem, 0.8vw, 0.55rem);
+        margin-bottom: 6px;
+        text-shadow:
+          0 0 10px var(--color-cyan),
+          2px 2px 0 rgba(0, 0, 0, 0.9);
+      }
+
+      #shieldDotsContainer {
+        display: flex;
+        gap: clamp(6px, 1vw, 10px);
+      }
+
+      .shield-dot {
+        width: clamp(14px, 2vw, 20px);
+        height: clamp(14px, 2vw, 20px);
+        border-radius: 50%;
+        border: 2px solid rgba(0, 255, 255, 0.3);
+        background: rgba(0, 20, 40, 0.6);
+        position: relative;
+        transition: all 0.3s ease;
+        box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.8);
+      }
+
+      .shield-dot.active {
+        border-color: var(--color-cyan);
+        background: radial-gradient(
+          circle at 30% 30%,
+          rgba(0, 255, 255, 0.9) 0%,
+          rgba(0, 200, 255, 0.7) 40%,
+          rgba(0, 150, 200, 0.5) 100%
+        );
+        box-shadow:
+          0 0 12px var(--color-cyan),
+          0 0 24px var(--color-cyan-glow),
+          inset 0 0 8px rgba(255, 255, 255, 0.3);
+        animation: shieldGlow 2s ease-in-out infinite;
+      }
+
+      /* Inner highlight for active shields */
+      .shield-dot.active::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 40%;
+        height: 40%;
+        background: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.8) 0%,
+          transparent 70%
+        );
+        border-radius: 50%;
+      }
+
+      @keyframes shieldGlow {
+        0%, 100% {
+          box-shadow:
+            0 0 12px var(--color-cyan),
+            0 0 24px var(--color-cyan-glow);
+        }
+        50% {
+          box-shadow:
+            0 0 18px var(--color-cyan),
+            0 0 36px var(--color-cyan-glow),
+            0 0 48px rgba(0, 255, 255, 0.3);
+        }
+      }
+
+      /* Shield pickup animation */
+      @keyframes shieldActivate {
+        0% {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.3);
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .shield-dot.activating {
+        animation: shieldActivate 0.4s ease-out forwards;
+      }
+
+      /* Shield lost animation */
+      @keyframes shieldLost {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        30% {
+          transform: scale(1.2);
+          background: var(--color-red);
+          border-color: var(--color-red);
+          box-shadow: 0 0 20px var(--color-red-glow);
+        }
+        100% {
+          transform: scale(0.8);
+          opacity: 0.3;
+        }
+      }
+
+      .shield-dot.losing {
+        animation: shieldLost 0.5s ease-out forwards;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────
+         SCORE & LEVEL - Top Center
          ───────────────────────────────────────────────────────────────── */
       #score {
         top: var(--space-md);
         left: 50%;
         transform: translateX(-50%);
         text-align: center;
-        border-color: var(--color-yellow);
-        box-shadow: 
-          var(--shadow-glow-md) var(--color-yellow-glow),
-          var(--shadow-pixel) var(--color-yellow-dark);
-      }
-      
-      #score .hud-label {
         color: var(--color-yellow);
-        text-shadow: var(--shadow-glow-sm) var(--color-yellow-glow);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
       }
-      
+
       #currentScore {
-        font-size: var(--font-lg);
+        font-size: clamp(1.4rem, 3vw, 2.2rem);
         color: var(--color-yellow);
-        text-shadow: var(--shadow-glow-md) var(--color-yellow-glow);
+        text-shadow:
+          0 0 20px var(--color-yellow),
+          0 0 40px var(--color-yellow-glow),
+          3px 3px 0 rgba(0, 0, 0, 0.95);
+        letter-spacing: 0.12em;
+        font-weight: bold;
+        line-height: 1;
       }
-      
+
+      #scoreLevelIndicator {
+        font-size: clamp(0.5rem, 1vw, 0.7rem);
+        color: var(--color-cyan);
+        text-shadow:
+          0 0 10px var(--color-cyan),
+          0 0 20px var(--color-cyan-glow),
+          2px 2px 0 rgba(0, 0, 0, 0.9);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        opacity: 0.9;
+      }
+
+      #scoreLevelValue {
+        color: var(--color-magenta);
+        text-shadow:
+          0 0 10px var(--color-magenta),
+          0 0 20px var(--color-magenta-glow);
+        font-weight: bold;
+      }
+
       /* ─────────────────────────────────────────────────────────────────
-         TIMER - Top Right
+         TIMER - Top Right (Compact)
          ───────────────────────────────────────────────────────────────── */
       #timer {
         top: var(--space-md);
         right: var(--space-md);
+        color: var(--color-cyan);
+        font-size: var(--font-md);
       }
-      
+
+      #timer .hud-label {
+        display: none;
+      }
+
+      #timeRemaining {
+        text-shadow:
+          0 0 10px var(--color-cyan),
+          2px 2px 0 rgba(0, 0, 0, 0.9);
+      }
+
       /* ─────────────────────────────────────────────────────────────────
-         COMBO - Below Timer
+         COMBO - Below Timer (Compact)
          ───────────────────────────────────────────────────────────────── */
       #combo {
-        top: calc(var(--space-md) + 50px);
+        top: calc(var(--space-md) + 45px);
         right: var(--space-md);
         display: none;
-        border-color: var(--color-orange);
-        box-shadow: 
-          var(--shadow-glow-md) var(--color-orange-glow),
-          var(--shadow-pixel) var(--color-orange-dark);
         color: var(--color-orange);
+        font-size: var(--font-md);
       }
-      
+
+      #combo .hud-label {
+        display: inline;
+        margin-right: 6px;
+      }
+
       #comboCount {
         font-size: var(--font-lg);
         font-weight: bold;
       }
-      
+
       /* ─────────────────────────────────────────────────────────────────
-         LEVEL INFO - Bottom Left
+         LEVEL INFO - HIDDEN (data tracked internally only)
          ───────────────────────────────────────────────────────────────── */
       #level {
-        bottom: var(--space-md);
-        left: var(--space-md);
-        text-align: left;
-        font-size: var(--font-xs);
+        display: none !important;
+        visibility: hidden !important;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         WEAPON PANEL - Bottom Right (Grouped Display) - 2X SIZE
+         Cyberpunk terminal aesthetic with corner brackets
+         ═══════════════════════════════════════════════════════════════════ */
+      #weaponPanel {
+        position: absolute;
+        bottom: var(--space-lg);
+        right: var(--space-lg);
+        background: linear-gradient(
+          135deg,
+          rgba(0, 20, 30, 0.9) 0%,
+          rgba(0, 10, 20, 0.95) 100%
+        );
+        border: 2px solid rgba(0, 255, 255, 0.4);
+        padding: clamp(16px, 3vw, 28px);
+        min-width: clamp(220px, 28vw, 340px);
+        display: flex;
+        flex-direction: column;
+        gap: clamp(14px, 2.5vw, 22px);
+        box-shadow:
+          0 0 30px rgba(0, 255, 255, 0.2),
+          0 0 60px rgba(0, 255, 255, 0.1),
+          inset 0 0 40px rgba(0, 0, 0, 0.6),
+          inset 0 2px 0 rgba(0, 255, 255, 0.15);
+      }
+
+      /* Decorative corner brackets - cyberpunk terminal style - 2X */
+      .weapon-panel-corner {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        pointer-events: none;
+      }
+
+      .weapon-panel-corner-tl {
+        top: -2px;
+        left: -2px;
+        border-top: 3px solid var(--color-cyan);
+        border-left: 3px solid var(--color-cyan);
+        box-shadow:
+          -3px -3px 12px var(--color-cyan-glow),
+          inset 3px 3px 6px var(--color-cyan-glow);
+      }
+
+      .weapon-panel-corner-tr {
+        top: -2px;
+        right: -2px;
+        border-top: 3px solid var(--color-cyan);
+        border-right: 3px solid var(--color-cyan);
+        box-shadow:
+          3px -3px 12px var(--color-cyan-glow),
+          inset -3px 3px 6px var(--color-cyan-glow);
+      }
+
+      .weapon-panel-corner-bl {
+        bottom: -2px;
+        left: -2px;
+        border-bottom: 3px solid var(--color-magenta);
+        border-left: 3px solid var(--color-magenta);
+        box-shadow:
+          -3px 3px 12px var(--color-magenta-glow),
+          inset 3px -3px 6px var(--color-magenta-glow);
+      }
+
+      .weapon-panel-corner-br {
+        bottom: -2px;
+        right: -2px;
+        border-bottom: 3px solid var(--color-magenta);
+        border-right: 3px solid var(--color-magenta);
+        box-shadow:
+          3px 3px 12px var(--color-magenta-glow),
+          inset -3px -3px 6px var(--color-magenta-glow);
+      }
+
+      /* Panel rows - weapon type, heat, power - 2X */
+      .weapon-panel-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: clamp(14px, 2.5vw, 24px);
+      }
+
+      .weapon-panel-label {
+        font-size: clamp(0.6rem, 1.2vw, 0.9rem);
+        color: rgba(0, 255, 255, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        text-shadow: 0 0 12px var(--color-cyan-glow);
         white-space: nowrap;
-        border-color: var(--color-magenta);
-        box-shadow: 
-          var(--shadow-glow-md) var(--color-magenta-glow),
-          var(--shadow-pixel) var(--color-magenta-dark);
-        color: var(--color-magenta);
-      }
-      
-      #level span {
-        color: var(--color-text);
-      }
-      
-      /* ─────────────────────────────────────────────────────────────────
-         POWER-UP - Above Level (Bottom Left)
-         ───────────────────────────────────────────────────────────────── */
-      #powerUp {
-        bottom: calc(var(--space-md) + 45px);
-        left: var(--space-md);
-        text-align: left;
-        font-size: var(--font-xs);
-        border-color: var(--color-cyan);
-      }
-      
-      /* ─────────────────────────────────────────────────────────────────
-         WEAPON TYPE - Bottom Right
-         ───────────────────────────────────────────────────────────────── */
-      #weaponType {
-        bottom: var(--space-md);
-        right: var(--space-md);
-        text-align: center;
+        min-width: 70px;
       }
 
-      /* ─────────────────────────────────────────────────────────────────
-         HEAT BAR - Above Weapon Type
-         ───────────────────────────────────────────────────────────────── */
-      #heatHUD {
-        bottom: calc(var(--space-md) + 65px);
-        right: var(--space-md);
-        min-width: 150px;
+      .weapon-panel-value {
+        font-size: clamp(0.9rem, 1.8vw, 1.4rem);
+        font-weight: bold;
+        text-align: right;
+        letter-spacing: 0.1em;
       }
 
-      #heatHUD .hud-label {
-        font-size: var(--font-xs);
-        margin-bottom: var(--space-xs);
+      /* Weapon Type styling - 2X */
+      #weaponTypeValue {
+        font-size: clamp(0.8rem, 1.6vw, 1.2rem);
         color: var(--color-orange);
+        text-shadow:
+          0 0 15px var(--color-orange),
+          0 0 30px var(--color-orange-glow),
+          3px 3px 0 rgba(0, 0, 0, 0.9);
+        font-weight: bold;
+        transition: color 0.2s ease, text-shadow 0.2s ease;
       }
 
-      #heatBarContainer {
-        width: clamp(120px, 15vw, 180px);
-        height: clamp(12px, 2vh, 18px);
-        border: var(--border-thin) solid var(--color-orange);
-        background: rgba(0, 0, 0, 0.7);
+      /* Heat Bar in panel - 2X */
+      #heatHUD #heatBarContainer {
+        width: clamp(120px, 16vw, 180px);
+        height: clamp(18px, 3vh, 26px);
+        border: 2px solid var(--color-orange);
+        background: rgba(0, 0, 0, 0.6);
         position: relative;
         overflow: hidden;
+        box-shadow:
+          0 0 12px var(--color-orange-glow),
+          inset 0 0 15px rgba(0, 0, 0, 0.8);
       }
 
       #heatBarFill {
         width: 0%;
         height: 100%;
-        background: var(--color-green);
+        background: linear-gradient(90deg,
+          var(--color-green) 0%,
+          #00FF88 50%,
+          var(--color-cyan) 100%
+        );
         transition: width 0.1s ease, background 0.3s ease;
+        box-shadow: 0 0 12px var(--color-green-glow);
       }
 
-      .overheated #heatBarContainer {
+      #heatBarText {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: clamp(0.5rem, 1vw, 0.7rem);
+        color: var(--color-text);
+        text-shadow: 0 0 4px #000, 0 0 8px #000;
+        pointer-events: none;
+        letter-spacing: 0.08em;
+        font-weight: bold;
+      }
+
+      /* Heat states */
+      #heatHUD.heat-warning #heatBarContainer {
+        border-color: var(--color-yellow);
+        box-shadow: 0 0 12px var(--color-yellow-glow);
+      }
+
+      #heatHUD.heat-warning #heatBarFill {
+        background: linear-gradient(90deg,
+          var(--color-yellow) 0%,
+          var(--color-orange) 100%
+        );
+      }
+
+      #heatHUD.heat-danger #heatBarContainer {
+        border-color: var(--color-orange);
+        box-shadow: 0 0 15px var(--color-orange-glow);
+      }
+
+      #heatHUD.heat-danger #heatBarFill {
+        background: linear-gradient(90deg,
+          var(--color-orange) 0%,
+          var(--color-red) 100%
+        );
+      }
+
+      #heatHUD.overheated #heatBarContainer {
         border-color: var(--color-red);
-        animation: healthPulse 0.3s ease-in-out infinite;
+        animation: heatPulse 0.25s ease-in-out infinite;
+        box-shadow: 0 0 20px var(--color-red-glow);
       }
 
-      .overheated #heatBarFill {
+      #heatHUD.overheated #heatBarFill {
         background: var(--color-red) !important;
       }
 
-      .overheated .hud-label {
+      #heatHUD.overheated .weapon-panel-label {
         color: var(--color-red) !important;
-        animation: blink 0.3s step-end infinite;
+        animation: blink 0.25s step-end infinite;
       }
-      
-      #weaponType .hud-label {
-        font-size: var(--font-xs);
-        margin-bottom: var(--space-xs);
-        text-shadow: 0 0 5px currentColor;
+
+      @keyframes heatPulse {
+        0%, 100% {
+          box-shadow: 0 0 15px var(--color-red-glow);
+          border-color: var(--color-red);
+        }
+        50% {
+          box-shadow: 0 0 30px var(--color-red), 0 0 40px var(--color-red-glow);
+          border-color: #FF4444;
+        }
+      }
+
+      /* Power Level styling - 2X */
+      #powerUpDisplay {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+      }
+
+      #powerUpLevel {
+        font-size: clamp(1.2rem, 2.4vw, 1.8rem);
         color: var(--color-cyan);
-      }
-      
-      #weaponTypeValue {
-        font-size: var(--font-lg);
+        text-shadow:
+          0 0 15px var(--color-cyan),
+          0 0 30px var(--color-cyan-glow),
+          3px 3px 0 rgba(0, 0, 0, 0.9);
         font-weight: bold;
-        text-shadow: var(--shadow-glow-md) currentColor;
-        color: var(--color-orange);
+        transition: color 0.3s ease, text-shadow 0.3s ease, transform 0.2s ease;
+      }
+
+      .power-max {
+        font-size: clamp(0.6rem, 1.2vw, 0.9rem);
+        color: rgba(255, 255, 255, 0.5);
+        text-shadow: none;
+      }
+
+      /* Power level states */
+      #powerUp.power-mid #powerUpLevel {
+        color: var(--color-green);
+        text-shadow:
+          0 0 12px var(--color-green),
+          0 0 25px var(--color-green-glow),
+          2px 2px 0 rgba(0, 0, 0, 0.9);
+      }
+
+      #powerUp.power-high #powerUpLevel {
+        color: var(--color-gold);
+        text-shadow:
+          0 0 15px var(--color-gold),
+          0 0 30px rgba(255, 215, 0, 0.6),
+          2px 2px 0 rgba(0, 0, 0, 0.9);
+        animation: powerPulse 1s ease-in-out infinite;
+      }
+
+      @keyframes powerPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+      }
+
+      /* Power-up collection ghost animation */
+      @keyframes powerUpGhost {
+        0% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          opacity: 0.8;
+          transform: translate(-50%, -50%) scale(2);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(2.5) translateY(-30px);
+        }
+      }
+
+      /* Weapon panel glow on overheat - whole panel pulses */
+      #weaponPanel.panel-overheated {
+        border-color: rgba(255, 0, 0, 0.5);
+        box-shadow:
+          0 0 25px rgba(255, 0, 0, 0.3),
+          inset 0 0 30px rgba(255, 0, 0, 0.1);
+      }
+
+      #weaponPanel.panel-overheated .weapon-panel-corner-tl,
+      #weaponPanel.panel-overheated .weapon-panel-corner-tr {
+        border-color: var(--color-red);
+        box-shadow: 0 0 12px var(--color-red-glow);
       }
       
       /* ─────────────────────────────────────────────────────────────────
@@ -593,40 +948,140 @@
          RESPONSIVE BREAKPOINTS
          ═══════════════════════════════════════════════════════════════════ */
       @media (max-width: 768px) {
-        .hud-element {
-          padding: var(--space-xs) var(--space-sm);
-        }
-        
-        #level {
-          font-size: 0.5rem;
-          max-width: 90vw;
-          white-space: normal;
-          text-align: center;
-        }
-        
         #healthBarContainer {
           width: 100px;
+          height: 14px;
         }
-        
+
+        /* Shields - Tablet */
+        #shieldsHUD {
+          top: calc(var(--space-md) + 42px);
+        }
+
+        .shield-dot {
+          width: 12px;
+          height: 12px;
+        }
+
         #combo {
-          top: calc(var(--space-md) + 40px);
+          top: calc(var(--space-md) + 35px);
         }
-      }
-      
-      @media (max-width: 480px) {
-        #score {
-          top: auto;
-          bottom: calc(var(--space-md) + 90px);
+
+        /* Weapon Panel - Tablet (still large) */
+        #weaponPanel {
+          padding: 12px;
+          min-width: 180px;
+          gap: 10px;
         }
-        
-        #timer {
+
+        .weapon-panel-corner {
+          width: 14px;
+          height: 14px;
+        }
+
+        .weapon-panel-label {
+          font-size: 0.5rem;
+          min-width: 55px;
+        }
+
+        #weaponTypeValue {
+          font-size: 0.7rem;
+        }
+
+        #heatHUD #heatBarContainer {
+          width: 90px;
+          height: 14px;
+        }
+
+        #heatBarText {
+          font-size: 0.4rem;
+        }
+
+        #powerUpLevel {
+          font-size: 1rem;
+        }
+
+        .power-max {
           font-size: 0.5rem;
         }
-        
-        #weaponType {
-          bottom: auto;
-          top: calc(var(--space-md) + 50px);
-          right: var(--space-sm);
+      }
+
+      @media (max-width: 480px) {
+        #score {
+          gap: 2px;
+        }
+
+        #currentScore {
+          font-size: 1rem;
+        }
+
+        #scoreLevelIndicator {
+          font-size: 0.4rem;
+        }
+
+        #timer {
+          font-size: 0.6rem;
+        }
+
+        /* Shields - Mobile */
+        #shieldsHUD {
+          top: calc(var(--space-md) + 38px);
+        }
+
+        #shieldsHUD .hud-label {
+          font-size: 0.35rem;
+          margin-bottom: 4px;
+        }
+
+        .shield-dot {
+          width: 10px;
+          height: 10px;
+          border-width: 1px;
+        }
+
+        #shieldDotsContainer {
+          gap: 5px;
+        }
+
+        /* Weapon Panel - Mobile (scaled down but still readable) */
+        #weaponPanel {
+          padding: 10px;
+          min-width: 150px;
+          gap: 8px;
+          bottom: 10px;
+          right: 10px;
+        }
+
+        .weapon-panel-corner {
+          width: 10px;
+          height: 10px;
+          border-width: 2px;
+        }
+
+        .weapon-panel-label {
+          font-size: 0.45rem;
+          min-width: 45px;
+        }
+
+        #weaponTypeValue {
+          font-size: 0.6rem;
+        }
+
+        #heatHUD #heatBarContainer {
+          width: 70px;
+          height: 12px;
+        }
+
+        #heatBarText {
+          font-size: 0.35rem;
+        }
+
+        #powerUpLevel {
+          font-size: 0.9rem;
+        }
+
+        .power-max {
+          font-size: 0.45rem;
         }
       }
     </style>
@@ -643,10 +1098,21 @@
             <div id="healthBarText">100/100</div>
           </div>
         </div>
+
+        <!-- SHIELDS - Below Health Bar -->
+        <div id="shieldsHUD" class="hud-element">
+          <div class="hud-label">SHIELDS</div>
+          <div id="shieldDotsContainer">
+            <div class="shield-dot active" data-index="0"></div>
+            <div class="shield-dot" data-index="1"></div>
+            <div class="shield-dot" data-index="2"></div>
+          </div>
+        </div>
         
-        <!-- SCORE - Top Center -->
+        <!-- SCORE & LEVEL - Top Center -->
         <div id="score" class="hud-element">
-          <span class="hud-label">Score:</span> <span id="currentScore">0</span>
+          <div id="currentScore">0</div>
+          <div id="scoreLevelIndicator">LEVEL <span id="scoreLevelValue">1</span></div>
         </div>
         
         <!-- TIMER - Top Right -->
@@ -659,28 +1125,43 @@
           <span class="hud-label">Combo:</span> <span id="comboCount">0</span>x
         </div>
         
-        <!-- POWER-UP - Above Level -->
-        <div id="powerUp" class="hud-element">
-          <span class="hud-label">Power-Up:</span> <span id="powerUpLevel">0</span>/10
-        </div>
-        
-        <!-- LEVEL INFO - Bottom Center -->
-        <div id="level" class="hud-element">
+        <!-- LEVEL INFO - Hidden (data still tracked internally) -->
+        <div id="level" class="hud-element" style="display: none;">
           Game Level: <span id="gameLevel">1</span>/99 | Player Level: <span id="currentLevel">1</span> | XP: <span id="xp">0</span>/<span id="xpNext">15</span>
         </div>
-        
-        <!-- HEAT BAR - Bottom Right (above weapon type) -->
-        <div id="heatHUD" class="hud-element">
-          <div class="hud-label">WEAPON HEAT</div>
-          <div id="heatBarContainer">
-            <div id="heatBarFill"></div>
-          </div>
-        </div>
 
-        <!-- WEAPON TYPE - Bottom Right -->
-        <div id="weaponType" class="hud-element">
-          <div class="hud-label">WEAPON</div>
-          <div id="weaponTypeValue">BULLETS</div>
+        <!-- ═══════════════════════════════════════════════════════════════════
+             WEAPON PANEL - Bottom Right (Grouped)
+             ═══════════════════════════════════════════════════════════════════ -->
+        <div id="weaponPanel" class="hud-element">
+          <!-- Decorative corner brackets -->
+          <div class="weapon-panel-corner weapon-panel-corner-tl"></div>
+          <div class="weapon-panel-corner weapon-panel-corner-tr"></div>
+          <div class="weapon-panel-corner weapon-panel-corner-bl"></div>
+          <div class="weapon-panel-corner weapon-panel-corner-br"></div>
+
+          <!-- Weapon Type -->
+          <div id="weaponType" class="weapon-panel-row">
+            <span class="weapon-panel-label">WEAPON</span>
+            <span id="weaponTypeValue" class="weapon-panel-value">BULLETS</span>
+          </div>
+
+          <!-- Weapon Heat Bar -->
+          <div id="heatHUD" class="weapon-panel-row">
+            <span class="weapon-panel-label">HEAT</span>
+            <div id="heatBarContainer">
+              <div id="heatBarFill"></div>
+              <div id="heatBarText">0%</div>
+            </div>
+          </div>
+
+          <!-- Power Level -->
+          <div id="powerUp" class="weapon-panel-row">
+            <span class="weapon-panel-label">POWER</span>
+            <div id="powerUpDisplay">
+              <span id="powerUpLevel">0</span><span class="power-max">/10</span>
+            </div>
+          </div>
         </div>
         
         <!-- LOADING -->

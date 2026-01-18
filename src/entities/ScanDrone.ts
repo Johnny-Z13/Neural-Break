@@ -501,26 +501,27 @@ export class ScanDrone extends Enemy {
   update(deltaTime: number, player: Player): void {
     // Use parent's lifecycle state machine
     super.update(deltaTime, player)
-    
+
+    // 🔫 CRITICAL: Always update projectiles, even during death animation! 🔫
+    // This prevents bullets from pausing when the drone is destroyed
+    this.updateProjectiles(deltaTime)
+
     // Only do custom updates when alive
     if (this.state !== EnemyState.ALIVE) return
     if (!this.alive) return
-    
+
     // Store last position for trail calculation
     this.lastPosition.copy(this.position)
-    
+
     this.updateAI(deltaTime, player)
-    
+
     // Update position
     this.position.add(this.velocity.clone().multiplyScalar(deltaTime))
     this.mesh.position.set(this.position.x, this.position.y, 0)
-    
-    // Update projectiles
-    this.updateProjectiles(deltaTime)
-    
+
     // Create trail effects
     this.updateTrails(deltaTime)
-    
+
     // Update visual effects
     this.updateVisuals(deltaTime)
   }
@@ -599,9 +600,6 @@ export class ScanDrone extends Enemy {
         .normalize()
         .multiplyScalar(this.speed)
     }
-    
-    // Update projectiles
-    this.updateProjectiles(deltaTime)
   }
   
   private fireAtPlayer(player: Player): void {

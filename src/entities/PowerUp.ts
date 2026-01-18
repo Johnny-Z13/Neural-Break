@@ -26,30 +26,30 @@ export class PowerUp {
   }
 
   private createMesh(): void {
-    // 🔷 POWER-UP - RICH EMERALD GREEN with 'P' letter! 🔷
+    // 🔷 POWER-UP - DEEP EMERALD/FOREST GREEN with 'P' letter! 🔷
     // Create base container
     const containerGeometry = new THREE.CircleGeometry(0.125, 8) // Scaled up
     const containerMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(containerGeometry, containerMaterial)
     this.mesh.position.copy(this.position)
-    
-    // 💚 RICH EMERALD GLOWING BASE 💚
+
+    // 💚 DEEP EMERALD GLOWING BASE 💚
     const glowGeometry = new THREE.CircleGeometry(0.56, 32) // Scaled up from 0.45
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // BRIGHT GREEN glow (matches INVULNERABLE notification)
+      color: 0x00AA44, // DEEP EMERALD GREEN - distinct from bright green enemies
       transparent: true,
-      opacity: 0.8, // More opaque for stronger glow
+      opacity: 0.9, // More opaque for stronger glow
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     })
     const glow = new THREE.Mesh(glowGeometry, glowMaterial)
     glow.position.z = -0.01
     this.mesh.add(glow)
-    
-    // 💫 OUTER GLOW RING - BRIGHT EMERALD 💫
+
+    // 💫 OUTER GLOW RING - FOREST GREEN 💫
     const outerRingGeometry = new THREE.RingGeometry(0.625, 0.81, 32) // Scaled up from 0.5, 0.65
     const outerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // BRIGHT GREEN for outer ring (matches INVULNERABLE notification)
+      color: 0x009933, // FOREST GREEN for outer ring - darker, more distinct
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -57,11 +57,11 @@ export class PowerUp {
     })
     const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial)
     this.mesh.add(outerRing)
-    
-    // 🟢 INNER RING - DEEP EMERALD 🟢
+
+    // 🟢 INNER RING - VIBRANT JADE GREEN 🟢
     const innerRingGeometry = new THREE.RingGeometry(0.44, 0.525, 32) // Scaled up from 0.35, 0.42
     const innerRingMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00FF00, // BRIGHT GREEN (matches INVULNERABLE notification)
+      color: 0x00DD55, // JADE GREEN - brighter accent
       transparent: true,
       opacity: 0.95,
       blending: THREE.AdditiveBlending,
@@ -73,12 +73,13 @@ export class PowerUp {
     // ✨ 'P' LETTER - WEAPON POWER! ✨
     this.createLetterP()
     
-    // 💫 ENERGY PARTICLES - Rich emerald tones! 💫
+    // 💫 ENERGY PARTICLES - Deep emerald/jade tones! 💫
     for (let i = 0; i < 12; i++) {
       const particleGeometry = new THREE.CircleGeometry(0.06, 8) // Slightly larger, more segments
-      // All particles use the same bright green
+      // Alternate between deep emerald and jade green
+      const particleColor = i % 2 === 0 ? 0x00AA44 : 0x00DD55
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00FF00, // BRIGHT GREEN particles (matches INVULNERABLE notification)
+        color: particleColor, // DEEP EMERALD or JADE GREEN alternating
         transparent: true,
         opacity: 0.85,
         blending: THREE.AdditiveBlending
@@ -96,7 +97,7 @@ export class PowerUp {
 
   private createLetterP(): void {
     // Create 'P' shape using box geometries
-    const letterColor = 0xFFFFFF // White letter for contrast
+    const letterColor = 0xFFFFFF // Bright white letter for maximum contrast against deep green
     const letterMaterial = new THREE.MeshBasicMaterial({
       color: letterColor,
       transparent: true,
@@ -218,22 +219,22 @@ export class PowerUp {
     // Faster trail when magnetized!
     const interval = this.isMagnetized ? this.trailInterval * 0.5 : this.trailInterval
     if (this.trailTimer >= interval) {
-      // Create sparkle particles - LIGHTER GREEN color
+      // Create sparkle particles - DEEP EMERALD/JADE colors
       const sparkleVelocity = new THREE.Vector3(
         (Math.random() - 0.5) * 0.5,
         (Math.random() - 0.5) * 0.5,
         (Math.random() - 0.5) * 0.3
       )
-      
-      // Lighter green sparkles for vibrant, special look
+
+      // Deep emerald to jade green sparkles - more saturated and darker
       const sparkleColor = new THREE.Color().setHSL(
-        0.35 + Math.sin(this.pulseTime * 3) * 0.03, // Lighter green hue range
-        1.0,
-        0.65 + Math.random() * 0.15 // Lighter, varied brightness
+        0.38 + Math.sin(this.pulseTime * 3) * 0.02, // Emerald/jade hue range
+        0.85, // High saturation
+        0.45 + Math.random() * 0.15 // Darker, varied brightness for depth
       )
-      
+
       this.effectsSystem.createSparkle(this.position, sparkleVelocity, sparkleColor, 0.6)
-      
+
       this.trailTimer = 0
     }
   }
@@ -271,14 +272,15 @@ export class PowerUp {
 
   collect(): void {
     this.alive = false
-    
-    // Create collection effect - VIBRANT GREEN EXPLOSION!
+
+    // Create collection effect - DEEP EMERALD EXPLOSION!
     if (this.effectsSystem) {
-      // Vibrant green explosion effect with multiple bursts
-      this.effectsSystem.createExplosion(this.position, 1.8, new THREE.Color(0x00EE33))
-      this.effectsSystem.createExplosion(this.position, 1.2, new THREE.Color(0x66FF88))
-      
-      // Electric burst with vibrant green tint
+      // Deep emerald explosion effect with multiple bursts
+      this.effectsSystem.createExplosion(this.position, 1.8, new THREE.Color(0x00AA44)) // Deep emerald
+      this.effectsSystem.createExplosion(this.position, 1.2, new THREE.Color(0x00DD55)) // Jade green
+      this.effectsSystem.createExplosion(this.position, 0.8, new THREE.Color(0x009933)) // Forest green
+
+      // Electric burst with deep emerald tint
       this.effectsSystem.createElectricDeath(this.position, 'PowerUp')
     }
   }

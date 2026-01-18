@@ -29,14 +29,30 @@ export class AudioManager {
   // Audio context state
   private isInitialized: boolean = false
   private pendingSounds: (() => void)[] = []
-  
+  private userGestureReceived: boolean = false
+
   // 🎵 DEBUG MODE - Performance tracking
   private debugMode: boolean = false
 
+  /**
+   * Prepare AudioManager - does NOT create AudioContext yet
+   * AudioContext is deferred until first user gesture to avoid browser warnings
+   */
   initialize(): void {
+    // Don't create AudioContext here - wait for user gesture
+    // This avoids "AudioContext was not allowed to start" warnings
+    console.log('🎵 AudioManager ready (awaiting user gesture for AudioContext)')
+  }
+
+  /**
+   * Actually create the AudioContext - only called after user gesture
+   */
+  private createAudioContext(): void {
+    if (this.audioContext) return // Already created
+
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      
+
       // 🎚️ CREATE MASTER DYNAMICS COMPRESSOR - Prevents audio clipping/distortion! 🎚️
       // This acts as a limiter when many sounds play simultaneously
       const compressor = this.audioContext.createDynamicsCompressor()
@@ -46,27 +62,27 @@ export class AudioManager {
       compressor.attack.setValueAtTime(0.003, this.audioContext.currentTime)  // Fast attack (3ms)
       compressor.release.setValueAtTime(0.15, this.audioContext.currentTime)  // Medium release (150ms)
       compressor.connect(this.audioContext.destination)
-      
+
       // Create master gain node - connects to compressor instead of destination
       this.masterGainNode = this.audioContext.createGain()
       this.masterGainNode.gain.value = this.masterVolume
       this.masterGainNode.connect(compressor)
-      
+
       // Create separate gain nodes for SFX and Ambient
       this.sfxGainNode = this.audioContext.createGain()
       this.sfxGainNode.gain.value = 0.8  // Slightly reduced to give compressor headroom
       this.sfxGainNode.connect(this.masterGainNode)
-      
+
       this.ambientGainNode = this.audioContext.createGain()
       this.ambientGainNode.gain.value = 0.3  // Ambient quieter so SFX punch through
       this.ambientGainNode.connect(this.masterGainNode)
-      
+
       this.isInitialized = true
-      console.log('🎵 AudioManager initialized with dynamics compressor')
-      
+      console.log('🎵 AudioContext created with dynamics compressor')
+
       // Play any pending sounds
       this.flushPendingSounds()
-      
+
     } catch (error) {
       console.warn('🔇 Audio not supported:', error)
     }
@@ -74,8 +90,19 @@ export class AudioManager {
 
   /**
    * Ensure audio context is running - handles browser autoplay policies
+   * Only logs warnings once to avoid console spam
    */
   private async ensureAudioReady(): Promise<boolean> {
+    // If no user gesture received yet, silently return false
+    if (!this.userGestureReceived) {
+      return false
+    }
+
+    // Create AudioContext on first use after user gesture
+    if (!this.audioContext) {
+      this.createAudioContext()
+    }
+
     if (!this.audioContext || !this.masterGainNode || !this.sfxGainNode) {
       return false
     }
@@ -85,7 +112,10 @@ export class AudioManager {
         await this.audioContext.resume()
         console.log('🎵 AudioContext resumed')
       } catch (e) {
-        console.warn('🔇 Could not resume audio context:', e)
+        // Only warn once, not on every sound attempt
+        if (this.debugMode) {
+          console.warn('🔇 Could not resume audio context:', e)
+        }
         return false
       }
     }
@@ -98,6 +128,13 @@ export class AudioManager {
    * Call this on first user interaction (click, keypress, etc) to ensure audio works
    */
   async resumeAudio(): Promise<void> {
+    this.userGestureReceived = true
+
+    // Create AudioContext now that we have a user gesture
+    if (!this.audioContext) {
+      this.createAudioContext()
+    }
+
     await this.ensureAudioReady()
   }
 
