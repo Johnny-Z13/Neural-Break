@@ -336,72 +336,64 @@ export class APIHighScoreService implements IHighScoreService {
 }
 
 /**
- * Hybrid High Score Service
- * Automatically uses API for online persistence when available,
- * falls back to localStorage for local development
+ * Simplified High Score Service
+ * Always attempts to use API first (works both locally and in production)
+ * Only localStorage is used for remembering the last player name (convenience feature)
+ *
+ * NOTE: No fallback to localStorage for scores - all scores should go to Vercel KV
+ * This ensures consistency across all players and makes testing easier
  */
-export class HybridHighScoreService implements IHighScoreService {
+export class SimplifiedHighScoreService implements IHighScoreService {
   private apiService: APIHighScoreService
-  private localService: LocalStorageHighScoreService
-  private useAPI: boolean
+  private readonly LAST_NAME_KEY = 'neural_break_last_player_name'
 
   constructor() {
     this.apiService = new APIHighScoreService()
-    this.localService = new LocalStorageHighScoreService()
-    this.useAPI = import.meta.env.VITE_USE_API_HIGHSCORES === 'true'
-    
-    if (this.useAPI) {
-      console.log('🌐 Using Online API High Score Service (Vercel deployment)')
-    } else {
-      console.log('💾 Using Local Storage High Score Service (development mode)')
-    }
+    console.log('🌐 High Score Service: Always using API endpoint (/api/highscores)')
+    console.log('   → Scores will persist to Vercel KV when deployed')
+    console.log('   → Development: API will handle gracefully if KV unavailable')
   }
 
   async saveHighScore(entry: HighScoreEntry): Promise<boolean> {
-    if (this.useAPI) {
-      // Try API first, fallback to local storage on failure
-      const success = await this.apiService.saveHighScore(entry)
-      if (!success) {
-        console.warn('⚠️ API save failed, falling back to localStorage')
-        return await this.localService.saveHighScore(entry)
+    // Always try to save to API (Vercel KV)
+    const success = await this.apiService.saveHighScore(entry)
+
+    if (success) {
+      // Remember last player name locally for convenience
+      try {
+        localStorage.setItem(this.LAST_NAME_KEY, entry.name)
+      } catch (e) {
+        // Ignore localStorage errors
       }
-      return success
-    } else {
-      return await this.localService.saveHighScore(entry)
     }
+
+    return success
   }
 
   async getHighScores(gameMode?: string): Promise<HighScoreEntry[]> {
-    if (this.useAPI) {
-      // Try API first, fallback to local storage on failure
-      const scores = await this.apiService.getHighScores(gameMode)
-      if (scores.length === 0) {
-        console.warn('⚠️ API returned no scores, checking localStorage')
-        return await this.localService.getHighScores()
-      }
-      return scores
-    } else {
-      return await this.localService.getHighScores()
-    }
+    // Always fetch from API
+    return await this.apiService.getHighScores(gameMode)
   }
 
   async clearAllScores(): Promise<void> {
-    // Clear both local and API (if implemented)
-    await this.localService.clearAllScores()
-    if (this.useAPI) {
-      await this.apiService.clearAllScores()
-    }
+    // API doesn't support clearing (security feature)
+    console.warn('⚠️ clearAllScores not available via API')
   }
-  
+
   getLastPlayerName(): string {
-    // Always use local storage for last name (convenience feature)
-    return this.localService.getLastPlayerName()
+    // Get last player name from local storage for convenience
+    try {
+      return localStorage.getItem(this.LAST_NAME_KEY) || ''
+    } catch (error) {
+      console.warn('⚠️ Error getting last player name:', error)
+      return ''
+    }
   }
 }
 
 /**
  * Factory to get the appropriate service
- * Uses HybridHighScoreService which automatically handles API/localStorage
+ * Uses SimplifiedHighScoreService which always attempts to use the API
  */
 export class HighScoreServiceFactory {
   private static instance: IHighScoreService | null = null
@@ -411,9 +403,9 @@ export class HighScoreServiceFactory {
       return this.instance
     }
 
-    // Use hybrid service that automatically switches between API and localStorage
-    this.instance = new HybridHighScoreService()
-    
+    // Use simplified service that always uses API endpoint
+    this.instance = new SimplifiedHighScoreService()
+
     return this.instance
   }
 
